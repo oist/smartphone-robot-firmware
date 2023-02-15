@@ -4,6 +4,9 @@ cmake_minimum_required(VERSION 3.13)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_BUILD_TYPE "Debug")
+set(CMAKE_C_FLAGS_DEBUG "-Og -g3")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
@@ -14,28 +17,50 @@ set(PICO_BOARD pico CACHE STRING "Board type")
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
+# Adding for Ycm debugging
+MACRO(HEADER_DIRECTORIES return_list)
+    FILE(GLOB_RECURSE new_list "${PICO_SDK_PATH}/*.h")
+    SET(dir_list "")
+    FOREACH(file_path ${new_list})
+        GET_FILENAME_COMPONENT(dir_path ${file_path} PATH)
+        SET(dir_list ${dir_list} ${dir_path})
+    ENDFOREACH()
+    LIST(REMOVE_DUPLICATES dir_list)
+    SET(${return_list} ${dir_list})
+ENDMACRO()
+
+# HEADER_DIRECTORIES(list)
+# include_directories(${list})
+
 if (PICO_SDK_VERSION_STRING VERSION_LESS "1.4.0")
   message(FATAL_ERROR "Raspberry Pi Pico SDK version 1.4.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
 endif()
 
-project(robot C CXX ASM)
+project(robot 
+        VERSION 0.1
+        LANGUAGES C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(robot robot.c )
-
+add_executable(robot 
+               robot.c
+               max77857.c
+               bit_ops.c
+               wrm483265_10f5_12v_g.c
+               ncp3901.c
+	       max77976.c
+	       )
 pico_set_program_name(robot "robot")
 pico_set_program_version(robot "0.1")
 
 pico_enable_stdio_uart(robot 1)
-pico_enable_stdio_usb(robot 0)
+pico_enable_stdio_usb(robot 1)
 
 # Add the standard library to the build
-target_link_libraries(robot
-        pico_stdlib)
+target_link_libraries(robot pico_stdlib)
 
 # Add the standard include files to the build
 target_include_directories(robot PRIVATE
@@ -44,9 +69,7 @@ target_include_directories(robot PRIVATE
 )
 
 # Add any user requested libraries
-target_link_libraries(robot
-        hardware_i2c
-        )
+target_link_libraries(robot hardware_adc hardware_i2c)
 
 pico_add_extra_outputs(robot)
 

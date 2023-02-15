@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${env:PICO_SDK_PATH}/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/arm-none-eabi-gcc",
+            "cStandard": "c17",
+            "cppStandard": "c++23",
+            "intelliSenseMode": "linux-gcc-arm",
+            "configurationProvider": "ms-vscode.cmake-tools"
+            // "compilerArgs": [
+            //     // "-pedantic-errors"
+            //     "-Wall",
+            //     // "-Wextra",
+            //     "-Werror",
+            //     "-O0",
+            //     // "-Wunused_result",
+            //     "-ffreestanding",
+            //     "-fno-strict-aliasing"
+            // ]
+        }
+    ],
+    "version": 4
+}
