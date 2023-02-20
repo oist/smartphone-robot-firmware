@@ -35,7 +35,7 @@ void on_start(){
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO);
     
     // Be sure to do this last
-    sn74ahc125rgyr_on_end_of_start();
+    sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
 
     blink_led(3, 100, 100);
 }
@@ -86,9 +86,7 @@ void blink_led(uint8_t blinkCnt, int onTime, int offTime)
 void bq27742_g1_init() {}
 void max77642_init() {}
 
-void sn74ahc125rgyr_init() {}
 void quad_encoders_init() {}
-void max77958_init() {}
 
 //---------------------------------------------------------------------
 // Shutdown Methods
