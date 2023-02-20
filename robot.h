@@ -16,6 +16,7 @@ void sample_adc_inputs();
 #define GPIO_WIRELESS_AVAILABLE _u(4) // GPIO4
 #define GPIO_OTG _u(5) // GPIO5
 #define BATTERY_CHARGER_INTERRUPT_PIN _u(6) // GPIO6
+#define SN74AHC125RGYR_GPIO _u(16) // GPIO16
 
 // I2C defines
 // Use I2C0 on GPIO0 (SDA) and GPIO1 (SCL) running at 400KHz.
