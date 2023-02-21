@@ -29,7 +29,7 @@ void on_start(){
     blink_led(1, 500, 100);
     // i2c_start();
     adc_init();
-    wrm483265_10f5_12v_g_init(WIRELESS_CHG_EN, GPIO_OUT);
+    wrm483265_10f5_12v_g_init(WIRELESS_CHG_EN);
     ncp3901_init(GPIO_WIRELESS_AVAILABLE, GPIO_OTG);
     max77976_init(BATTERY_CHARGER_INTERRUPT_PIN);
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO);
