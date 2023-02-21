@@ -83,7 +83,6 @@ void blink_led(uint8_t blinkCnt, int onTime, int offTime)
 // Initialization Methods
 //---------------------------------------------------------------------
 
-void bq27742_g1_init() {}
 void max77642_init() {}
 
 void quad_encoders_init() {}
