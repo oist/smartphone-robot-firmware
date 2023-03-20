@@ -26,7 +26,7 @@ int main()
 
 void on_start(){
     stdio_init_all();
-    // i2c_start();
+    i2c_start();
     adc_init();
     wrm483265_10f5_12v_g_init(WIRELESS_CHG_EN);
     ncp3901_init(GPIO_WIRELESS_AVAILABLE, GPIO_OTG);
