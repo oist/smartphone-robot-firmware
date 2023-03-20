@@ -26,7 +26,6 @@ int main()
 
 void on_start(){
     stdio_init_all();
-    blink_led(1, 500, 100);
     // i2c_start();
     adc_init();
     wrm483265_10f5_12v_g_init(WIRELESS_CHG_EN);
@@ -36,8 +35,6 @@ void on_start(){
     
     // Be sure to do this last
     sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
-
-    blink_led(3, 100, 100);
 }
 
 void i2c_start()
