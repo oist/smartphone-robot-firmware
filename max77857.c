@@ -24,7 +24,7 @@ void max77857_init() {
                   MAX77857_REG_REG_CONT1_FREQ_LSB,
                   MAX77857_REG_REG_CONT1_FREQ_MSB,
                   MAX77857_REG_REG_CONT1_FREQ_DEFAULT);
-    i2c_write_blocking(i2c1, MAX77857_ADDR_WRITE, buf, 2, false);
+    i2c_write_blocking(i2c1, MAX77857_ADDR, buf, 2, false);
 
     //// CONT2 and VREF
     //buf[0] = MAX77857_REG_REG_CONT2_ADDR;

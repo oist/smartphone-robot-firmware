@@ -36,20 +36,20 @@ void max77976_init(uint GPIO)
     uint8_t buf[2];
     buf[0] = MAX77976_REG_CHG_CNFG_00_ADDR;
     buf[1] = MAX77976_REG_CHG_CNFG_00_MODE_CHARGE_BUCK;
-    i2c_write_blocking(i2c1, MAX77976_ADDR_WRITE, buf, 2, false);
+    i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
 
     // Set Fast-Charge Current limit to 1200mA
 
     buf[0] = MAX77976_REG_CHG_CNFG_02_ADDR;
     buf[1] = MAX77976_REG_CHG_CNFG_02_CHG_CC_1250;
-    i2c_write_blocking(i2c1, MAX77976_ADDR_WRITE, buf, 2, false);
+    i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
 
     // Set switching frequency to 2.6 MHz
     buf[0] = MAX77976_REG_CHG_CNFG_08_ADDR;
     buf[1] = bit_assign(MAX77976_REG_CHG_CNFG_08_RESET,
                         MAX77976_REG_CHG_CNFG_08_FSW_2P6, 
                         MAX77976_REG_CHG_CNFG_08_FSW_LSB); // All reset values are 0 other than FSW. Seeting this also to 0 results in 2.6MHz
-    i2c_write_blocking(i2c1, MAX77976_ADDR_WRITE, buf, 2, false);
+    i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
 
     // Set charge input current limit to 3000mA and leave Input Current Limit Soft Start Clock as default value (1024 usec)
     buf[0] = MAX77976_REG_CHG_CNFG_09_ADDR;
@@ -57,5 +57,5 @@ void max77976_init(uint GPIO)
                   MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_LSB,
                   MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_MSB,
                   MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_3000);
-    i2c_write_blocking(i2c1, MAX77976_ADDR_WRITE, buf, 2, false);
+    i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
 }
