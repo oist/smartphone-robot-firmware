@@ -3,3 +3,4 @@ load
 monitor reset init
 source breakpoints
 info breakpoint
+set listsize 30
