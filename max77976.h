@@ -72,6 +72,6 @@ void max77976_onEXTUSBCHG_connect();
 void max77976_onEXTUSBCHG_disconnect();
 void max77976_onHardwareInterrupt();
 void max77976_factory_ship_mode_check();
-void max77976_init(uint GPIO);
+int max77976_init(uint GPIO);
 
 #endif // MAX77976_

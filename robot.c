@@ -18,6 +18,7 @@ int main()
     while (1)
     {
         sample_adc_inputs();
+        printf("sampling ..\n");
         sleep_ms(500);
     }
 
@@ -26,6 +27,8 @@ int main()
 
 void on_start(){
     stdio_init_all();
+    // Waiting to make sure I can catch it within minicom
+    sleep_ms(3000);
     i2c_start();
     adc_init();
     wrm483265_10f5_12v_g_init(WIRELESS_CHG_EN);

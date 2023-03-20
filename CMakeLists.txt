@@ -58,7 +58,7 @@ add_executable(robot
 pico_set_program_name(robot "robot")
 pico_set_program_version(robot "0.1")
 
-pico_enable_stdio_uart(robot 1)
+pico_enable_stdio_uart(robot 0)
 pico_enable_stdio_usb(robot 1)
 
 # Add the standard library to the build

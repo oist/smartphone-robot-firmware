@@ -28,12 +28,29 @@ void on_interrupt(uint gpio, ulong events)
     // do something if necessary. Currently don't know a use for this
 }
 
-void max77976_init(uint GPIO)
+int max77976_init(uint GPIO)
 {
     gpio_set_irq_enabled_with_callback(GPIO, GPIO_IRQ_EDGE_RISE, true, &on_interrupt);
+    
+    // Check if responding as i2c slave before trying to write to it
+    uint8_t rxdata;
+    int ret;
+    ret = i2c_read_blocking(i2c1,MAX77976_ADDR, &rxdata, 1, false);
+    if (ret < 0){
+	//Error
+	printf("Failed to read data from address %x on i2c1\n", MAX77976_ADDR);
+	return -1;
+    }else{
+    	//Success
+	printf("Read from address %x.\n", MAX77976_ADDR);
+    } 
+
+    uint8_t buf[2];
+    i2c_write_blocking(i2c1, MAX77976_ADDR, 0x0, 1, true);
+    i2c_read_blocking(i2c1, MAX77976_ADDR, &rxdata, 1, false);
+    printf("Read CHIP_ID %x.\n", rxdata);
 
     // Set default mode to CHARGE-BUCK
-    uint8_t buf[2];
     buf[0] = MAX77976_REG_CHG_CNFG_00_ADDR;
     buf[1] = MAX77976_REG_CHG_CNFG_00_MODE_CHARGE_BUCK;
     i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
