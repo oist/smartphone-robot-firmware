@@ -54,7 +54,7 @@ add_executable(robot
 	       max77976.c
 	       sn74ahc125rgyr.c
 	       max77958.c
-	       bq27742-g1.c)
+	       bq27742_g1.c)
 pico_set_program_name(robot "robot")
 pico_set_program_version(robot "0.1")
 
