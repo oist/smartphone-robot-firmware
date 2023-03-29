@@ -17,20 +17,20 @@ set(PICO_BOARD pico CACHE STRING "Board type")
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
-# Adding for Ycm debugging
-MACRO(HEADER_DIRECTORIES return_list)
-    FILE(GLOB_RECURSE new_list "${PICO_SDK_PATH}/*.h")
+## Adding for Ycm debugging
+MACRO(INCLUDE_SUBMODULES)
+    FILE(GLOB_RECURSE new_list "${CMAKE_SOURCE_DIR}/include/*.h")
     SET(dir_list "")
     FOREACH(file_path ${new_list})
         GET_FILENAME_COMPONENT(dir_path ${file_path} PATH)
         SET(dir_list ${dir_list} ${dir_path})
     ENDFOREACH()
     LIST(REMOVE_DUPLICATES dir_list)
-    SET(${return_list} ${dir_list})
-ENDMACRO()
+ENDMACRO() 
 
-# HEADER_DIRECTORIES(list)
-# include_directories(${list})
+INCLUDE_SUBMODULES()
+message("submodule_list after to dup removal: ${dir_list}\n")
+
 
 if (PICO_SDK_VERSION_STRING VERSION_LESS "1.4.0")
   message(FATAL_ERROR "Raspberry Pi Pico SDK version 1.4.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
@@ -43,18 +43,16 @@ project(robot
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
+file(GLOB SOURCES "*.c")
+message("SOURCES: ${SOURCES}")
+message("add_executable to include : ${CMAKE_SOURCE_DIR}/include/max77958/max77958_driver.h\n")
 # Add executable. Default name is the project name, version 0.1
-
 add_executable(robot 
                robot.c
-               max77857.c
-               bit_ops.c
-               wrm483265_10f5_12v_g.c
-               ncp3901.c
-	       max77976.c
-	       sn74ahc125rgyr.c
-	       max77958.c
-	       bq27742_g1.c)
+	       ${SOURCES}
+	       ${CMAKE_SOURCE_DIR}/include/max77958/max77958_driver.h
+	       )
+       
 pico_set_program_name(robot "robot")
 pico_set_program_version(robot "0.1")
 
@@ -64,10 +62,13 @@ pico_enable_stdio_usb(robot 1)
 # Add the standard library to the build
 target_link_libraries(robot pico_stdlib)
 
+message("target_include_directories to include : ${CMAKE_SOURCE_DIR}/include/max77958\n")
+message("target_include_directories to include : ${CMAKE_CURRENT_LIST_DIR}\n")
 # Add the standard include files to the build
 target_include_directories(robot PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}
   ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts or any other standard includes, if required
+  ${dir_list}
 )
 
 # Add any user requested libraries
