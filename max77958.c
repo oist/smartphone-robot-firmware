@@ -23,6 +23,8 @@ void max77958_init(uint FPF1048BUCX_EN, uint TPS61253_EN){
     uint8_t buf[2];
     buf[0] = 0x00;
     buf[1] = 0x00;
+    // Write the register 0x00 to set the pointer there before reading its value
+    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, buf, 1, false);
     i2c_read_blocking(i2c0, MAX77958_SLAVE_P1, buf, 2, false);
     printf("DEVICE_ID = %x", buf[0]);
     printf("DEVICE_REV = %x", buf[1]);
@@ -38,10 +40,9 @@ void max77958_init(uint FPF1048BUCX_EN, uint TPS61253_EN){
     // Normally would wait until interrupt occurs on GPIO but will just sleep for testing now
     sleep_ms(1000);
     buf[0] = OPCODE_READ;
-    buf[1] = OPCODE_SET_CSTM_INFORMATION_R;
-    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, buf, 2, false);
+    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, buf, 1, false);
     uint8_t return_buf[3];
-    i2c_read_blocking(i2c1, MAX77958_SLAVE_P1, return_buf, 3, false);
+    i2c_read_blocking(i2c0, MAX77958_SLAVE_P1, return_buf, 3, false);
     printf("VID_LSB = %x", return_buf[1]);
     printf("VID_MSB = %x", return_buf[2]);
 }
