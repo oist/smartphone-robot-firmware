@@ -4,10 +4,10 @@
 #include "max77976.h"
 #include "bit_ops.h"
 
-void max77976_onEXTUSBCHG_connect(){}
-void max77976_onEXTUSBCHG_disconnect(){}
-void max77976_onHardwareInterrupt(){
-}
+static void max77976_onEXTUSBCHG_connect();
+static void max77976_onEXTUSBCHG_disconnect();
+static void max77976_onHardwareInterrupt();
+
 void max77976_factory_ship_mode_check(){
     // Check if CONNECTION_ANDROID or CONNECTION_PC occured in last hour
 
@@ -19,7 +19,7 @@ void max77976_factory_ship_mode_check(){
 }
 
 // on interrupt from MAX77976
-void on_interrupt(uint gpio, ulong events)
+static void on_interrupt(uint gpio, ulong events)
 {
     // Put the GPIO event(s) that just happened into event_str
     // so we can print it

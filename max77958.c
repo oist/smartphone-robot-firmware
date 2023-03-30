@@ -7,9 +7,19 @@
 #include "max77958_driver.h"
 #include "bit_ops.h"
 
-int opcode_write(uint8_t *send_buf, uint8_t *return_buf);
+static int opcode_write(uint8_t *send_buf, uint8_t *return_buf);
+static void on_interrupt(uint gpio, ulong events);
 
-void max77958_init(uint FPF1048BUCX_EN, uint TPS61253_EN){
+static void on_interrupt(uint gpio, ulong events)
+{
+    // Put the GPIO event(s) that just happened into event_str
+    // so we can print it
+    // gpio_event_string(event_str, events);
+
+    // do something if necessary. Currently don't know a use for this
+}
+
+void max77958_init(uint gpio_interrupt){
 
     // Testing for just DEVICE_ID
     uint8_t send_buf[32] = {0};
@@ -33,7 +43,7 @@ void max77958_init(uint FPF1048BUCX_EN, uint TPS61253_EN){
     opcode_write(send_buf, return_buf);
 }
 
-int opcode_write(uint8_t *send_buf, uint8_t *return_buf){
+static int opcode_write(uint8_t *send_buf, uint8_t *return_buf){
     // send_buf should always be 32 bytes long since the register values from 0x22 to 0x41 are never overwritten, 
     // so you may send wrong data if you don't directly specify them for ALL registers. Note the defaults are NOT always 0x00, 
     // so you should send all values everytime. What a pain...

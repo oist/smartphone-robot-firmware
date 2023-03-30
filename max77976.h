@@ -68,10 +68,6 @@
 #define MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_RESET _u(0x9)
 #define MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_3000 _u(0x3B)
 
-void max77976_onEXTUSBCHG_connect();
-void max77976_onEXTUSBCHG_disconnect();
-void max77976_onHardwareInterrupt();
-void max77976_factory_ship_mode_check();
 int max77976_init(uint GPIO);
 
 #endif // MAX77976_
