@@ -28,8 +28,8 @@ static void on_interrupt(uint gpio, ulong events)
     // do something if necessary. Currently don't know a use for this
 }
 
-int max77976_init(uint GPIO)
-{
+
+int max77976_init(uint GPIO){
     gpio_set_irq_enabled_with_callback(GPIO, GPIO_IRQ_EDGE_RISE, true, &on_interrupt);
     
     // Check if responding as i2c slave before trying to write to it
