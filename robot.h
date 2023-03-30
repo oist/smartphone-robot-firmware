@@ -8,7 +8,6 @@ void max77642_init();
 void max77857_init();
 void sn74ahc125rgyr_init();
 void quad_encoders_init();
-void max77958_init();
 void blink_led(uint8_t blinkCnt, int onTime, int offTime);
 void sample_adc_inputs();
 
@@ -17,8 +16,7 @@ void sample_adc_inputs();
 #define GPIO_OTG _u(5) // GPIO5
 #define BATTERY_CHARGER_INTERRUPT_PIN _u(6) // GPIO6
 #define SN74AHC125RGYR_GPIO _u(16) // GPIO16
-#define FPF1048BUCX_EN _u(4) // GPIO4
-#define TPS61253_EN _u(5) // GPIO5
+#define MAX77958_INTB _u(7) // GPIO7
 
 // I2C defines
 // Use I2C0 on GPIO0 (SDA) and GPIO1 (SCL) running at 400KHz.
