@@ -9,6 +9,7 @@
 #include "wrm483265_10f5_12v_g.h"
 #include "ncp3901.h"
 #include "sn74ahc125rgyr.h"
+#include "max77958.h"
 
 int main()
 {
