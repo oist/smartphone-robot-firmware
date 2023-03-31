@@ -41,7 +41,7 @@ static void set_interrupt_masks(){
     memset(send_buf, 0, sizeof send_buf);
     memset(return_buf, 0, sizeof return_buf);
     send_buf[0] = REG_UIC_INT_M; // 0x10 UIC_INT_M Register
-    send_buf[1] = 0b00011111;
+    send_buf[1] = 0b10011111;
     i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 2, false);
 }
 
