@@ -20,7 +20,7 @@ int main()
     {
         sample_adc_inputs();
         printf("sampling ..\n");
-        sleep_ms(500);
+        sleep_ms(3000);
     }
 
     return 0;

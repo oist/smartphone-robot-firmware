@@ -17,14 +17,18 @@ static int opcode_read();
 static int opcode_write(uint8_t *send_buf, uint8_t len);
 
 static void on_interrupt(unsigned int gpio, long unsigned int events){
+    printf("----------entering max77958 on_interrupt-------------\n");
     get_interrupt_vals();
-
+    printf("interrupts on after reading 1st time: 0x4: 0x%02x\n 0x5: 0x%02x\n 0x6: 0x%02x\n 0x7: 0x%02x\n", return_buf[0], return_buf[1], return_buf[2], return_buf[3]);
+    get_interrupt_vals();
+    printf("interrupts on after reading 2nd time: 0x4: 0x%02x\n 0x5: 0x%02x\n 0x6: 0x%02x\n 0x7: 0x%02x\n", return_buf[0], return_buf[1], return_buf[2], return_buf[3]);
     // Check if the APCmdResI interrupt is on (AP command response pending)
     uint APCmdResI_mask = 1 << 7;
     if (return_buf[0] & APCmdResI_mask){
         // You can now READ back the OpCommand return registers
         opcode_read();
     }
+    printf("----------leaving max77958 on_interrupt-------------\n");
     // Check for other relevant interrupts here and do something with that info...
 }
 
@@ -122,7 +126,8 @@ void max77958_init(uint gpio_interrupt){
     //To disable Fpf1048bucx We also need GPIO4 to be low (b1=0) and GPIO4Direction to be output (b0=1)
     send_buf[3] = 0b00000101; 
     opcode_write(send_buf, 4);
-    //sleep_ms(1000);
+    // Necessary for avoiding race condition. TODO this should be replaced by a queue or RTOS. 
+    sleep_ms(1000);
     //opcode_read();
 
     // Enable TPS61253_EN via GPIO5 on the MAX77958.
