@@ -10,6 +10,13 @@ void sn74ahc125rgyr_init();
 void quad_encoders_init();
 void blink_led(uint8_t blinkCnt, int onTime, int offTime);
 void sample_adc_inputs();
+void init_queues();
+
+typedef struct
+{
+    void *func;
+    int32_t data;
+} queue_entry_t;
 
 #define CONVERSION_FACTOR _u(3).3f / (1 << 12)
 #define GPIO_WIRELESS_AVAILABLE _u(4) // GPIO4

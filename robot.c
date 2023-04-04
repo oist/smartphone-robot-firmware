@@ -10,6 +10,30 @@
 #include "ncp3901.h"
 #include "sn74ahc125rgyr.h"
 #include "max77958.h"
+#include "pico/util/queue.h"
+#include "pico/multicore.h"
+
+static queue_t call_queue;
+static queue_t results_queue;
+
+// core1 will be used to process all function calls requested by interrupt calls on core0
+void core1_entry() {
+    while (1) {
+        // Function pointer is passed to us via the queue_entry_t which also
+        // contains the function parameter.
+        // We provide an int32_t return value by simply pushing it back on the
+        // return queue which also indicates the result is ready.
+
+        queue_entry_t entry;
+
+        queue_remove_blocking(&call_queue, &entry);
+
+        int32_t (*func)() = (int32_t(*)())(entry.func);
+        int32_t result = (*func)(entry.data);
+
+        queue_add_blocking(&results_queue, &result);
+    }
+}
 
 int main()
 {
@@ -28,6 +52,7 @@ int main()
 
 void on_start(){
     stdio_init_all();
+    init_queues();
     // Waiting to make sure I can catch it within minicom
     sleep_ms(3000);
     i2c_start();
@@ -36,9 +61,16 @@ void on_start(){
     ncp3901_init(GPIO_WIRELESS_AVAILABLE, GPIO_OTG);
     max77976_init(BATTERY_CHARGER_INTERRUPT_PIN);
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO);
-    max77958_init(MAX77958_INTB);
+    max77958_init(MAX77958_INTB, &call_queue, &results_queue);
     // Be sure to do this last
     sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
+}
+
+void init_queues(){
+    queue_init(&call_queue, sizeof(queue_entry_t), 2);
+    queue_init(&results_queue, sizeof(int32_t), 2);
+
+    multicore_launch_core1(core1_entry);
 }
 
 void i2c_start()

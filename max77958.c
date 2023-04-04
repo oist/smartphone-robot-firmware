@@ -7,28 +7,21 @@
 #include "max77958_driver.h"
 #include "bit_ops.h"
 
-static void on_interrupt(uint gpio, long unsigned int events);
 static uint8_t send_buf[33] = {0};
 static uint8_t return_buf[33] = {0}; // Will read full buffer from registers 0x52 to 0x71
-static void get_interrupt_vals();
-static void get_interrupt_masks();
-static void set_interrupt_masks();
-static int opcode_read();
-static int opcode_write(uint8_t *send_buf, uint8_t len);
 
 static void on_interrupt(unsigned int gpio, long unsigned int events){
-    printf("----------entering max77958 on_interrupt-------------\n");
+    queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry);
+}
+
+static void parse_interrupt_vals(){
     get_interrupt_vals();
-    printf("interrupts on after reading 1st time: 0x4: 0x%02x\n 0x5: 0x%02x\n 0x6: 0x%02x\n 0x7: 0x%02x\n", return_buf[0], return_buf[1], return_buf[2], return_buf[3]);
-    get_interrupt_vals();
-    printf("interrupts on after reading 2nd time: 0x4: 0x%02x\n 0x5: 0x%02x\n 0x6: 0x%02x\n 0x7: 0x%02x\n", return_buf[0], return_buf[1], return_buf[2], return_buf[3]);
     // Check if the APCmdResI interrupt is on (AP command response pending)
     uint APCmdResI_mask = 1 << 7;
     if (return_buf[0] & APCmdResI_mask){
         // You can now READ back the OpCommand return registers
         opcode_read();
     }
-    printf("----------leaving max77958 on_interrupt-------------\n");
     // Check for other relevant interrupts here and do something with that info...
 }
 
@@ -38,6 +31,7 @@ static void get_interrupt_vals(){
     send_buf[0] = REG_UIC_INT; // 0x04 Register
     i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
     i2c_read_blocking(i2c0, MAX77958_SLAVE_P1, return_buf, 4, false);
+    printf("interrupts vals: 0x4: 0x%02x, 0x5: 0x%02x, 0x6: 0x%02x, 0x7: 0x%02x\n", return_buf[0], return_buf[1], return_buf[2], return_buf[3]);
 }
 
 static void get_interrupt_masks(){
@@ -64,6 +58,7 @@ static int opcode_write(uint8_t *send_buf, uint8_t len){
 	return -1;
     }
     i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, len, false);
+    printf("opcode_write: 0x%02x 0x%02x 0x%02x 0x%02x\n", send_buf[0], send_buf[1], send_buf[2], send_buf[3]);
 
     // For whatever reason, this is necessary for the interrupt to fire. Even though I already write 0x00 to it in the line above.
     memset(send_buf, 0, sizeof send_buf);
@@ -90,7 +85,10 @@ static int opcode_read(){
     //i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, return_buf, 32, false);
 }
 
-void max77958_init(uint gpio_interrupt){
+void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
+
+    call_queue_ptr = cq;
+    return_queue_ptr = rq;
 
     // Testing for just DEVICE_ID
     // Write the register 0x00 to set the pointer there before reading its value
@@ -98,13 +96,10 @@ void max77958_init(uint gpio_interrupt){
     memset(return_buf, 0, sizeof return_buf);
     i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
     i2c_read_blocking(i2c0, MAX77958_SLAVE_P1, return_buf, 2, false);
-    printf("DEVICE_ID = %x", return_buf[0]);
-    printf("DEVICE_REV = %x", return_buf[1]);
+    printf("DEVICE_ID = %x\n", return_buf[0]);
+    printf("DEVICE_REV = %x\n", return_buf[1]);
 
-    //get_interrupt_masks();
     set_interrupt_masks();
-    get_interrupt_vals();
-    //get_interrupt_masks();
     
     // max77958 sends active LOW on INTB connected to GPIO7 on the rp2040. Setup interrupt callback here
     gpio_init(gpio_interrupt);
@@ -127,7 +122,7 @@ void max77958_init(uint gpio_interrupt){
     send_buf[3] = 0b00000101; 
     opcode_write(send_buf, 4);
     // Necessary for avoiding race condition. TODO this should be replaced by a queue or RTOS. 
-    sleep_ms(1000);
+    sleep_ms(100);
     //opcode_read();
 
     // Enable TPS61253_EN via GPIO5 on the MAX77958.
