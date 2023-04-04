@@ -6,22 +6,46 @@
 #include "max77958.h"
 #include "max77958_driver.h"
 #include "bit_ops.h"
+#include "robot.h"
 
 static uint8_t send_buf[33] = {0};
 static uint8_t return_buf[33] = {0}; // Will read full buffer from registers 0x52 to 0x71
+static int parse_interrupt_vals();
+static void on_interrupt(uint gpio, long unsigned int events);
+static void get_interrupt_vals();
+static void get_interrupt_masks();
+static void set_interrupt_masks();
+static int opcode_read();
+static int opcode_write(uint8_t *send_buf, uint8_t len);
+static queue_t* call_queue_ptr;
+static queue_t* return_queue_ptr;
+static queue_entry_t parse_interrupt_vals_entry = {&parse_interrupt_vals, 0};
+static queue_entry_t opcode_read_entry = {&opcode_read, 0};
+static void on_APCmdResI();
+static queue_entry_t on_APCmdResI_entry = {&on_APCmdResI, 0};
+static bool opcode_cmd_finished = false;
 
 static void on_interrupt(unsigned int gpio, long unsigned int events){
     queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry);
 }
 
-static void parse_interrupt_vals(){
+static int parse_interrupt_vals(){
     get_interrupt_vals();
     // Check if the APCmdResI interrupt is on (AP command response pending)
     uint APCmdResI_mask = 1 << 7;
     if (return_buf[0] & APCmdResI_mask){
         // You can now READ back the OpCommand return registers
         opcode_read();
+	// And write an OpCommand again if necessary. TODO this likely can be generalized better, but I'm not quite
+	// sure yet how I will use it, so will wait to implement the generalization until I have a better idea of 
+	// what needs to be implemented. 
+	if (!opcode_cmd_finished){
+	    on_APCmdResI();
+	    return 2;
+	}
+	return 1;
     }
+    
     // Check for other relevant interrupts here and do something with that info...
 }
 
@@ -121,9 +145,11 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     //To disable Fpf1048bucx We also need GPIO4 to be low (b1=0) and GPIO4Direction to be output (b0=1)
     send_buf[3] = 0b00000101; 
     opcode_write(send_buf, 4);
-    // Necessary for avoiding race condition. TODO this should be replaced by a queue or RTOS. 
-    sleep_ms(100);
-    //opcode_read();
+}
+
+static void on_APCmdResI(){
+    // Although you should likely add some logic here to handle other cases, for now I only expect this to be used after
+    // the initial setting to 0 of GPIO4 and GPIO5 above. 
 
     // Enable TPS61253_EN via GPIO5 on the MAX77958.
     send_buf[0] = OPCODE_WRITE;
@@ -134,10 +160,5 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     //To disable Fpf1048bucx We also need GPIO4 to be low (b1=0) and GPIO4Direction to be output (b0=1)
     send_buf[3] = 0b00001101; 
     opcode_write(send_buf, 4);
-
-    //uint i = 0;
-    //while (i < 100){
-
-    //}
+    opcode_cmd_finished = true;
 }
-

@@ -31,7 +31,11 @@ void core1_entry() {
         int32_t (*func)() = (int32_t(*)())(entry.func);
         int32_t result = (*func)(entry.data);
 
+	printf("core1_entry: result from calling call_queue entry = %d\n", result);
+
         queue_add_blocking(&results_queue, &result);
+
+	// as an alternative to polling the return queue, you can send an irq to core0 to add another entry to call_queue
     }
 }
 
@@ -39,9 +43,15 @@ int main()
 {
     on_start();
 
-    // Wait forever
     while (1)
     {
+	// If the results_queue is not empty, take the first entry and call its function on core0
+	if (!queue_is_empty(&results_queue)){
+	    queue_entry_t entry;
+	    queue_try_remove(&results_queue, &entry);
+	    // TODO implement what to do with results_queue entries.
+	    printf("Handled an entry from the results queue\n");
+	}
         sample_adc_inputs();
         printf("sampling ..\n");
         sleep_ms(3000);
