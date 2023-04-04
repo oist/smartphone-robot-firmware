@@ -20,10 +20,14 @@ static int opcode_write(uint8_t *send_buf, uint8_t len);
 static queue_t* call_queue_ptr;
 static queue_t* return_queue_ptr;
 static queue_entry_t parse_interrupt_vals_entry = {&parse_interrupt_vals, 0};
-static queue_entry_t opcode_read_entry = {&opcode_read, 0};
-static void on_APCmdResI();
-static queue_entry_t on_APCmdResI_entry = {&on_APCmdResI, 0};
 static bool opcode_cmd_finished = false;
+static bool power_swap_enabled = true;
+static queue_t opcode_queue;
+static int32_t gpio45_init();
+static int32_t gpio5_on();
+static int32_t power_swap_request();
+static int32_t gpio4_on();
+static int next_opcode_command();
 
 static void on_interrupt(unsigned int gpio, long unsigned int events){
     queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry);
@@ -39,12 +43,14 @@ static int parse_interrupt_vals(){
 	// And write an OpCommand again if necessary. TODO this likely can be generalized better, but I'm not quite
 	// sure yet how I will use it, so will wait to implement the generalization until I have a better idea of 
 	// what needs to be implemented. 
-	if (!opcode_cmd_finished){
-	    on_APCmdResI();
-	    return 2;
+
+	if (!queue_is_empty(&opcode_queue)){
+	    next_opcode_command();
+	    return 1;
 	}
-	return 1;
+	return 0;
     }
+    return -1;
     
     // Check for other relevant interrupts here and do something with that info...
 }
@@ -113,6 +119,7 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
 
     call_queue_ptr = cq;
     return_queue_ptr = rq;
+    queue_init(&opcode_queue, sizeof(queue_entry_t), 8);
 
     // Testing for just DEVICE_ID
     // Write the register 0x00 to set the pointer there before reading its value
@@ -134,6 +141,27 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     // clear interupts
     get_interrupt_vals();
 
+    // Add all opcode commands in order to a queue. These will be called sequentially from core1 via the call_queue
+    queue_entry_t gpio45_init_entry = {&gpio45_init, 0};
+    queue_entry_t gpio5_on_entry = {&gpio5_on, 0};
+    queue_entry_t power_swap_request_entry = {&power_swap_request, 0};
+    queue_entry_t gpio4_on_entry = {&gpio4_on, 0};
+    queue_add_blocking(&opcode_queue, &gpio45_init_entry);
+    queue_add_blocking(&opcode_queue, &gpio5_on_entry);
+    queue_add_blocking(&opcode_queue, &power_swap_request_entry);
+    queue_add_blocking(&opcode_queue, &gpio4_on_entry);
+
+    next_opcode_command();
+}
+
+static int next_opcode_command(){
+    queue_entry_t entry;
+    queue_remove_blocking(&opcode_queue, &entry);
+    int32_t (*func)() = (int32_t(*)())(entry.func);
+    int32_t result = (*func)(entry.data);
+}
+
+static int32_t gpio45_init(){
     // Disable TPS61253_EN and Fpf1048bucx by turning off GPIO4 and GPIO5 on the MAX77958.
     memset(send_buf, 0, sizeof send_buf);
     memset(return_buf, 0, sizeof return_buf);
@@ -147,18 +175,25 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     opcode_write(send_buf, 4);
 }
 
-static void on_APCmdResI(){
-    // Although you should likely add some logic here to handle other cases, for now I only expect this to be used after
-    // the initial setting to 0 of GPIO4 and GPIO5 above. 
-
-    // Enable TPS61253_EN via GPIO5 on the MAX77958.
+static int32_t gpio5_on(){
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = OPCODE_SET_GPIO; 
     send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
-    //Reg 0x23 GPIO7Output,GPIO7Direction,GPIO6Output,GPIO6Direction,GPIO5Output,GPIO5Direction,GPIO4Output,GPIODirection
-    //To disable TPS61253_EN, We need to set GPIO5Output Low (bit b3 of 0x23 to 0) and set it to output (b2 of 0x23 to 1)
-    //To disable Fpf1048bucx We also need GPIO4 to be low (b1=0) and GPIO4Direction to be output (b0=1)
     send_buf[3] = 0b00001101; 
     opcode_write(send_buf, 4);
-    opcode_cmd_finished = true;
+}
+
+static int32_t power_swap_request(){
+    send_buf[0] = OPCODE_WRITE;
+    send_buf[1] = 0x37; // Send Swap Request 
+    send_buf[2] = 0x02; // PR SWAP
+    opcode_write(send_buf, 3);
+}
+
+static int32_t gpio4_on(){
+    send_buf[0] = OPCODE_WRITE;
+    send_buf[1] = OPCODE_SET_GPIO; 
+    send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
+    send_buf[3] = 0b00001111; 
+    opcode_write(send_buf, 4);
 }

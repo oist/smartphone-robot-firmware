@@ -53,8 +53,9 @@ int main()
 	    printf("Handled an entry from the results queue\n");
 	}
         sample_adc_inputs();
-        printf("sampling ..\n");
-        sleep_ms(3000);
+        //printf("sampling ..\n");
+        //sleep_ms(3000);
+	tight_loop_contents();
     }
 
     return 0;
