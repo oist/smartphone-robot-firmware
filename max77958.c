@@ -28,6 +28,7 @@ static int32_t gpio5_on();
 static int32_t power_swap_request();
 static int32_t gpio4_on();
 static int next_opcode_command();
+static int32_t customer_config_write();
 
 static void on_interrupt(unsigned int gpio, long unsigned int events){
     queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry);
@@ -142,10 +143,12 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     get_interrupt_vals();
 
     // Add all opcode commands in order to a queue. These will be called sequentially from core1 via the call_queue
+    queue_entry_t customer_config_write_entry = {&customer_config_write, 0};
     queue_entry_t gpio45_init_entry = {&gpio45_init, 0};
     queue_entry_t gpio5_on_entry = {&gpio5_on, 0};
     queue_entry_t power_swap_request_entry = {&power_swap_request, 0};
     queue_entry_t gpio4_on_entry = {&gpio4_on, 0};
+    queue_add_blocking(&opcode_queue, &customer_config_write_entry);
     queue_add_blocking(&opcode_queue, &gpio45_init_entry);
     queue_add_blocking(&opcode_queue, &gpio5_on_entry);
     queue_add_blocking(&opcode_queue, &power_swap_request_entry);
@@ -159,6 +162,25 @@ static int next_opcode_command(){
     queue_remove_blocking(&opcode_queue, &entry);
     int32_t (*func)() = (int32_t(*)())(entry.func);
     int32_t result = (*func)(entry.data);
+}
+
+static int32_t customer_config_write(){
+    send_buf[0] = OPCODE_WRITE;
+    send_buf[1] = 0x56; // Customer Configuration Write 
+    send_buf[2] = 0b00100000; // All defaults values 
+    send_buf[3] = 0x0B; // default VID
+    send_buf[4] = 0x6A; // default VID
+    send_buf[5] = 0x68; // default PID
+    send_buf[6] = 0x60; // default PID
+    send_buf[7] = 0x00; // default SRC_PDO_V
+    send_buf[8] = 0x64; // default SRC_PDO_V of 5.0V (0x64= 100, and 50mA*100). 
+    send_buf[9] = 0x00; // SRC_PDO_MaxI
+    send_buf[10] = 0x64; // SRC_PDO_MaxI = 1.0A (0x64=100, and 100*10mA)
+    send_buf[11] = 0x69; // default SID1
+    send_buf[12] = 0x69; // default SID2
+    send_buf[13] = 0x35; // default SID3
+    send_buf[14] = 0x28; // default SID4
+    opcode_write(send_buf, 15);
 }
 
 static int32_t gpio45_init(){
