@@ -46,7 +46,10 @@ static int parse_interrupt_vals(){
 	// what needs to be implemented. 
 
 	if (!queue_is_empty(&opcode_queue)){
-	    next_opcode_command();
+            // remove an entry from the opcode_queue and run in on core1 via the call_queue
+            queue_entry_t entry;
+            queue_remove_blocking(&opcode_queue, &entry);
+            queue_add_blocking(call_queue_ptr, &entry);
 	    return 1;
 	}
 	return 0;
@@ -154,14 +157,10 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     queue_add_blocking(&opcode_queue, &power_swap_request_entry);
     queue_add_blocking(&opcode_queue, &gpio4_on_entry);
 
-    next_opcode_command();
-}
-
-static int next_opcode_command(){
+    // remove an entry from the opcode_queue and run in on core1 via the call_queue
     queue_entry_t entry;
     queue_remove_blocking(&opcode_queue, &entry);
-    int32_t (*func)() = (int32_t(*)())(entry.func);
-    int32_t result = (*func)(entry.data);
+    queue_add_blocking(call_queue_ptr, &entry);
 }
 
 static int32_t customer_config_write(){
