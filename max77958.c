@@ -34,25 +34,55 @@ static void on_interrupt(unsigned int gpio, long unsigned int events){
     queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry);
 }
 
+// TODO implement later..
+static int on_power_source_ready(){
+    // This indicates a sucessful connection, though I'm not sure if this could mean the PCB is either SRC or SNK...
+    // This might also fail if you have the PCB connected to the phone during startup of PCB as order of opcode_commands might be wrong
+    queue_entry_t power_swap_request_entry = {&power_swap_request, 0};
+    queue_add_blocking(call_queue_ptr, &power_swap_request_entry);
+}
+
+static int on_power_swap_accepted(){
+    queue_entry_t gpio4_on_entry = {&gpio4_on, 0};
+    queue_add_blocking(&opcode_queue, &gpio4_on_entry);
+    next_opcode_command();
+}
+
+static int on_opcode_cmd_response(){
+    // You can now READ back the OpCommand return registers
+    opcode_read();
+    // And write an OpCommand again if necessary. TODO this likely can be generalized better, but I'm not quite
+    // sure yet how I will use it, so will wait to implement the generalization until I have a better idea of 
+    // what needs to be implemented. 
+    
+    if (!queue_is_empty(&opcode_queue)){
+        // remove an entry from the opcode_queue and run in on core1 via the call_queue
+        queue_entry_t entry;
+        queue_remove_blocking(&opcode_queue, &entry);
+        queue_add_blocking(call_queue_ptr, &entry);
+        return 1;
+    }
+    return 0;
+}
+
 static int parse_interrupt_vals(){
     get_interrupt_vals();
+    // don't really need these, but makes it easier to understand what each entry to the return_buf represents
+    uint8_t* UIC_INT = &return_buf[0]; 
+    uint8_t* CC_INT = &return_buf[1]; 
+    uint8_t* PD_INT = &return_buf[2]; 
     // Check if the APCmdResI interrupt is on (AP command response pending)
     uint APCmdResI_mask = 1 << 7;
-    if (return_buf[0] & APCmdResI_mask){
-        // You can now READ back the OpCommand return registers
-        opcode_read();
-	// And write an OpCommand again if necessary. TODO this likely can be generalized better, but I'm not quite
-	// sure yet how I will use it, so will wait to implement the generalization until I have a better idea of 
-	// what needs to be implemented. 
-
-	if (!queue_is_empty(&opcode_queue)){
-            // remove an entry from the opcode_queue and run in on core1 via the call_queue
-            queue_entry_t entry;
-            queue_remove_blocking(&opcode_queue, &entry);
-            queue_add_blocking(call_queue_ptr, &entry);
-	    return 1;
-	}
-	return 0;
+    uint PSRDYI_mask = 1 << 6;
+    uint PDMsgI = 1 << 7;
+    if (*UIC_INT & APCmdResI_mask){
+	on_opcode_cmd_response();
+    }else if (*PD_INT & PSRDYI_mask){
+	printf("Power source ready");
+	on_power_source_ready();
+    }else if (*PD_INT & PDMsgI){
+        printf("Rec PD message");
+	// now how to decode these???
     }
     return -1;
     
@@ -79,8 +109,10 @@ static void get_interrupt_masks(){
 static void set_interrupt_masks(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = REG_UIC_INT_M; // 0x10 UIC_INT_M Register
-    send_buf[1] = 0b01111111;
-    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 2, false);
+    send_buf[1] = 0b01111111; // UIC_INT 0x4
+    send_buf[2] = 0b11111111; // CC_INT 0x5 all masked by default
+    send_buf[3] = 0b10111111; // PD_INT 0x6 unmasking PSRDYI
+    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 4, false);
 }
 
 static int opcode_write(uint8_t *send_buf, uint8_t len){
@@ -149,13 +181,9 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     queue_entry_t customer_config_write_entry = {&customer_config_write, 0};
     queue_entry_t gpio45_init_entry = {&gpio45_init, 0};
     queue_entry_t gpio5_on_entry = {&gpio5_on, 0};
-    queue_entry_t power_swap_request_entry = {&power_swap_request, 0};
-    queue_entry_t gpio4_on_entry = {&gpio4_on, 0};
     queue_add_blocking(&opcode_queue, &customer_config_write_entry);
     queue_add_blocking(&opcode_queue, &gpio45_init_entry);
     queue_add_blocking(&opcode_queue, &gpio5_on_entry);
-    queue_add_blocking(&opcode_queue, &power_swap_request_entry);
-    queue_add_blocking(&opcode_queue, &gpio4_on_entry);
 
     // remove an entry from the opcode_queue and run in on core1 via the call_queue
     queue_entry_t entry;
