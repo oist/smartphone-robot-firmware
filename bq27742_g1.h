@@ -1,12 +1,12 @@
-#ifndef BQ227742_G1_
-#define BQ227742_G1_
+#ifndef BQ27742_G1_
+#define BQ27742_G1_
 
 // -----------------------------------------------------------------------------
 // Device Slave Addresses
 // -----------------------------------------------------------------------------
-#define BQ227742_G1_ADDR _u(0x55)       // device has 7-bit address of 0b1010101
-#define BQ227742_G1_ADDR_WRITE _u(0xAA) // Write address (8-bit)
-#define BQ227742_G1_ADDR_READ _u(0xAB)  // Read address (8-bit)
+#define BQ27742_G1_ADDR _u(0x55)       // device has 7-bit address of 0b1010101
+#define BQ27742_G1_ADDR_WRITE _u(0xAA) // Write address (8-bit)
+#define BQ27742_G1_ADDR_READ _u(0xAB)  // Read address (8-bit)
 // -----------------------------------------------------------------------------
 // Registers
 // -----------------------------------------------------------------------------
