@@ -73,6 +73,7 @@ void on_start(){
     max77976_init(BATTERY_CHARGER_INTERRUPT_PIN);
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO);
     max77958_init(MAX77958_INTB, &call_queue, &results_queue);
+    bq27742_g1_init();
     // Be sure to do this last
     sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
 }
