@@ -3,10 +3,13 @@
 #include "hardware/i2c.h"
 #include "max77976.h"
 #include "bit_ops.h"
+#include <string.h>
 
 static void max77976_onEXTUSBCHG_connect();
 static void max77976_onEXTUSBCHG_disconnect();
 static void max77976_onHardwareInterrupt();
+static uint8_t send_buf[3];
+static uint8_t return_buf[2];
 
 void max77976_factory_ship_mode_check(){
     // Check if CONNECTION_ANDROID or CONNECTION_PC occured in last hour
@@ -75,4 +78,172 @@ int max77976_init(uint GPIO){
                   MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_MSB,
                   MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_3000);
     i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
+}
+
+void max77976_toggle_led(){
+    memset(send_buf, 0, sizeof send_buf);
+    memset(return_buf, 0, sizeof return_buf);
+    send_buf[0] = 0x24; //STAT_CNFG
+    
+    i2c_write_blocking(i2c1, MAX77976_ADDR, send_buf, 1, true);
+    i2c_read_blocking(i2c1, MAX77976_ADDR, return_buf, 1, false);
+
+    uint8_t STAT_EN = (return_buf[0] & (1<<7)) >> 7;
+    if (STAT_EN){
+        send_buf[1] = 0x00; // Turn off
+        i2c_write_blocking(i2c1, MAX77976_ADDR, send_buf, 2, false);
+    }else{
+        send_buf[1] = 0x80; // Turn on
+        i2c_write_blocking(i2c1, MAX77976_ADDR, send_buf, 2, false);
+    }
+}
+
+void max77976_get_chg_details(){
+    memset(send_buf, 0, sizeof send_buf);
+    memset(return_buf, 0, sizeof return_buf);
+    send_buf[0] = 0x13; //CHG_DETAILS_00
+    send_buf[1] = 0x14; //CHG_DETAILS_01
+    send_buf[2] = 0x15; //CHG_DETAILS_02
+    
+    i2c_write_blocking(i2c1, MAX77976_ADDR, &send_buf[0], 1, true);
+    i2c_read_blocking(i2c1, MAX77976_ADDR, return_buf, 1, false);
+    uint8_t CHG_DETAILS_00 = return_buf[0];
+    uint8_t CHGIN_DTLS = (CHG_DETAILS_00 & 0x60) >> 5;
+    printf("CHG_DETAILS_00: 0x%02x\n CHGIN_DTLS: 0x%02x\n", CHG_DETAILS_00, CHGIN_DTLS);
+    printf("CHG_DETAILS_00_CHGIN_DTLS: ");
+    switch (CHGIN_DTLS){
+        case 0b00:
+	    printf("VBUS is invalid. VCHGIN rising: VCHGIN < VCHGIN_UVLO. VCHGIN falling: VCHGIN < VCHGIN_REG (AICL)");
+	    break;
+        case 0b01:
+	    printf("VBUS is invalid. VCHGIN < VBATT + VCHGIN2SYS and VCHGIN > VCHGIN_UVLO");
+	    break;
+        case 0b10:
+	    printf("VBUS is invalid. VCHGIN > VCHGIN_OVLO");
+	    break;
+        case 0b11:
+	    printf("VBUS is valid. VCHGIN > VCHGIN_UVLO and VCHGIN > VBATT + VCHGIN2SYS and VCHGIN < VCHGIN_OVLO");
+	    break;
+    }printf("\n"); 
+    
+    i2c_write_blocking(i2c1, MAX77976_ADDR, &send_buf[1], 1, true);
+    i2c_read_blocking(i2c1, MAX77976_ADDR, return_buf, 1, false);
+    uint8_t CHG_DETAILS_01 = return_buf[0];
+    uint8_t TREG = (CHG_DETAILS_01 & (1 << 7) ) >> 7;
+    uint8_t BAT_DTLS = (CHG_DETAILS_01 & 0x70) >> 4;
+    uint8_t CHG_DTLS = (CHG_DETAILS_01 & 0xF);
+    printf("CHG_DETAILS_01: 0x%02x\n TREG: 0x%02x\n BAT_DTLS: 0x%02x\n CHG_DTLS: 0x%02x\n", CHG_DETAILS_01, TREG, BAT_DTLS, CHG_DTLS);
+    printf("CHG_DETAILS_01_TREG: ");
+    switch (TREG){
+        case 0b0:
+	    printf("The junction temperature is less than the threshold set by REGTEMP and the full charge current limit is available");
+	    break;
+	case 0b1:
+	    printf("The junction temperature is greater than the threshold set by REGTEMP and the charge current limit may be folding back to reduce power dissipation.");
+    }printf("\n"); 
+
+    printf("CHG_DETAILS_01_BAT_DTLS: ");
+    switch (BAT_DTLS){
+        case 0b000:
+	    printf("Battery Removal");
+	    break;
+        case 0b001:
+	    printf("Battery Prequalification Voltage");
+	    break;
+        case 0b010:
+	    printf("Battery Timer Fault");
+	    break;
+        case 0b011:
+	    printf("Battery Regular Voltage");
+	    break;
+        case 0b100:
+	    printf("Battery Low Voltage");
+	    break;
+        case 0b101:
+	    printf("Battery Overvoltage");
+	    break;
+        case 0b110:
+	    printf("Reserved");
+	    break;
+        case 0b111:
+	    printf("Battery Only");
+	    break;
+    }printf("\n"); 
+    
+    printf("CHG_DETAILS_01_CHG_DTLS: ");
+    switch (CHG_DTLS){
+        case 0x00:
+	    printf("Charger is in dead-battery prequalification or low-battery prequalification mode.");
+	    break;
+        case 0x01:
+	    printf("Charger is in fast-charge constant current mode.");
+	    break;
+        case 0x02:
+	    printf("Charger is in fast-charge constant voltage mode.");
+	    break;
+        case 0x03:
+	    printf("Charger is in top-off mode.");
+	    break;
+        case 0x04:
+	    printf("Charger is in done mode.");
+	    break;
+        case 0x05:
+	    printf("Reserved");
+	    break;
+        case 0x06:
+	    printf("Charger is in timer-fault mode.");
+	    break;
+        case 0x07:
+	    printf("Charger is suspended because QBATT is disabled");
+	    break;
+        case 0x08:
+	    printf("Charger is off, charger input invalid and/or charger is disabled.");
+	    break;
+        case 0x09:
+	    printf("Reserved");
+	    break;
+        case 0x0A:
+	    printf("Charger is off and the junction temperature is > TSHDN.");
+	    break;
+        case 0x0B:
+	    printf("Charger is off because the watchdog timer expired");
+	    break;
+        case 0x0C:
+	    printf("Charger is suspended or charge current or voltage is reduced based on JEITA control.");
+	    break;
+        case 0x0D:
+	    printf("Charger is suspended because battery removal is detected on THM pin.");
+	    break;
+        case 0x0E:
+	    printf("Charger is suspended because SUSPEND pin is high.");
+	    break;
+        case 0x0F:
+	    printf("Reserved");
+	    break;
+    }printf("\n"); 
+    
+    i2c_write_blocking(i2c1, MAX77976_ADDR, &send_buf[2], 1, true);
+    i2c_read_blocking(i2c1, MAX77976_ADDR, return_buf, 1, false);
+    uint8_t CHG_DETAILS_02 = return_buf[0];
+    uint8_t THM_DTLS = (CHG_DETAILS_02 & 0x70) >> 4;
+    uint8_t BYP_DTLS = (CHG_DETAILS_02 & 0x0F);
+    printf("CHG_DETAILS_02_BYP_DTLS: ");
+    switch (BYP_DTLS){
+        case 0x00:
+	    printf("The bypass node is okay.");
+	    break;
+        case 0x01:
+	    printf("OTG_ILIM when CHG_CNFG_00.MODE=0xA or 0xE or 0xF");
+	    break;
+        case 0x02:
+	    printf("BSTILIM");
+	    break;
+        case 0x04:
+	    printf("BCKNegILIM");
+	    break;
+        case 0x08:
+	    printf("BST_SWON_DONE");
+	    break;
+    }printf("\n"); 
+
 }

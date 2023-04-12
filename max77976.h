@@ -69,5 +69,7 @@
 #define MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_3000 _u(0x3B)
 
 int max77976_init(uint GPIO);
+void max77976_get_chg_details();
+void max77976_toggle_led();
 
 #endif // MAX77976_

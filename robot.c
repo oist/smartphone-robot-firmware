@@ -57,9 +57,11 @@ int main()
 	}
         sample_adc_inputs();
 	bq27742_g1_poll();
+	max77976_get_chg_details();
+	max77976_toggle_led();
         //printf("sampling ..\n");
         sleep_ms(3000);
-	tight_loop_contents();
+	//tight_loop_contents();
     }
 
     return 0;
