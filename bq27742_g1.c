@@ -9,10 +9,9 @@ static uint8_t send_buf[2];
 static uint8_t return_buf[2];
 static uint32_t voltage = 0;
 static uint32_t temperature = 0;
-static uint32_t safety_status = 0;
 static uint32_t soh = 0;
 
-static void get_voltage(){
+void bq27742_g1_get_voltage(){
     memset(return_buf, 0, sizeof return_buf);
     memset(&voltage, 0, sizeof(uint32_t));
 
@@ -27,11 +26,9 @@ static void get_voltage(){
     printf("Voltage: %d\n", voltage);
 }
 
-static void get_safety_stats(){
-    // Test reading the safety_status
+void bq27742_g1_get_safety_stats(){
     memset(send_buf, 0, sizeof send_buf);
     memset(return_buf, 0, sizeof return_buf);
-    memset(&safety_status, 0, sizeof(uint32_t));
     send_buf[0] = 0x1A;
     send_buf[1] = 0x1B;
     i2c_write_blocking(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
@@ -70,7 +67,7 @@ static void get_safety_stats(){
     
 }
 
-static void get_temp(){
+void bq27742_g1_get_temp(){
     memset(return_buf, 0, sizeof return_buf);
     memset(&temperature, 0, sizeof(uint32_t));
 
@@ -86,7 +83,7 @@ static void get_temp(){
     printf("Temperature: %d\n", temperature);
 }
 
-static void get_soh(){
+void bq27742_g1_get_soh(){
     memset(return_buf, 0, sizeof return_buf);
     memset(&soh, 0, sizeof(uint32_t));
     memset(send_buf, 0, sizeof send_buf);
@@ -100,11 +97,9 @@ static void get_soh(){
     printf("SOH: %02f\n", soh);
 }
 
-static void get_flags(){
-    // Test reading the safety_status
+void bq27742_g1_get_flags(){
     memset(send_buf, 0, sizeof send_buf);
     memset(return_buf, 0, sizeof return_buf);
-    memset(&safety_status, 0, sizeof(uint32_t));
     send_buf[0] = 0x0A;
     send_buf[1] = 0x0B;
     i2c_write_blocking(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
@@ -171,13 +166,4 @@ void bq27742_g1_init() {
     //               BQ227742_G1_REG_REG_CONT1_ILM_MSB,
     //               BQ227742_G1_REG_REG_CONT1_ILM_DEFAULT);
     // Change internal compensation (COMP)
-
-    while (1){
-	get_voltage();
-	get_temp();
-	get_soh();
-	get_flags();
-	get_safety_stats();
-        sleep_ms(2000); 
-    }
 }

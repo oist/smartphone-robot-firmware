@@ -10,11 +10,14 @@
 #include "ncp3901.h"
 #include "sn74ahc125rgyr.h"
 #include "max77958.h"
+#include "bq27742_g1.h"
 #include "pico/util/queue.h"
 #include "pico/multicore.h"
 
 static queue_t call_queue;
 static queue_t results_queue;
+
+void bq27742_g1_poll();
 
 // core1 will be used to process all function calls requested by interrupt calls on core0
 void core1_entry() {
@@ -53,8 +56,9 @@ int main()
 	    printf("Handled an entry from the results queue\n");
 	}
         sample_adc_inputs();
+	bq27742_g1_poll();
         //printf("sampling ..\n");
-        //sleep_ms(3000);
+        sleep_ms(3000);
 	tight_loop_contents();
     }
 
@@ -100,6 +104,14 @@ void i2c_start()
     gpio_set_function(I2C_SCL1, GPIO_FUNC_I2C);
     gpio_pull_up(I2C_SDA1);
     gpio_pull_up(I2C_SCL1);
+}
+
+void bq27742_g1_poll(){
+    bq27742_g1_get_voltage();
+    bq27742_g1_get_temp();
+    bq27742_g1_get_soh();
+    bq27742_g1_get_flags();
+    bq27742_g1_get_safety_stats();
 }
 
 void blink_led(uint8_t blinkCnt, int onTime, int offTime)

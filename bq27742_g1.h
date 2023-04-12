@@ -36,6 +36,10 @@
 
 
 void bq27742_g1_init();
-
+void bq27742_g1_get_voltage();
+void bq27742_g1_get_safety_stats();
+void bq27742_g1_get_temp();
+void bq27742_g1_get_soh();
+void bq27742_g1_get_flags();
 
 #endif
