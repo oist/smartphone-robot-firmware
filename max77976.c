@@ -53,13 +53,17 @@ int max77976_init(uint GPIO){
     i2c_read_blocking(i2c1, MAX77976_ADDR, &rxdata, 1, false);
     printf("Read CHIP_ID %x.\n", rxdata);
 
+    // Unlock the write capability of CHGPROT
+    buf[0] = 0x1C; // CHAG_CNFG_06 
+    buf[1] = 0x0C;   
+    i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
+
     // Set default mode to CHARGE-BUCK
     buf[0] = MAX77976_REG_CHG_CNFG_00_ADDR;
     buf[1] = MAX77976_REG_CHG_CNFG_00_MODE_CHARGE_BUCK;
     i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
 
     // Set Fast-Charge Current limit to 1200mA
-
     buf[0] = MAX77976_REG_CHG_CNFG_02_ADDR;
     buf[1] = MAX77976_REG_CHG_CNFG_02_CHG_CC_1250;
     i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
@@ -78,6 +82,34 @@ int max77976_init(uint GPIO){
                   MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_MSB,
                   MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_3000);
     i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
+
+    // Lock the write capability of CHGPROT
+    buf[0] = 0x1C; // CHAG_CNFG_06 
+    buf[1] = 0x00;   
+    i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
+}
+
+void max77976_log_current_limit(){
+    memset(send_buf, 0, sizeof send_buf);
+    memset(return_buf, 0, sizeof return_buf);
+    send_buf[0] = 0x1F; //CHG_CNFG_09
+    
+    i2c_write_blocking(i2c1, MAX77976_ADDR, send_buf, 1, true);
+    i2c_read_blocking(i2c1, MAX77976_ADDR, return_buf, 1, false);
+
+    uint8_t CHGIN_ILIM = return_buf[0] & 0x3F;
+    
+    memset(send_buf, 0, sizeof send_buf);
+    memset(return_buf, 0, sizeof return_buf);
+    send_buf[0] = 0x18; //CHG_CNFG_02
+    
+    i2c_write_blocking(i2c1, MAX77976_ADDR, send_buf, 1, true);
+    i2c_read_blocking(i2c1, MAX77976_ADDR, return_buf, 1, false);
+
+    uint8_t CHG_CC = return_buf[0] & 0x7F;
+
+    printf("CHGIN_ILIM: 0x%02x\n", CHGIN_ILIM);
+    printf("CHG_CC: 0x%02x\n", CHG_CC);
 }
 
 void max77976_toggle_led(){
