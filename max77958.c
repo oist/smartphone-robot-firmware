@@ -27,6 +27,7 @@ static int32_t gpio45_init();
 static int32_t gpio5_on();
 static int32_t power_swap_request();
 static int32_t gpio4_on();
+static int32_t set_snk_pdos();
 static int next_opcode_command();
 static int32_t customer_config_write();
 
@@ -179,9 +180,11 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
 
     // Add all opcode commands in order to a queue. These will be called sequentially from core1 via the call_queue
     queue_entry_t customer_config_write_entry = {&customer_config_write, 0};
+    queue_entry_t set_snk_pdos_entry = {&set_snk_pdos, 0};
     queue_entry_t gpio45_init_entry = {&gpio45_init, 0};
     queue_entry_t gpio5_on_entry = {&gpio5_on, 0};
     queue_add_blocking(&opcode_queue, &customer_config_write_entry);
+    queue_add_blocking(&opcode_queue, &set_snk_pdos_entry);
     queue_add_blocking(&opcode_queue, &gpio45_init_entry);
     queue_add_blocking(&opcode_queue, &gpio5_on_entry);
 
@@ -245,4 +248,52 @@ static int32_t gpio4_on(){
     send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
     send_buf[3] = 0b00001111; 
     opcode_write(send_buf, 4);
+}
+
+static int32_t set_snk_pdos(){
+    memset(send_buf, 0, sizeof send_buf);
+    send_buf[0] = OPCODE_WRITE;
+    send_buf[1] = OPCODE_SNK_PDO_SET; 
+    send_buf[2] = 0b00000001; // Write to RAM only and specify only 1 PDO 
+    // Next four are specified by Analog Support via 0x1401912C LSB first
+    // You can verify this by comparing against Table 6-16 of the USB-PD spec
+    // I convert this to binary 00010100000000011001000100101100
+    // This represents:
+    // 00 Fixed Supply See Table 6-7 of USB-PD Standard
+    // 0 Dual-Role Power Off
+    // 1 Higher Capability ON
+    // 0 Unconstrained Power OFF
+    // 1 USB Communications Capable ON
+    // 0 Dual-Role Data OFF
+    // 00 Fast Role Swap Not Supported
+    // 000 RSVD
+    // 0001100100 = 100x 50mV = 5.0V
+    // 0100101100 = 300x 10mA = 3.0A
+    // I then want to update this to 
+    // 00 Fixed Supply See Table 6-7 of USB-PD Standard
+    // 1 Dual-Role Power ON
+    // 0 Higher Capability OFF
+    // 0 Unconstrained Power OFF
+    // 1 USB Communications Capable ON
+    // 1 Dual-Role Data ON
+    // 01 Fast Role Swap Default USB Power (can update to 10b for 1.5A@5V but not sure if this is supported by chips)
+    // 000 RSVD
+    // 0001100100 = 100x 50mV = 5.0V
+    // 0100101100 = 300x 10mA = 3.0A
+    // In summary 00100110100000011001000100101100 or 0x2681912C
+    send_buf[3] = 0x2C;
+    send_buf[4] = 0x91;
+    send_buf[5] = 0x81;
+    send_buf[6] = 0x26;
+    // default values 
+    //send_buf[3] = 0x2C;
+    //send_buf[4] = 0x91;
+    //send_buf[5] = 0x01;
+    //send_buf[6] = 0x14;    
+    //Trying with MSB first (didn't work)
+    //send_buf[3] = 0x14;    
+    //send_buf[4] = 0x01;
+    //send_buf[5] = 0x91;
+    //send_buf[6] = 0x2C;
+    opcode_write(send_buf, 32);
 }
