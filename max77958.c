@@ -31,6 +31,7 @@ static int32_t gpio4_off();
 static int32_t set_snk_pdos();
 static int32_t pd_msg_response();
 static int32_t customer_config_write();
+static bool opcode_queue_pop();
 
 static void on_interrupt(unsigned int gpio, long unsigned int events){
     queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry);
@@ -44,17 +45,7 @@ static int on_pd_msg_received(){
 static int on_opcode_cmd_response(){
     // You can now READ back the OpCommand return registers
     opcode_read();
-    // And write an OpCommand again if necessary. TODO this likely can be generalized better, but I'm not quite
-    // sure yet how I will use it, so will wait to implement the generalization until I have a better idea of 
-    // what needs to be implemented. 
-    
-    if (!queue_is_empty(&opcode_queue)){
-        // remove an entry from the opcode_queue and run in on core1 via the call_queue
-        queue_entry_t entry; // and empty initialized entry
-        queue_remove_blocking(&opcode_queue, &entry); // remove an entry from the opcode_queue and store it in 'entry'
-        queue_add_blocking(call_queue_ptr, &entry); // add the entry to the call_queue
-        return 1;
-    }
+    opcode_queue_pop();
     return 0;
 }
 
@@ -180,10 +171,18 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     queue_add_blocking(&opcode_queue, &gpio45_init_entry);
     queue_add_blocking(&opcode_queue, &gpio5_on_entry);
 
-    // remove an entry from the opcode_queue and run in on core1 via the call_queue
+    opcode_queue_pop();
+}
+
+// check if opcode_queue has entries remaining
+// if so remove an entry from the opcode_queue and run in on core1 via the call_queue
+static bool opcode_queue_pop(){
     queue_entry_t entry;
-    queue_remove_blocking(&opcode_queue, &entry);
-    queue_add_blocking(call_queue_ptr, &entry);
+    if (queue_try_remove(&opcode_queue, &entry)){
+	queue_add_blocking(call_queue_ptr, &entry);
+    }
+    else 
+    	return false;
 }
 
 static int32_t customer_config_write(){
