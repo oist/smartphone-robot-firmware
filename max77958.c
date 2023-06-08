@@ -54,9 +54,9 @@ static int on_opcode_cmd_response(){
     
     if (!queue_is_empty(&opcode_queue)){
         // remove an entry from the opcode_queue and run in on core1 via the call_queue
-        queue_entry_t entry;
-        queue_remove_blocking(&opcode_queue, &entry);
-        queue_add_blocking(call_queue_ptr, &entry);
+        queue_entry_t entry; // and empty initialized entry
+        queue_remove_blocking(&opcode_queue, &entry); // remove an entry from the opcode_queue and store it in 'entry'
+        queue_add_blocking(call_queue_ptr, &entry); // add the entry to the call_queue
         return 1;
     }
     return 0;
