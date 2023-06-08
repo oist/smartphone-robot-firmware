@@ -29,12 +29,16 @@ static int32_t power_swap_request();
 static int32_t gpio4_on();
 static int32_t gpio4_off();
 static int32_t set_snk_pdos();
+static int32_t pd_msg_response();
 static int32_t customer_config_write();
 
 static void on_interrupt(unsigned int gpio, long unsigned int events){
     queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry);
 }
 
+static int on_pd_msg_received(){
+    queue_entry_t on_pd_msg_received_entry = {&pd_msg_response, 0};
+    queue_add_blocking(call_queue_ptr, &on_pd_msg_received_entry);
 }
 
 static int on_opcode_cmd_response(){
@@ -71,7 +75,7 @@ static int parse_interrupt_vals(){
 	//on_power_source_ready();
     }else if (*PD_INT & PDMsgI){
         printf("Rec PD message");
-	// now how to decode these???
+	on_pd_msg_received();
     }
     return -1;
     
@@ -100,7 +104,7 @@ static void set_interrupt_masks(){
     send_buf[0] = REG_UIC_INT_M; // 0x10 UIC_INT_M Register
     send_buf[1] = 0b01111111; // UIC_INT 0x4
     send_buf[2] = 0b11111111; // CC_INT 0x5 all masked by default
-    send_buf[3] = 0b10111111; // PD_INT 0x6 unmasking PSRDYI
+    send_buf[3] = 0b00111111; // PD_INT 0x6 unmasking PSRDYI
     i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 4, false);
 }
 
@@ -224,6 +228,7 @@ static int32_t gpio5_on(){
 }
 
 static int32_t power_swap_request(){
+    memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = 0x37; // Send Swap Request 
     send_buf[2] = 0x02; // PR SWAP
@@ -235,6 +240,14 @@ static int32_t gpio4_on(){
     send_buf[1] = OPCODE_SET_GPIO; 
     send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
     send_buf[3] = 0b00001111; 
+    opcode_write(send_buf, 4);
+}
+
+static int32_t gpio4_off(){
+    send_buf[0] = OPCODE_WRITE;
+    send_buf[1] = OPCODE_SET_GPIO; 
+    send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
+    send_buf[3] = 0b00001101; 
     opcode_write(send_buf, 4);
 }
 
@@ -284,4 +297,25 @@ static int32_t set_snk_pdos(){
     //send_buf[5] = 0x91;
     //send_buf[6] = 0x2C;
     opcode_write(send_buf, 32);
+}
+
+static int32_t pd_msg_response(){
+    // Read the 0xE PD_STATUS0 register as it contains the PD message Type recieved 
+    memset(send_buf, 0, sizeof send_buf);
+    memset(return_buf, 0, sizeof return_buf);
+    send_buf[0] = REG_PD_STATUS0; // 0xE PD_STATUS0 Register 
+    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
+    i2c_read_blocking(i2c0, MAX77958_SLAVE_P1, return_buf, 1, false);
+    printf("PD_STATUS0: 0x%02x\n", return_buf[0]);
+    if (return_buf[0] == PDMSG_PRSWAP_SRCTOSWAP){
+	    //TODO implement later
+    }else if (return_buf[0] == PDMSG_PRSWAP_SWAPTOSNK){
+	    // turn off VBus
+	    gpio4_off();
+    }else if (return_buf[0] == PDMSG_PRSWAP_SNKTOSWAP){
+	    //TODO implement later
+    }else if (return_buf[0] == PDMSG_PRSWAP_SWAPTOSRC){
+	    // turn on Vbus
+	    gpio4_on();
+    }
 }
