@@ -27,6 +27,7 @@ static int32_t gpio45_init();
 static int32_t gpio5_on();
 static int32_t power_swap_request();
 static int32_t gpio4_on();
+static int32_t gpio4_off();
 static int32_t set_snk_pdos();
 static int next_opcode_command();
 static int32_t customer_config_write();
