@@ -55,14 +55,14 @@ int main()
 	    // TODO implement what to do with results_queue entries.
 	    printf("Handled an entry from the results queue\n");
 	}
-        sample_adc_inputs();
-	bq27742_g1_poll();
-	max77976_get_chg_details();
-	max77976_log_current_limit();
+        //sample_adc_inputs();
+	//bq27742_g1_poll();
+	//max77976_get_chg_details();
+	//max77976_log_current_limit();
 	//max77976_toggle_led();
         //printf("sampling ..\n");
-        sleep_ms(3000);
-	//tight_loop_contents();
+        //sleep_ms(3000);
+	tight_loop_contents();
     }
 
     return 0;
