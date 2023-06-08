@@ -29,7 +29,6 @@ static int32_t power_swap_request();
 static int32_t gpio4_on();
 static int32_t gpio4_off();
 static int32_t set_snk_pdos();
-static int next_opcode_command();
 static int32_t customer_config_write();
 
 static void on_interrupt(unsigned int gpio, long unsigned int events){
@@ -44,10 +43,6 @@ static int on_power_source_ready(){
     queue_add_blocking(call_queue_ptr, &power_swap_request_entry);
 }
 
-static int on_power_swap_accepted(){
-    queue_entry_t gpio4_on_entry = {&gpio4_on, 0};
-    queue_add_blocking(&opcode_queue, &gpio4_on_entry);
-    next_opcode_command();
 }
 
 static int on_opcode_cmd_response(){
@@ -81,7 +76,7 @@ static int parse_interrupt_vals(){
 	on_opcode_cmd_response();
     }else if (*PD_INT & PSRDYI_mask){
 	printf("Power source ready");
-	on_power_source_ready();
+	//on_power_source_ready();
     }else if (*PD_INT & PDMsgI){
         printf("Rec PD message");
 	// now how to decode these???
