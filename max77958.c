@@ -35,14 +35,6 @@ static void on_interrupt(unsigned int gpio, long unsigned int events){
     queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry);
 }
 
-// TODO implement later..
-static int on_power_source_ready(){
-    // This indicates a sucessful connection, though I'm not sure if this could mean the PCB is either SRC or SNK...
-    // This might also fail if you have the PCB connected to the phone during startup of PCB as order of opcode_commands might be wrong
-    queue_entry_t power_swap_request_entry = {&power_swap_request, 0};
-    queue_add_blocking(call_queue_ptr, &power_swap_request_entry);
-}
-
 }
 
 static int on_opcode_cmd_response(){
