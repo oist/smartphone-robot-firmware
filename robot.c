@@ -62,7 +62,7 @@ int main()
 	//max77976_toggle_led();
         //printf("sampling ..\n");
 	// This sleep or some other time consuming function must occur else can't reset from gdb as thread will be stuck in tight_loop_contents()
-        sleep_ms(1);
+        sleep_ms(500);
 	tight_loop_contents();
     }
 
