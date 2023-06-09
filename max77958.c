@@ -310,11 +310,15 @@ static int32_t pd_msg_response(){
 	    //TODO implement later
     }else if (return_buf[0] == PDMSG_PRSWAP_SWAPTOSNK){
 	    // turn off VBus
-	    gpio4_off();
+            queue_entry_t gpio4_off_entry = {&gpio4_off, 0};
+            queue_add_blocking(&opcode_queue, &gpio4_off_entry);
+            opcode_queue_pop();
     }else if (return_buf[0] == PDMSG_PRSWAP_SNKTOSWAP){
 	    //TODO implement later
     }else if (return_buf[0] == PDMSG_PRSWAP_SWAPTOSRC){
 	    // turn on Vbus
-	    gpio4_on();
+            queue_entry_t gpio4_on_entry = {&gpio4_on, 0};
+            queue_add_blocking(&opcode_queue, &gpio4_on_entry);
+            opcode_queue_pop();
     }
 }
