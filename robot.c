@@ -42,8 +42,7 @@ void core1_entry() {
     }
 }
 
-int main()
-{
+int main(){
     on_start();
 
     while (1)
@@ -94,8 +93,7 @@ void init_queues(){
 
 }
 
-void i2c_start()
-{
+void i2c_start(){
     // I2C Initialisation. Using it at 400Khz.
 
     i2c_init(i2c0, 400 * 1000);
@@ -119,8 +117,7 @@ void bq27742_g1_poll(){
     bq27742_g1_get_safety_stats();
 }
 
-void blink_led(uint8_t blinkCnt, int onTime, int offTime)
-{
+void blink_led(uint8_t blinkCnt, int onTime, int offTime){
 #ifndef PICO_DEFAULT_LED_PIN
 #warning blink example requires a board with a regular LED
 #else
