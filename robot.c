@@ -72,6 +72,7 @@ int main()
 void on_start(){
     stdio_init_all();
     init_queues();
+    multicore_launch_core1(core1_entry);
     // Waiting to make sure I can catch it within minicom
     sleep_ms(3000);
     i2c_start();
@@ -89,8 +90,8 @@ void on_start(){
 void init_queues(){
     queue_init(&call_queue, sizeof(queue_entry_t), 2);
     queue_init(&results_queue, sizeof(int32_t), 2);
+}
 
-    multicore_launch_core1(core1_entry);
 }
 
 void i2c_start()
