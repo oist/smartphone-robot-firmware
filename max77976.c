@@ -279,3 +279,6 @@ void max77976_get_chg_details(){
     }printf("\n"); 
 
 }
+
+void max77976_shutdown(){
+}

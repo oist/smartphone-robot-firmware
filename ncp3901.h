@@ -7,4 +7,6 @@ void on_wireless_enabled(uint gpio, uint32_t events);
 
 void ncp3901_adc0();
 
+void ncp3901_shutdown();
+
 #endif

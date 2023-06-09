@@ -72,5 +72,6 @@ int max77976_init(uint GPIO);
 void max77976_get_chg_details();
 void max77976_toggle_led();
 void max77976_log_current_limit();
+void max77976_shutdown();
 
 #endif // MAX77976_

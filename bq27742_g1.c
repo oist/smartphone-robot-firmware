@@ -167,3 +167,6 @@ void bq27742_g1_init() {
     //               BQ227742_G1_REG_REG_CONT1_ILM_DEFAULT);
     // Change internal compensation (COMP)
 }
+
+void bq27742_g1_shutdown(){
+}

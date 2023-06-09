@@ -31,7 +31,6 @@ void ncp3901_init(uint gpio_wireless_available, uint gpio_otg)
     adc_gpio_init(26);
 }
 
-
 void ncp3901_adc0()
 {
     // Make sure GPIO is high-impedance, no pullups etc
@@ -43,4 +42,7 @@ void ncp3901_adc0()
     uint16_t result = adc_read();
     // Save this value, add to a buffer, or merge with some moving avg.
     // printf("Raw value: 0x%03x, voltage: %f V\n", result, result * conversion_factor);
+}
+
+void ncp3901_shutdown(){
 }

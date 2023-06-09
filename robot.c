@@ -18,6 +18,15 @@ static queue_t call_queue;
 static queue_t results_queue;
 
 void bq27742_g1_poll();
+void blink_led(uint8_t blinkCnt, int onTime, int offTime);
+void i2c_start();
+void i2c_stop();
+void adc_init();
+void adc_shutdown();
+void init_queues();
+void free_queues();
+void on_start();
+void on_shutdown();
 
 // core1 will be used to process all function calls requested by interrupt calls on core0
 void core1_entry() {
@@ -43,8 +52,8 @@ void core1_entry() {
 }
 
 int main(){
+    bool shutdown = false;
     on_start();
-
     while (1)
     {
 	// If the results_queue is not empty, take the first entry and call its function on core0
@@ -61,8 +70,13 @@ int main(){
 	//max77976_toggle_led();
         //printf("sampling ..\n");
 	// This sleep or some other time consuming function must occur else can't reset from gdb as thread will be stuck in tight_loop_contents()
-        sleep_ms(500);
-	tight_loop_contents();
+	if (shutdown){
+	    on_shutdown();
+	    break;
+	}else{
+            sleep_ms(500);
+	    tight_loop_contents();
+	}
     }
 
     return 0;
@@ -86,16 +100,30 @@ void on_start(){
     sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
 }
 
+void on_shutdown(){
+    bq27742_g1_shutdown();
+    max77958_shutdown(MAX77958_INTB);
+    sn74ahc125rgyr_shutdown(SN74AHC125RGYR_GPIO);
+    max77976_shutdown();
+    ncp3901_shutdown();
+    wrm483265_10f5_12v_g_shutdown(WIRELESS_CHG_EN);
+    adc_shutdown();
+    i2c_stop();
+    free_queues();
+}
+
 void init_queues(){
     queue_init(&call_queue, sizeof(queue_entry_t), 2);
     queue_init(&results_queue, sizeof(int32_t), 2);
 }
 
+void free_queues(){
+    queue_free(&call_queue);
+    queue_free(&results_queue);
 }
 
 void i2c_start(){
     // I2C Initialisation. Using it at 400Khz.
-
     i2c_init(i2c0, 400 * 1000);
     gpio_set_function(I2C_SDA0, GPIO_FUNC_I2C);
     gpio_set_function(I2C_SCL0, GPIO_FUNC_I2C);
@@ -107,6 +135,22 @@ void i2c_start(){
     gpio_set_function(I2C_SCL1, GPIO_FUNC_I2C);
     gpio_pull_up(I2C_SDA1);
     gpio_pull_up(I2C_SCL1);
+}
+
+void i2c_stop(){
+    gpio_pull_down(I2C_SDA0);
+    gpio_pull_down(I2C_SCL0);
+    gpio_pull_down(I2C_SDA1);
+    gpio_pull_down(I2C_SCL1);
+    gpio_set_function(I2C_SDA0, GPIO_FUNC_SIO);
+    gpio_set_function(I2C_SCL0, GPIO_FUNC_SIO);
+    gpio_set_function(I2C_SDA1, GPIO_FUNC_SIO);
+    gpio_set_function(I2C_SCL1, GPIO_FUNC_SIO);
+    i2c_deinit(i2c0);
+    i2c_deinit(i2c1);
+}
+
+void adc_shutdown(){
 }
 
 void bq27742_g1_poll(){
@@ -145,12 +189,6 @@ void blink_led(uint8_t blinkCnt, int onTime, int offTime){
 void max77642_init() {}
 
 void quad_encoders_init() {}
-
-//---------------------------------------------------------------------
-// Shutdown Methods
-//---------------------------------------------------------------------
-
-void max77642_shutdown() {}
 
 //---------------------------------------------------------------------
 // Run Loop Methods

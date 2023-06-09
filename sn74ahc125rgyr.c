@@ -14,3 +14,7 @@ void sn74ahc125rgyr_init(uint GPIO){
 void sn74ahc125rgyr_on_end_of_start(uint GPIO){
     gpio_put(GPIO, 0);
 }
+
+void sn74ahc125rgyr_shutdown(uint GPIO){
+    gpio_deinit(GPIO);
+}
