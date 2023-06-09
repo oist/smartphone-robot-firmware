@@ -139,7 +139,7 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
 
     call_queue_ptr = cq;
     return_queue_ptr = rq;
-    queue_init(&opcode_queue, sizeof(queue_entry_t), 8);
+    queue_init(&opcode_queue, sizeof(queue_entry_t), 16);
 
     // Testing for just DEVICE_ID
     // Write the register 0x00 to set the pointer there before reading its value
