@@ -34,6 +34,7 @@ static void pd_msg_response();
 static void customer_config_write();
 static bool opcode_queue_pop();
 bool opcodes_finished = false;
+static void opcode_queue_add(void (*opcode_func)(), int32_t opcode_data);
 
 static void on_interrupt(unsigned int gpio, long unsigned int events){
     queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry);
@@ -53,6 +54,12 @@ static int on_opcode_cmd_response(){
     }
     return 0;
 }
+
+static void opcode_queue_add(void (*opcode_func)(), int32_t opcode_data){
+    opcodes_finished = false;
+    queue_entry_t opcode_entry = {opcode_func, opcode_data};
+    queue_add_blocking(&opcode_queue, &opcode_entry);
+} 
 
 static int parse_interrupt_vals(){
     get_interrupt_vals();
@@ -167,14 +174,10 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     get_interrupt_vals();
 
     // Add all opcode commands in order to a queue. These will be called sequentially from core1 via the call_queue
-    queue_entry_t customer_config_write_entry = {&customer_config_write, 0};
-    queue_entry_t set_snk_pdos_entry = {&set_snk_pdos, 0};
-    queue_entry_t gpio45_init_entry = {&gpio45_init, 0};
-    queue_entry_t gpio5_on_entry = {&gpio5_on, 0};
-    queue_add_blocking(&opcode_queue, &customer_config_write_entry);
-    queue_add_blocking(&opcode_queue, &set_snk_pdos_entry);
-    queue_add_blocking(&opcode_queue, &gpio45_init_entry);
-    queue_add_blocking(&opcode_queue, &gpio5_on_entry);
+    opcode_queue_add(&customer_config_write, 0);
+    opcode_queue_add(&set_snk_pdos, 0);
+    opcode_queue_add(&gpio45_init, 0);
+    opcode_queue_add(&gpio5_on, 0);
 
     opcode_queue_pop();
 }
@@ -326,27 +329,20 @@ static void pd_msg_response(){
 	    //TODO implement later
     }else if (return_buf[0] == PDMSG_PRSWAP_SWAPTOSNK){
 	    // turn off VBus
-	    opcodes_finished = false;
-            queue_entry_t gpio4_off_entry = {&gpio4_off, 0};
-            queue_add_blocking(&opcode_queue, &gpio4_off_entry);
+	    opcode_queue_add(&gpio4_off, 0);
             opcode_queue_pop();
     }else if (return_buf[0] == PDMSG_PRSWAP_SNKTOSWAP){
 	    //TODO implement later
     }else if (return_buf[0] == PDMSG_PRSWAP_SWAPTOSRC){
 	    // turn on Vbus
-	    opcodes_finished = false;
-            queue_entry_t gpio4_on_entry = {&gpio4_on, 0};
-            queue_add_blocking(&opcode_queue, &gpio4_on_entry);
-            opcode_queue_pop();
+	    opcode_queue_add(&gpio4_on, 0);
+	    opcode_queue_pop();
     }
 }
 
 void max77958_shutdown(uint gpio_interrupt){
-    opcodes_finished = false;
-    queue_entry_t gpio5_off_entry = {&gpio5_off, 0};
-    queue_add_blocking(&opcode_queue, &gpio5_off_entry);
-    queue_entry_t gpio4_off_entry = {&gpio4_off, 0};
-    queue_add_blocking(&opcode_queue, &gpio4_off_entry);
+    opcode_queue_add(&gpio5_off, 0);
+    opcode_queue_add(&gpio4_off, 0);
     opcode_queue_pop();
     while (!opcodes_finished){
 	sleep_ms(100);
