@@ -23,15 +23,15 @@ static queue_entry_t parse_interrupt_vals_entry = {&parse_interrupt_vals, 0};
 static bool opcode_cmd_finished = false;
 static bool power_swap_enabled = true;
 static queue_t opcode_queue;
-static int32_t gpio45_init();
-static int32_t gpio5_on();
-static int32_t gpio5_off();
-static int32_t power_swap_request();
-static int32_t gpio4_on();
-static int32_t gpio4_off();
-static int32_t set_snk_pdos();
-static int32_t pd_msg_response();
-static int32_t customer_config_write();
+static void gpio45_init();
+static void gpio5_on();
+static void gpio5_off();
+static void power_swap_request();
+static void gpio4_on();
+static void gpio4_off();
+static void set_snk_pdos();
+static void pd_msg_response();
+static void customer_config_write();
 static bool opcode_queue_pop();
 bool opcodes_finished = false;
 
@@ -193,7 +193,7 @@ static bool opcode_queue_pop(){
     	return false;
 }
 
-static int32_t customer_config_write(){
+static void customer_config_write(){
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = 0x56; // Customer Configuration Write 
     send_buf[2] = 0b00101000; // All defaults values other than adding CC Try SNK Mode 
@@ -212,7 +212,7 @@ static int32_t customer_config_write(){
     opcode_write(send_buf, 15);
 }
 
-static int32_t gpio45_init(){
+static void gpio45_init(){
     // Disable TPS61253_EN and Fpf1048bucx by turning off GPIO4 and GPIO5 on the MAX77958.
     memset(send_buf, 0, sizeof send_buf);
     memset(return_buf, 0, sizeof return_buf);
@@ -226,7 +226,7 @@ static int32_t gpio45_init(){
     opcode_write(send_buf, 4);
 }
 
-static int32_t gpio5_on(){
+static void gpio5_on(){
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = OPCODE_SET_GPIO; 
     send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
@@ -234,7 +234,7 @@ static int32_t gpio5_on(){
     opcode_write(send_buf, 4);
 }
 
-static int32_t gpio5_off(){
+static void gpio5_off(){
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = OPCODE_SET_GPIO; 
     send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
@@ -242,7 +242,7 @@ static int32_t gpio5_off(){
     opcode_write(send_buf, 4);
 }
 
-static int32_t power_swap_request(){
+static void power_swap_request(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = 0x37; // Send Swap Request 
@@ -250,7 +250,7 @@ static int32_t power_swap_request(){
     opcode_write(send_buf, 3);
 }
 
-static int32_t gpio4_on(){
+static void gpio4_on(){
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = OPCODE_SET_GPIO; 
     send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
@@ -258,7 +258,7 @@ static int32_t gpio4_on(){
     opcode_write(send_buf, 4);
 }
 
-static int32_t gpio4_off(){
+static void gpio4_off(){
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = OPCODE_SET_GPIO; 
     send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
@@ -266,7 +266,7 @@ static int32_t gpio4_off(){
     opcode_write(send_buf, 4);
 }
 
-static int32_t set_snk_pdos(){
+static void set_snk_pdos(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = OPCODE_SNK_PDO_SET; 
@@ -314,7 +314,7 @@ static int32_t set_snk_pdos(){
     opcode_write(send_buf, 32);
 }
 
-static int32_t pd_msg_response(){
+static void pd_msg_response(){
     // Read the 0xE PD_STATUS0 register as it contains the PD message Type recieved 
     memset(send_buf, 0, sizeof send_buf);
     memset(return_buf, 0, sizeof return_buf);
