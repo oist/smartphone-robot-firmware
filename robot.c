@@ -13,6 +13,7 @@
 #include "bq27742_g1.h"
 #include "pico/util/queue.h"
 #include "pico/multicore.h"
+#include <assert.h>
 
 static queue_t call_queue;
 static queue_t results_queue;
@@ -36,6 +37,7 @@ void core1_entry() {
         // We provide an int32_t return value by simply pushing it back on the
         // return queue which also indicates the result is ready.
 
+	sleep_ms(1);
         queue_entry_t entry;
 
         queue_remove_blocking(&call_queue, &entry);
@@ -113,8 +115,8 @@ void on_shutdown(){
 }
 
 void init_queues(){
-    queue_init(&call_queue, sizeof(queue_entry_t), 2);
-    queue_init(&results_queue, sizeof(int32_t), 2);
+    queue_init(&call_queue, sizeof(queue_entry_t), 8);
+    queue_init(&results_queue, sizeof(int32_t), 8);
 }
 
 void free_queues(){

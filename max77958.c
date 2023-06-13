@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 #include "max77958.h"
@@ -34,12 +35,18 @@ static int32_t gpio_bool_to_int32(bool _GPIO4, bool _GPIO5);
 static void gpio_set(int32_t gpio_val);
 
 static void on_interrupt(unsigned int gpio, long unsigned int events){
-    queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry);
+    if(!queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry)){
+	printf("call_queue is full");
+        assert(false);
+    }
 }
 
 static int on_pd_msg_received(){
     queue_entry_t on_pd_msg_received_entry = {&pd_msg_response, 0};
-    queue_add_blocking(call_queue_ptr, &on_pd_msg_received_entry);
+    if (!queue_try_add(call_queue_ptr, &on_pd_msg_received_entry)){
+	printf("call_queue is full");
+	assert(false);
+    }
 }
 
 static int on_opcode_cmd_response(){
@@ -184,15 +191,21 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
 // check if opcode_queue has entries remaining
 // if so remove an entry from the opcode_queue and run in on core1 via the call_queue
 // return true if an entry was removed and added to the call_queue
-// return false if opccode_queue was empty
+// return false if opccode_queue was empty 
 static bool opcode_queue_pop(){
     queue_entry_t entry;
     if (queue_try_remove(&opcode_queue, &entry)){
-	queue_add_blocking(call_queue_ptr, &entry);
-	return true;
+	if(queue_try_add(call_queue_ptr, &entry)){
+	    return true;
+	}else{
+	    printf("opcode_queue_pop: call_queue full\n");
+	    assert(false);
+	}
     }
-    else 
+    else {
+	printf("opcode_queue_pop: opcode_queue empty\n");
     	return false;
+    }
 }
 
 static void customer_config_write(){
