@@ -23,18 +23,15 @@ static queue_entry_t parse_interrupt_vals_entry = {&parse_interrupt_vals, 0};
 static bool opcode_cmd_finished = false;
 static bool power_swap_enabled = true;
 static queue_t opcode_queue;
-static void gpio45_init();
-static void gpio5_on();
-static void gpio5_off();
 static void power_swap_request();
-static void gpio4_on();
-static void gpio4_off();
 static void set_snk_pdos();
 static void pd_msg_response();
 static void customer_config_write();
 static bool opcode_queue_pop();
 bool opcodes_finished = false;
 static void opcode_queue_add(void (*opcode_func)(), int32_t opcode_data);
+static int32_t gpio_bool_to_int32(bool _GPIO4, bool _GPIO5);
+static void gpio_set(int32_t gpio_val);
 
 static void on_interrupt(unsigned int gpio, long unsigned int events){
     queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry);
@@ -176,8 +173,10 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     // Add all opcode commands in order to a queue. These will be called sequentially from core1 via the call_queue
     opcode_queue_add(&customer_config_write, 0);
     opcode_queue_add(&set_snk_pdos, 0);
-    opcode_queue_add(&gpio45_init, 0);
-    opcode_queue_add(&gpio5_on, 0);
+    // Set GPIO5 and GPIO4 to LOW
+    opcode_queue_add(&gpio_set, gpio_bool_to_int32(false, false));
+    // Set GPIO5 to HIGH and GPIO4 to LOW
+    opcode_queue_add(&gpio_set, gpio_bool_to_int32(true, false));
 
     opcode_queue_pop();
 }
@@ -215,34 +214,21 @@ static void customer_config_write(){
     opcode_write(send_buf, 15);
 }
 
-static void gpio45_init(){
-    // Disable TPS61253_EN and Fpf1048bucx by turning off GPIO4 and GPIO5 on the MAX77958.
+// A function to make turning on/off GPIO4 and 5 more readable
+static int32_t gpio_bool_to_int32(bool _GPIO4, bool _GPIO5){
+    //Reg 0x23 GPIO7Output,GPIO7Direction,GPIO6Output,GPIO6Direction,GPIO5Output,GPIO5Direction,GPIO4Output,GPIODirection
+    return (_GPIO5 << 3) | (1 << 2) | (_GPIO4 << 1) | (1 << 0);
+}
+
+// A function to set the GPIO of the max77958 taking as input two bool values setting GPIO4 and GPIO5
+static void gpio_set(int32_t gpio_val){
     memset(send_buf, 0, sizeof send_buf);
     memset(return_buf, 0, sizeof return_buf);
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = OPCODE_SET_GPIO; 
     send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
-    //Reg 0x23 GPIO7Output,GPIO7Direction,GPIO6Output,GPIO6Direction,GPIO5Output,GPIO5Direction,GPIO4Output,GPIODirection
-    //To disable TPS61253_EN, We need to set GPIO5Output Low (bit b3 of 0x23 to 0) and set it to output (b2 of 0x23 to 1)
-    //To disable Fpf1048bucx We also need GPIO4 to be low (b1=0) and GPIO4Direction to be output (b0=1)
-    send_buf[3] = 0b00000101; 
-    opcode_write(send_buf, 4);
-}
-
-static void gpio5_on(){
-    send_buf[0] = OPCODE_WRITE;
-    send_buf[1] = OPCODE_SET_GPIO; 
-    send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
-    send_buf[3] = 0b00001101; 
-    opcode_write(send_buf, 4);
-}
-
-static void gpio5_off(){
-    send_buf[0] = OPCODE_WRITE;
-    send_buf[1] = OPCODE_SET_GPIO; 
-    send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
-    send_buf[3] = 0b00000101; 
-    opcode_write(send_buf, 4);
+    send_buf[3] = gpio_val;
+    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 4, false);
 }
 
 static void power_swap_request(){
@@ -251,22 +237,6 @@ static void power_swap_request(){
     send_buf[1] = 0x37; // Send Swap Request 
     send_buf[2] = 0x02; // PR SWAP
     opcode_write(send_buf, 3);
-}
-
-static void gpio4_on(){
-    send_buf[0] = OPCODE_WRITE;
-    send_buf[1] = OPCODE_SET_GPIO; 
-    send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
-    send_buf[3] = 0b00001111; 
-    opcode_write(send_buf, 4);
-}
-
-static void gpio4_off(){
-    send_buf[0] = OPCODE_WRITE;
-    send_buf[1] = OPCODE_SET_GPIO; 
-    send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
-    send_buf[3] = 0b00001101; 
-    opcode_write(send_buf, 4);
 }
 
 static void set_snk_pdos(){
@@ -329,20 +299,19 @@ static void pd_msg_response(){
 	    //TODO implement later
     }else if (return_buf[0] == PDMSG_PRSWAP_SWAPTOSNK){
 	    // turn off VBus
-	    opcode_queue_add(&gpio4_off, 0);
+	    opcode_queue_add(&gpio_set, gpio_bool_to_int32(false, true));
             opcode_queue_pop();
     }else if (return_buf[0] == PDMSG_PRSWAP_SNKTOSWAP){
 	    //TODO implement later
     }else if (return_buf[0] == PDMSG_PRSWAP_SWAPTOSRC){
 	    // turn on Vbus
-	    opcode_queue_add(&gpio4_on, 0);
+	    opcode_queue_add(&gpio_set, gpio_bool_to_int32(true, true));
 	    opcode_queue_pop();
     }
 }
 
 void max77958_shutdown(uint gpio_interrupt){
-    opcode_queue_add(&gpio5_off, 0);
-    opcode_queue_add(&gpio4_off, 0);
+    opcode_queue_add(&gpio_set, gpio_bool_to_int32(false, false));
     opcode_queue_pop();
     while (!opcodes_finished){
 	sleep_ms(100);
