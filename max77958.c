@@ -62,7 +62,10 @@ static int on_opcode_cmd_response(){
 static void opcode_queue_add(void (*opcode_func)(), int32_t opcode_data){
     opcodes_finished = false;
     queue_entry_t opcode_entry = {opcode_func, opcode_data};
-    queue_add_blocking(&opcode_queue, &opcode_entry);
+    if(!queue_try_add(&opcode_queue, &opcode_entry)){
+	printf("opcode_queue is full");
+	assert(false);
+    }
 } 
 
 static int parse_interrupt_vals(){
