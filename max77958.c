@@ -33,6 +33,7 @@ bool opcodes_finished = false;
 static void opcode_queue_add(void (*opcode_func)(), int32_t opcode_data);
 static int32_t gpio_bool_to_int32(bool _GPIO4, bool _GPIO5);
 static void gpio_set(int32_t gpio_val);
+static void set_src_pdos();
 
 static void on_interrupt(unsigned int gpio, long unsigned int events){
     if(!queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry)){
@@ -183,6 +184,7 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     // Add all opcode commands in order to a queue. These will be called sequentially from core1 via the call_queue
     opcode_queue_add(&customer_config_write, 0);
     opcode_queue_add(&set_snk_pdos, 0);
+    opcode_queue_add(&set_src_pdos, 0);
     // Set GPIO5 and GPIO4 to LOW
     opcode_queue_add(&gpio_set, gpio_bool_to_int32(false, false));
     // Set GPIO5 to HIGH and GPIO4 to LOW
@@ -255,6 +257,32 @@ static void power_swap_request(){
     opcode_write(send_buf, 3);
 }
 
+static void set_src_pdos(){
+    memset(send_buf, 0, sizeof send_buf);
+    send_buf[0] = OPCODE_WRITE;
+    send_buf[1] = OPCODE_SET_SOURCE_CAP;
+    send_buf[2] = 0b00000001; // specify only 1 PDO
+    // You can verify this by comparing against Table 6-9 of the USB-PD spec 
+    // This represents:
+    // 00 Fixed Supply See Table 6-7 of USB-PD Standard
+    // 1 Dual-Role Power ON
+    // 0 Suspend Supported OFF
+    // 0 Unconstrained Power OFF
+    // 1 USB Communications Capable ON
+    // 1 Dual-Role Data ON
+    // 0 Unchunked Messages OFF
+    // 0 ERP Mode Incable
+    // 0 RSVD
+    // 00  Peak current
+    // 0001100100 = 100x 50mV = 5.0V
+    // 0000101100 = 100x 10mA = 1.0A
+    // In summary 00100110000000011001000000101100 or 0x2601902C
+    send_buf[3] = 0x2C;
+    send_buf[4] = 0x90;
+    send_buf[5] = 0x01;
+    send_buf[6] = 0x26;
+    opcode_write(send_buf, 32);
+}
 static void set_snk_pdos(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_WRITE;
