@@ -82,10 +82,10 @@ static int parse_interrupt_vals(){
     if (*UIC_INT & APCmdResI_mask){
 	on_opcode_cmd_response();
     }else if (*PD_INT & PSRDYI_mask){
-	printf("Power source ready");
+	printf("Power source ready\n");
 	//on_power_source_ready();
     }else if (*PD_INT & PDMsgI){
-        printf("Rec PD message");
+        printf("Rec PD message\n");
 	on_pd_msg_received();
     }
     return -1;
