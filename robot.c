@@ -59,7 +59,8 @@ void results_queue_pop(){
     // If the results_queue is not empty, take the first entry and call its function on core0
     if (!queue_is_empty(&results_queue)){
         queue_entry_t entry;
-        queue_try_remove(&results_queue, &entry);
+        //queue_try_remove(&results_queue, &entry);
+        queue_remove_blocking(&results_queue, &entry);
         // TODO implement what to do with results_queue entries.
         printf("Handled an entry from the results queue\n");
     }
