@@ -244,7 +244,7 @@ static void gpio_set(int32_t gpio_val){
     send_buf[1] = OPCODE_SET_GPIO; 
     send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
     send_buf[3] = gpio_val;
-    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 4, false);
+    opcode_write(send_buf, 4);
 }
 
 static void power_swap_request(){
