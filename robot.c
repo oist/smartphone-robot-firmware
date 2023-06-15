@@ -89,26 +89,26 @@ void on_start(){
     init_queues();
     multicore_launch_core1(core1_entry);
     // Waiting to make sure I can catch it within minicom
-    sleep_ms(3000);
+    //sleep_ms(3000);
     i2c_start();
     adc_init();
-    wrm483265_10f5_12v_g_init(WIRELESS_CHG_EN);
-    ncp3901_init(GPIO_WIRELESS_AVAILABLE, GPIO_OTG);
-    max77976_init(BATTERY_CHARGER_INTERRUPT_PIN);
-    sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO);
+    //wrm483265_10f5_12v_g_init(WIRELESS_CHG_EN);
+    //ncp3901_init(GPIO_WIRELESS_AVAILABLE, GPIO_OTG);
+    //max77976_init(BATTERY_CHARGER_INTERRUPT_PIN);
+    //sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO);
     max77958_init(MAX77958_INTB, &call_queue, &results_queue);
-    bq27742_g1_init();
+    //bq27742_g1_init();
     // Be sure to do this last
-    sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
+    //sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
 }
 
 void on_shutdown(){
-    bq27742_g1_shutdown();
+    //bq27742_g1_shutdown();
     max77958_shutdown(MAX77958_INTB);
-    sn74ahc125rgyr_shutdown(SN74AHC125RGYR_GPIO);
-    max77976_shutdown();
-    ncp3901_shutdown();
-    wrm483265_10f5_12v_g_shutdown(WIRELESS_CHG_EN);
+    //sn74ahc125rgyr_shutdown(SN74AHC125RGYR_GPIO);
+    //max77976_shutdown();
+    //ncp3901_shutdown();
+    //wrm483265_10f5_12v_g_shutdown(WIRELESS_CHG_EN);
     adc_shutdown();
     i2c_stop();
     free_queues();
