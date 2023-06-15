@@ -28,6 +28,8 @@ void init_queues();
 void free_queues();
 void on_start();
 void on_shutdown();
+void results_queue_pop();
+int32_t call_queue_pop();
 
 // core1 will be used to process all function calls requested by interrupt calls on core0
 void core1_entry() {
@@ -38,18 +40,28 @@ void core1_entry() {
         // return queue which also indicates the result is ready.
 
 	sleep_ms(1);
-        queue_entry_t entry;
-
-        queue_remove_blocking(&call_queue, &entry);
-
-        int32_t (*func)() = (int32_t(*)())(entry.func);
-        int32_t result = (*func)(entry.data);
-
-	printf("core1_entry: result from calling call_queue entry = %d\n", result);
-
+	int32_t result = call_queue_pop();
         queue_add_blocking(&results_queue, &result);
+        // as an alternative to polling the return queue, you can send an irq to core0 to add another entry to call_queue
+    }
+}
 
-	// as an alternative to polling the return queue, you can send an irq to core0 to add another entry to call_queue
+int32_t call_queue_pop(){
+    queue_entry_t entry;
+    queue_remove_blocking(&call_queue, &entry);
+    int32_t (*func)() = (int32_t(*)())(entry.func);
+    int32_t result = (*func)(entry.data);
+    printf("core1_entry: result from calling call_queue entry = %d\n", result);
+    return result;
+}
+
+void results_queue_pop(){
+    // If the results_queue is not empty, take the first entry and call its function on core0
+    if (!queue_is_empty(&results_queue)){
+        queue_entry_t entry;
+        queue_try_remove(&results_queue, &entry);
+        // TODO implement what to do with results_queue entries.
+        printf("Handled an entry from the results queue\n");
     }
 }
 
@@ -58,13 +70,7 @@ int main(){
     on_start();
     while (1)
     {
-	// If the results_queue is not empty, take the first entry and call its function on core0
-	if (!queue_is_empty(&results_queue)){
-	    queue_entry_t entry;
-	    queue_try_remove(&results_queue, &entry);
-	    // TODO implement what to do with results_queue entries.
-	    printf("Handled an entry from the results queue\n");
-	}
+	results_queue_pop();
         //sample_adc_inputs();
 	//bq27742_g1_poll();
 	//max77976_get_chg_details();
@@ -120,6 +126,13 @@ void init_queues(){
 }
 
 void free_queues(){
+    while (!queue_is_empty(&results_queue)){
+	results_queue_pop();
+    }
+    while (!queue_is_empty(&call_queue)){
+    	printf("free_queues: call_queue not empty\n");
+    	sleep_ms(500);
+    }
     queue_free(&call_queue);
     queue_free(&results_queue);
 }
