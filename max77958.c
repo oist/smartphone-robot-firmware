@@ -225,10 +225,10 @@ static void customer_config_write(){
     send_buf[5] = 0x68; // default PID
     send_buf[6] = 0x60; // default PID
     send_buf[7] = 0x00; // RSVD
-    send_buf[8] = 0x00; // default SRC_PDO_V
-    send_buf[9] = 0x64; // default SRC_PDO_V of 5.0V (0x64= 100, and 50mA*100). 
-    send_buf[10] = 0x00; // SRC_PDO_MaxI
-    send_buf[11] = 0x64; // SRC_PDO_MaxI = 1.0A (0x64=100, and 100*10mA)
+    send_buf[8] = 0x64; // default SRC_PDO_V
+    send_buf[9] = 0x00; // default SRC_PDO_V of 5.0V (0x64= 100, and 50mA*100). 
+    send_buf[10] = 0x64; // SRC_PDO_MaxI
+    send_buf[11] = 0x00; // SRC_PDO_MaxI = 1.0A (0x64=100, and 100*10mA)
     opcode_write(send_buf, 12);
 }
 
