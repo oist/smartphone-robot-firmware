@@ -197,7 +197,9 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
 // return false if opccode_queue was empty 
 static bool opcode_queue_pop(){
     queue_entry_t entry;
+    // if there is an entry in the opcode_queue, remove it and add it to the call_queue
     if (queue_try_remove(&opcode_queue, &entry)){
+	// if the call_queue is full, assert
 	if(queue_try_add(call_queue_ptr, &entry)){
 	    return true;
 	}else{
@@ -205,6 +207,7 @@ static bool opcode_queue_pop(){
 	    assert(false);
 	}
     }
+    // if there is no entry in the opcode_queue, return false
     else {
 	printf("opcode_queue_pop: opcode_queue empty\n");
     	return false;
