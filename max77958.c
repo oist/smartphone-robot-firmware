@@ -188,7 +188,7 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     // Set GPIO5 and GPIO4 to LOW
     opcode_queue_add(&gpio_set, gpio_bool_to_int32(false, false));
     // Set GPIO5 to HIGH and GPIO4 to LOW
-    opcode_queue_add(&gpio_set, gpio_bool_to_int32(true, false));
+    opcode_queue_add(&gpio_set, gpio_bool_to_int32(true, true));
 
     opcode_queue_pop();
 }
