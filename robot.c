@@ -83,7 +83,7 @@ int main(){
 	    on_shutdown();
 	    break;
 	}else{
-            sleep_ms(500);
+            sleep_ms(1);
 	    tight_loop_contents();
 	}
     }
