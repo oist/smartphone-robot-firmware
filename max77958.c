@@ -219,7 +219,7 @@ static bool opcode_queue_pop(){
 static void customer_config_write(){
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = 0x56; // Customer Configuration Write 
-    send_buf[2] = 0b00100000; // All defaults values other than adding CC Try SNK Mode 
+    send_buf[2] = 0b00101000; // All defaults values other than adding CC Try SNK Mode 
     send_buf[3] = 0x0B; // default VID
     send_buf[4] = 0x6A; // default VID
     send_buf[5] = 0x68; // default PID
