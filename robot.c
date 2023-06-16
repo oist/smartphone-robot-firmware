@@ -72,12 +72,12 @@ int main(){
     while (1)
     {
 	results_queue_pop();
-        //sample_adc_inputs();
+        sample_adc_inputs();
 	//bq27742_g1_poll();
-	//max77976_get_chg_details();
-	//max77976_log_current_limit();
-	//max77976_toggle_led();
-        //printf("sampling ..\n");
+	max77976_get_chg_details();
+	max77976_log_current_limit();
+	max77976_toggle_led();
+        printf("sampling ..\n");
 	// This sleep or some other time consuming function must occur else can't reset from gdb as thread will be stuck in tight_loop_contents()
 	if (shutdown){
 	    on_shutdown();
@@ -99,14 +99,14 @@ void on_start(){
     //sleep_ms(3000);
     i2c_start();
     adc_init();
-    //wrm483265_10f5_12v_g_init(WIRELESS_CHG_EN);
-    //ncp3901_init(GPIO_WIRELESS_AVAILABLE, GPIO_OTG);
-    //max77976_init(BATTERY_CHARGER_INTERRUPT_PIN);
-    //sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO);
+    wrm483265_10f5_12v_g_init(WIRELESS_CHG_EN);
+    ncp3901_init(GPIO_WIRELESS_AVAILABLE, GPIO_OTG);
+    max77976_init(BATTERY_CHARGER_INTERRUPT_PIN);
+    sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO);
     max77958_init(MAX77958_INTB, &call_queue, &results_queue);
     //bq27742_g1_init();
     // Be sure to do this last
-    //sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
+    sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
 }
 
 void on_shutdown(){
