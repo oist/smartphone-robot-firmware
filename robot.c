@@ -51,7 +51,7 @@ int32_t call_queue_pop(){
     queue_remove_blocking(&call_queue, &entry);
     int32_t (*func)() = (int32_t(*)())(entry.func);
     int32_t result = (*func)(entry.data);
-    printf("core1_entry: result from calling call_queue entry = %d\n", result);
+    printf("core1_entry: result from calling call_queue entry = %d\n", (int)result);
     return result;
 }
 

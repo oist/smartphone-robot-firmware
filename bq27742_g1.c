@@ -23,7 +23,7 @@ void bq27742_g1_get_voltage(){
     i2c_read_blocking(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
 
     voltage = (return_buf[1] << 8) | return_buf[0];
-    printf("Voltage: %d\n", voltage);
+    printf("Voltage: %d\n", (int) voltage);
 }
 
 void bq27742_g1_get_safety_stats(){
@@ -80,7 +80,7 @@ void bq27742_g1_get_temp(){
 
     uint32_t temperature_k = ((return_buf[1] << 8) | return_buf[0]) / 10;
     temperature = temperature_k - 273;
-    printf("Temperature: %d\n", temperature);
+    printf("Temperature: %d\n", (int)temperature);
 }
 
 void bq27742_g1_get_soh(){
