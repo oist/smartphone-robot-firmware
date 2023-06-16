@@ -131,7 +131,7 @@ static int opcode_write(uint8_t *send_buf, uint8_t len){
     printf("opcode_write: 0x%02x 0x%02x 0x%02x 0x%02x\n", send_buf[0], send_buf[1], send_buf[2], send_buf[3]);
 
     // For whatever reason, this is necessary for the interrupt to fire. Even though I already write 0x00 to it in the line above.
-    memset(send_buf, 0, sizeof send_buf);
+    memset(send_buf, 0, sizeof &send_buf);
     send_buf[0] = 0x41;
     send_buf[1] = 0x00;
     i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 2, false);
