@@ -50,6 +50,7 @@ add_executable(robot
                robot.c
 	       ${SOURCES}
 	       ${CMAKE_SOURCE_DIR}/include/max77958/max77958_driver.h
+	       ${CMAKE_SOURCE_DIR}/include/unity/src
 	       )
        
 pico_set_program_name(robot "robot")
