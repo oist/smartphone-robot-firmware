@@ -16,7 +16,7 @@ static void on_interrupt(uint gpio, long unsigned int events);
 static void get_interrupt_vals();
 static void get_interrupt_masks();
 static void set_interrupt_masks();
-static int opcode_read();
+static void opcode_read();
 static int opcode_write(uint8_t *send_buf, uint8_t len);
 static queue_t* call_queue_ptr;
 static queue_t* return_queue_ptr;
@@ -138,7 +138,7 @@ static int opcode_write(uint8_t *send_buf, uint8_t len){
     return 1;
 }
 
-static int opcode_read(){
+static void opcode_read(){
     // Set the current register pointer to 0x51 to you can read the return values from the OpCode Command
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_READ_COMMAND;
