@@ -87,6 +87,7 @@ int max77976_init(uint GPIO){
     buf[0] = 0x1C; // CHAG_CNFG_06 
     buf[1] = 0x00;   
     i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
+    return 0;
 }
 
 void max77976_log_current_limit(){

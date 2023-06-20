@@ -48,6 +48,7 @@ static int on_pd_msg_received(){
 	printf("call_queue is full");
 	assert(false);
     }
+    return 0;
 }
 
 static int on_opcode_cmd_response(){
