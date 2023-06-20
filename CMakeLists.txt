@@ -42,6 +42,8 @@ project(robot
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
+add_subdirectory(include)
+
 file(GLOB SOURCES "*.c")
 message("SOURCES: ${SOURCES}")
 message("add_executable to include : ${CMAKE_SOURCE_DIR}/include/max77958/max77958_driver.h\n")
@@ -72,7 +74,10 @@ target_include_directories(robot PRIVATE
 )
 
 # Add any user requested libraries
-target_link_libraries(robot hardware_adc hardware_i2c)
+target_link_libraries(robot 
+    hardware_adc 
+    hardware_i2c
+    CException)
 
 pico_add_extra_outputs(robot)
 
