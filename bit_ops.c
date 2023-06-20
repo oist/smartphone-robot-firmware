@@ -23,7 +23,7 @@ and msb being the most significant bit set to be 1 in the mask.
 e.g. bitmask_from_x_2_y(2,3) will return 0b00001100
 */
 uint8_t bitmask_from_x_2_y(uint8_t lsb, uint8_t msb){
-    return (((uint8_t)1 << (msb - lsb + (uint8_t)1)) - (uint8_t)1 << (lsb));
+    return ((((uint8_t)1 << (msb - lsb + (uint8_t)1)) - (uint8_t)1) << (lsb));
 }
 
 uint8_t bitmask_set(uint8_t bitvector, uint8_t mask){return bitvector | mask;}
