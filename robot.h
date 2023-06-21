@@ -35,7 +35,7 @@ typedef struct
 #define I2C_SCL0 _u(1)
 #define I2C_SDA1 _u(2)
 #define I2C_SCL1 _u(3)
-#define I2C_TIMEOUT _u(1000)
+#define I2C_TIMEOUT _u(1000000) // 1 second timeout
 
 #define ADC0 _u(26)
 
