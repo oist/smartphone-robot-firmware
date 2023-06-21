@@ -8,6 +8,7 @@
 #include "max77958_driver.h"
 #include "bit_ops.h"
 #include "robot.h"
+#include <assert.h>
 
 static uint8_t send_buf[33] = {0};
 static uint8_t return_buf[33] = {0}; // Will read full buffer from registers 0x52 to 0x71
@@ -17,7 +18,7 @@ static void get_interrupt_vals();
 static void get_interrupt_masks();
 static void set_interrupt_masks();
 static void opcode_read();
-static int opcode_write(uint8_t *send_buf, uint8_t len);
+static int opcode_write(uint8_t *send_buf);
 static queue_t* call_queue_ptr;
 static queue_t* return_queue_ptr;
 static queue_entry_t parse_interrupt_vals_entry = {&parse_interrupt_vals, 0};
@@ -120,22 +121,18 @@ static void set_interrupt_masks(){
     i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 4, false);
 }
 
-static int opcode_write(uint8_t *send_buf, uint8_t len){
-    // send_buf should always be 32 bytes long since the register values from 0x22 to 0x41 are never overwritten, 
+static int opcode_write(uint8_t *buf){
+    // buf should always be 32 bytes long since the register values from 0x22 to 0x41 are never overwritten, 
     // so you may send wrong data if you don't directly specify them for ALL registers. Note the defaults are NOT always 0x00, 
     // so you should send all values everytime. What a pain...
-    if (send_buf[0] != 0x21){
-	// buffer should always start with the 0x21 register
-	return -1;
+    if (buf[0] != 0x21){
+	printf("buffer should always start with the 0x21 register");
+	assert(false);
     }
-    i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, len, false);
-    printf("opcode_write: 0x%02x 0x%02x 0x%02x 0x%02x\n", send_buf[0], send_buf[1], send_buf[2], send_buf[3]);
 
-    // For whatever reason, this is necessary for the interrupt to fire. Even though I already write 0x00 to it in the line above.
-    memset(send_buf, 0, sizeof &send_buf);
-    send_buf[0] = 0x41;
-    send_buf[1] = 0x00;
-    i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 2, false);
+    i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, buf, sizeof(send_buf), false);
+    printf("opcode_write: 0x%02x 0x%02x 0x%02x 0x%02x\n", buf[0], buf[1], buf[2], buf[3]);
+
     return 1;
 }
 
@@ -218,6 +215,7 @@ static bool opcode_queue_pop(){
 }
 
 static void customer_config_write(){
+    memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = 0x56; // Customer Configuration Write 
     send_buf[2] = 0b00101000; // All defaults values other than adding CC Try SNK Mode 
@@ -230,7 +228,7 @@ static void customer_config_write(){
     send_buf[9] = 0x00; // default SRC_PDO_V of 5.0V (0x64= 100, and 50mA*100). 
     send_buf[10] = 0x14; // SRC_PDO_MaxI
     send_buf[11] = 0x00; // SRC_PDO_MaxI = 1.0A (0x64=100, and 100*10mA)
-    opcode_write(send_buf, 12);
+    opcode_write(send_buf);
 }
 
 // A function to make turning on/off GPIO4 and 5 more readable
@@ -242,12 +240,11 @@ static int32_t gpio_bool_to_int32(bool _GPIO4, bool _GPIO5){
 // A function to set the GPIO of the max77958 taking as input two bool values setting GPIO4 and GPIO5
 static void gpio_set(int32_t gpio_val){
     memset(send_buf, 0, sizeof send_buf);
-    memset(return_buf, 0, sizeof return_buf);
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = OPCODE_SET_GPIO; 
     send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
     send_buf[3] = gpio_val;
-    opcode_write(send_buf, 4);
+    opcode_write(send_buf);
 }
 
 static void power_swap_request(){
@@ -255,7 +252,7 @@ static void power_swap_request(){
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = 0x37; // Send Swap Request 
     send_buf[2] = 0x02; // PR SWAP
-    opcode_write(send_buf, 3);
+    opcode_write(send_buf);
 }
 
 static void set_src_pdos(){
@@ -282,7 +279,7 @@ static void set_src_pdos(){
     send_buf[4] = 0x90;
     send_buf[5] = 0x01;
     send_buf[6] = 0x26;
-    opcode_write(send_buf, 32);
+    opcode_write(send_buf);
 }
 static void set_snk_pdos(){
     memset(send_buf, 0, sizeof send_buf);
@@ -329,7 +326,7 @@ static void set_snk_pdos(){
     //send_buf[4] = 0x01;
     //send_buf[5] = 0x91;
     //send_buf[6] = 0x2C;
-    opcode_write(send_buf, 32);
+    opcode_write(send_buf);
 }
 
 static void pd_msg_response(){
