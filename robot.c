@@ -76,7 +76,7 @@ int main(){
     {
 	results_queue_pop();
         sample_adc_inputs();
-	bq27742_g1_poll();
+	//bq27742_g1_poll();
 	max77976_get_chg_details();
 	max77976_log_current_limit();
 	max77976_toggle_led();
