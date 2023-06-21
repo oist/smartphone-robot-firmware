@@ -98,8 +98,8 @@ static void get_interrupt_vals(){
     memset(send_buf, 0, sizeof send_buf);
     memset(return_buf, 0, sizeof return_buf);
     send_buf[0] = REG_UIC_INT; // 0x04 Register
-    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
-    i2c_read_blocking(i2c0, MAX77958_SLAVE_P1, return_buf, 4, false);
+    i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
+    i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 4, false);
     printf("interrupts vals: 0x4: 0x%02x, 0x5: 0x%02x, 0x6: 0x%02x, 0x7: 0x%02x\n", return_buf[0], return_buf[1], return_buf[2], return_buf[3]);
 }
 
@@ -107,8 +107,8 @@ static void get_interrupt_masks(){
     memset(send_buf, 0, sizeof send_buf);
     memset(return_buf, 0, sizeof return_buf);
     send_buf[0] = REG_UIC_INT_M; // 0x10 UIC_INT_M Register
-    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
-    i2c_read_blocking(i2c0, MAX77958_SLAVE_P1, return_buf, 4, false);
+    i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
+    i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 4, false);
 }
 
 static void set_interrupt_masks(){
@@ -117,7 +117,7 @@ static void set_interrupt_masks(){
     send_buf[1] = 0b01111111; // UIC_INT 0x4
     send_buf[2] = 0b11111111; // CC_INT 0x5 all masked by default
     send_buf[3] = 0b00111111; // PD_INT 0x6 unmasking PSRDYI
-    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 4, false);
+    i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 4, false);
 }
 
 static int opcode_write(uint8_t *send_buf, uint8_t len){
@@ -128,14 +128,14 @@ static int opcode_write(uint8_t *send_buf, uint8_t len){
 	// buffer should always start with the 0x21 register
 	return -1;
     }
-    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, len, false);
+    i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, len, false);
     printf("opcode_write: 0x%02x 0x%02x 0x%02x 0x%02x\n", send_buf[0], send_buf[1], send_buf[2], send_buf[3]);
 
     // For whatever reason, this is necessary for the interrupt to fire. Even though I already write 0x00 to it in the line above.
     memset(send_buf, 0, sizeof &send_buf);
     send_buf[0] = 0x41;
     send_buf[1] = 0x00;
-    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 2, false);
+    i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 2, false);
     return 1;
 }
 
@@ -143,8 +143,8 @@ static void opcode_read(){
     // Set the current register pointer to 0x51 to you can read the return values from the OpCode Command
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_READ_COMMAND;
-    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
-    i2c_read_blocking(i2c0, MAX77958_SLAVE_P1, return_buf, 33, false);
+    i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
+    i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 33, false);
     printf("opcode_read: 0x%02x 0x%02x 0x%02x 0x%02x\n", return_buf[0], return_buf[1], return_buf[2], return_buf[3]);
     // Set breakpoint before clearing the registers via the following command. 
     // I'm commenting this out since I won't use the output in the code, but you can copy/paste this into gdb if you want to
@@ -153,7 +153,7 @@ static void opcode_read(){
     // Clear registers 0x21 - 0x41 to ensure you don't write wrong values to opCode Commands later
     //memset(return_buf, 0, sizeof return_buf);
     //return_buf[0] = 0x21;
-    //i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, return_buf, 32, false);
+    //i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 32, false);
 }
 
 void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
@@ -166,8 +166,8 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     // Write the register 0x00 to set the pointer there before reading its value
     memset(send_buf, 0, sizeof send_buf);
     memset(return_buf, 0, sizeof return_buf);
-    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
-    i2c_read_blocking(i2c0, MAX77958_SLAVE_P1, return_buf, 2, false);
+    i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
+    i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 2, false);
     printf("DEVICE_ID = %x\n", return_buf[0]);
     printf("DEVICE_REV = %x\n", return_buf[1]);
 
@@ -337,8 +337,8 @@ static void pd_msg_response(){
     memset(send_buf, 0, sizeof send_buf);
     memset(return_buf, 0, sizeof return_buf);
     send_buf[0] = REG_PD_STATUS0; // 0xE PD_STATUS0 Register 
-    i2c_write_blocking(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
-    i2c_read_blocking(i2c0, MAX77958_SLAVE_P1, return_buf, 1, false);
+    i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
+    i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 1, false);
     printf("PD_STATUS0: 0x%02x\n", return_buf[0]);
     if (return_buf[0] == PDMSG_PRSWAP_SRCTOSWAP){
 	    //TODO implement later

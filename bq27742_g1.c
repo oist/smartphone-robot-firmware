@@ -4,6 +4,7 @@
 #include "bq27742_g1.h"
 #include "bit_ops.h"
 #include <string.h>
+#include "robot.h"
 
 static uint8_t send_buf[2];
 static uint8_t return_buf[2];
@@ -19,8 +20,8 @@ void bq27742_g1_get_voltage(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = 0x08;
     send_buf[1] = 0x09;
-    i2c_write_blocking(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
-    i2c_read_blocking(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
+    i2c_write_error_handling(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
+    i2c_read_error_handling(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
 
     voltage = (return_buf[1] << 8) | return_buf[0];
     printf("Voltage: %d\n", (int) voltage);
@@ -31,8 +32,8 @@ void bq27742_g1_get_safety_stats(){
     memset(return_buf, 0, sizeof return_buf);
     send_buf[0] = 0x1A;
     send_buf[1] = 0x1B;
-    i2c_write_blocking(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
-    i2c_read_blocking(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
+    i2c_write_error_handling(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
+    i2c_read_error_handling(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
     
     uint8_t low_byte = return_buf[0];
     bool error = false;
@@ -75,8 +76,8 @@ void bq27742_g1_get_temp(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = 0x06;
     send_buf[1] = 0x07;
-    i2c_write_blocking(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
-    i2c_read_blocking(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
+    i2c_write_error_handling(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
+    i2c_read_error_handling(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
 
     uint32_t temperature_k = ((return_buf[1] << 8) | return_buf[0]) / 10;
     temperature = temperature_k - 273;
@@ -89,8 +90,8 @@ void bq27742_g1_get_soh(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = 0x2e;
     send_buf[1] = 0x2f;
-    i2c_write_blocking(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
-    i2c_read_blocking(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
+    i2c_write_error_handling(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
+    i2c_read_error_handling(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
 
     printf("SOH: 0x2e=%02x, 0x2f=%02x\n", return_buf[0], return_buf[1]);
     float soh = (float)return_buf[0] / 100;
@@ -102,8 +103,8 @@ void bq27742_g1_get_flags(){
     memset(return_buf, 0, sizeof return_buf);
     send_buf[0] = 0x0A;
     send_buf[1] = 0x0B;
-    i2c_write_blocking(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
-    i2c_read_blocking(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
+    i2c_write_error_handling(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
+    i2c_read_error_handling(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
     
     uint8_t flags = (return_buf[1] << 8) | return_buf[0];
     bool error = false;

@@ -4,6 +4,7 @@
 #include "max77976.h"
 #include "bit_ops.h"
 #include <string.h>
+#include "robot.h"
 
 static void max77976_onEXTUSBCHG_connect();
 static void max77976_onEXTUSBCHG_disconnect();
@@ -38,42 +39,34 @@ int max77976_init(uint GPIO){
     // Check if responding as i2c slave before trying to write to it
     uint8_t rxdata;
     int ret;
-    ret = i2c_read_blocking(i2c1,MAX77976_ADDR, &rxdata, 1, false);
-    if (ret < 0){
-	//Error
-	printf("Failed to read data from address %x on i2c1\n", MAX77976_ADDR);
-	return -1;
-    }else{
-    	//Success
-	printf("Read from address %x.\n", MAX77976_ADDR);
-    } 
+    i2c_read_error_handling(i2c1,MAX77976_ADDR, &rxdata, 1, false);
 
     uint8_t buf[2];
-    i2c_write_blocking(i2c1, MAX77976_ADDR, 0x0, 1, true);
-    i2c_read_blocking(i2c1, MAX77976_ADDR, &rxdata, 1, false);
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, 0x0, 1, true);
+    i2c_read_error_handling(i2c1, MAX77976_ADDR, &rxdata, 1, false);
     printf("Read CHIP_ID %x.\n", rxdata);
 
     // Unlock the write capability of CHGPROT
     buf[0] = 0x1C; // CHAG_CNFG_06 
     buf[1] = 0x0C;   
-    i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, buf, 2, false);
 
     // Set default mode to CHARGE-BUCK
     buf[0] = MAX77976_REG_CHG_CNFG_00_ADDR;
     buf[1] = MAX77976_REG_CHG_CNFG_00_MODE_CHARGE_BUCK;
-    i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, buf, 2, false);
 
     // Set Fast-Charge Current limit to 1200mA
     buf[0] = MAX77976_REG_CHG_CNFG_02_ADDR;
     buf[1] = MAX77976_REG_CHG_CNFG_02_CHG_CC_1250;
-    i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, buf, 2, false);
 
     // Set switching frequency to 2.6 MHz
     buf[0] = MAX77976_REG_CHG_CNFG_08_ADDR;
     buf[1] = bit_assign(MAX77976_REG_CHG_CNFG_08_RESET,
                         MAX77976_REG_CHG_CNFG_08_FSW_2P6, 
                         MAX77976_REG_CHG_CNFG_08_FSW_LSB); // All reset values are 0 other than FSW. Seeting this also to 0 results in 2.6MHz
-    i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, buf, 2, false);
 
     // Set charge input current limit to 3000mA and leave Input Current Limit Soft Start Clock as default value (1024 usec)
     buf[0] = MAX77976_REG_CHG_CNFG_09_ADDR;
@@ -81,12 +74,12 @@ int max77976_init(uint GPIO){
                   MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_LSB,
                   MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_MSB,
                   MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_3000);
-    i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, buf, 2, false);
 
     // Lock the write capability of CHGPROT
     buf[0] = 0x1C; // CHAG_CNFG_06 
     buf[1] = 0x00;   
-    i2c_write_blocking(i2c1, MAX77976_ADDR, buf, 2, false);
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, buf, 2, false);
     return 0;
 }
 
@@ -95,8 +88,8 @@ void max77976_log_current_limit(){
     memset(return_buf, 0, sizeof return_buf);
     send_buf[0] = 0x1F; //CHG_CNFG_09
     
-    i2c_write_blocking(i2c1, MAX77976_ADDR, send_buf, 1, true);
-    i2c_read_blocking(i2c1, MAX77976_ADDR, return_buf, 1, false);
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, send_buf, 1, true);
+    i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
 
     uint8_t CHGIN_ILIM = return_buf[0] & 0x3F;
     
@@ -104,8 +97,8 @@ void max77976_log_current_limit(){
     memset(return_buf, 0, sizeof return_buf);
     send_buf[0] = 0x18; //CHG_CNFG_02
     
-    i2c_write_blocking(i2c1, MAX77976_ADDR, send_buf, 1, true);
-    i2c_read_blocking(i2c1, MAX77976_ADDR, return_buf, 1, false);
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, send_buf, 1, true);
+    i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
 
     uint8_t CHG_CC = return_buf[0] & 0x7F;
 
@@ -118,16 +111,16 @@ void max77976_toggle_led(){
     memset(return_buf, 0, sizeof return_buf);
     send_buf[0] = 0x24; //STAT_CNFG
     
-    i2c_write_blocking(i2c1, MAX77976_ADDR, send_buf, 1, true);
-    i2c_read_blocking(i2c1, MAX77976_ADDR, return_buf, 1, false);
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, send_buf, 1, true);
+    i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
 
     uint8_t STAT_EN = (return_buf[0] & (1<<7)) >> 7;
     if (STAT_EN){
         send_buf[1] = 0x00; // Turn off
-        i2c_write_blocking(i2c1, MAX77976_ADDR, send_buf, 2, false);
+        i2c_write_error_handling(i2c1, MAX77976_ADDR, send_buf, 2, false);
     }else{
         send_buf[1] = 0x80; // Turn on
-        i2c_write_blocking(i2c1, MAX77976_ADDR, send_buf, 2, false);
+        i2c_write_error_handling(i2c1, MAX77976_ADDR, send_buf, 2, false);
     }
 }
 
@@ -138,8 +131,8 @@ void max77976_get_chg_details(){
     send_buf[1] = 0x14; //CHG_DETAILS_01
     send_buf[2] = 0x15; //CHG_DETAILS_02
     
-    i2c_write_blocking(i2c1, MAX77976_ADDR, &send_buf[0], 1, true);
-    i2c_read_blocking(i2c1, MAX77976_ADDR, return_buf, 1, false);
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, &send_buf[0], 1, true);
+    i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
     uint8_t CHG_DETAILS_00 = return_buf[0];
     uint8_t CHGIN_DTLS = (CHG_DETAILS_00 & 0x60) >> 5;
     printf("CHG_DETAILS_00: 0x%02x\n CHGIN_DTLS: 0x%02x\n", CHG_DETAILS_00, CHGIN_DTLS);
@@ -159,8 +152,8 @@ void max77976_get_chg_details(){
 	    break;
     }printf("\n"); 
     
-    i2c_write_blocking(i2c1, MAX77976_ADDR, &send_buf[1], 1, true);
-    i2c_read_blocking(i2c1, MAX77976_ADDR, return_buf, 1, false);
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, &send_buf[1], 1, true);
+    i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
     uint8_t CHG_DETAILS_01 = return_buf[0];
     uint8_t TREG = (CHG_DETAILS_01 & (1 << 7) ) >> 7;
     uint8_t BAT_DTLS = (CHG_DETAILS_01 & 0x70) >> 4;
@@ -255,8 +248,8 @@ void max77976_get_chg_details(){
 	    break;
     }printf("\n"); 
     
-    i2c_write_blocking(i2c1, MAX77976_ADDR, &send_buf[2], 1, true);
-    i2c_read_blocking(i2c1, MAX77976_ADDR, return_buf, 1, false);
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, &send_buf[2], 1, true);
+    i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
     uint8_t CHG_DETAILS_02 = return_buf[0];
     uint8_t THM_DTLS = (CHG_DETAILS_02 & 0x70) >> 4;
     uint8_t BYP_DTLS = (CHG_DETAILS_02 & 0x0F);

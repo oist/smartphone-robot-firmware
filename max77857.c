@@ -3,6 +3,7 @@
 #include "hardware/i2c.h"
 #include "max77857.h"
 #include "bit_ops.h"
+#include "robot.h"
 
 void max77857_init() {
     uint8_t buf[2];
@@ -24,7 +25,7 @@ void max77857_init() {
                   MAX77857_REG_REG_CONT1_FREQ_LSB,
                   MAX77857_REG_REG_CONT1_FREQ_MSB,
                   MAX77857_REG_REG_CONT1_FREQ_DEFAULT);
-    i2c_write_blocking(i2c1, MAX77857_ADDR, buf, 2, false);
+    i2c_write_error_handling(i2c1, MAX77857_ADDR, buf, 2, false);
 
     //// CONT2 and VREF
     //buf[0] = MAX77857_REG_REG_CONT2_ADDR;
