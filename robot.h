@@ -1,6 +1,8 @@
 #ifndef ROBOT_
 #define ROBOT_
 
+#include "hardware/i2c.h"
+
 void on_start();
 void i2c_start();
 void bq27742_g1_init();
@@ -11,6 +13,8 @@ void quad_encoders_init();
 void blink_led(uint8_t blinkCnt, int onTime, int offTime);
 void sample_adc_inputs();
 void init_queues();
+void i2c_read_error_handling(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t len, bool nostop);
+void i2c_write_error_handling(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src, size_t len, bool nostop);
 
 typedef struct
 {

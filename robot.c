@@ -14,6 +14,7 @@
 #include "pico/util/queue.h"
 #include "pico/multicore.h"
 #include <assert.h>
+#include "CException.h"
 
 static queue_t call_queue;
 static queue_t results_queue;
@@ -30,6 +31,8 @@ void on_start();
 void on_shutdown();
 void results_queue_pop();
 int32_t call_queue_pop();
+
+volatile CEXCEPTION_T e;
 
 // core1 will be used to process all function calls requested by interrupt calls on core0
 void core1_entry() {
@@ -73,7 +76,7 @@ int main(){
     {
 	results_queue_pop();
         sample_adc_inputs();
-	//bq27742_g1_poll();
+	bq27742_g1_poll();
 	max77976_get_chg_details();
 	max77976_log_current_limit();
 	max77976_toggle_led();
@@ -104,7 +107,7 @@ void on_start(){
     max77976_init(BATTERY_CHARGER_INTERRUPT_PIN);
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO);
     max77958_init(MAX77958_INTB, &call_queue, &results_queue);
-    //bq27742_g1_init();
+    bq27742_g1_init();
     // Be sure to do this last
     sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
 }
@@ -222,4 +225,32 @@ void drv8830drcr_set_moto_lvl(){
 
 void quad_encoders_callback(){
     // GPIO12-15 monitor past and current states to determine counts
+}
+
+void i2c_write_error_handling(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src, size_t len, bool nostop){
+    Try{
+	    int result;
+	    result = i2c_write_timeout_us(i2c, addr, src, len, nostop, I2C_TIMEOUT);
+	    if (result < 0){
+		    Throw(result);
+	    }
+	} 
+    Catch(e){
+	    printf("Error during i2c_write. Returned value of %i \n", e);
+	    assert(false);
+	}
+}
+
+void i2c_read_error_handling(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t len, bool nostop){
+    Try{
+	    int result;
+	    result = i2c_read_timeout_us(i2c, addr, dst, len, nostop, I2C_TIMEOUT);
+	    if (result < 0){
+		    Throw(result);
+	    }
+	} 
+    Catch(e){
+	    printf("Error during i2c_read. Returned value of %i \n", e);
+	    assert(false);
+	}
 }
