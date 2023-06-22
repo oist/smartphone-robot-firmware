@@ -360,7 +360,13 @@ static void pd_msg_response(){
 void max77958_shutdown(uint gpio_interrupt){
     opcode_queue_add(&gpio_set, gpio_bool_to_int32(false, false));
     opcode_queue_pop();
+    int i = 0;
     while (!opcodes_finished){
 	sleep_ms(100);
+	i++;
+	if (i > 10){
+	    printf("Error: Timed out waiting for GPIO to finish\n");
+	    assert(false);
+	}
     }
 }
