@@ -42,5 +42,6 @@ void bq27742_g1_get_temp();
 void bq27742_g1_get_soh();
 void bq27742_g1_get_flags();
 void bq27742_g1_shutdown();
+void bq27742_g1_fw_version_check();
 
 #endif

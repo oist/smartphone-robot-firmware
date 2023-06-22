@@ -108,6 +108,7 @@ void on_start(){
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO);
     max77958_init(MAX77958_INTB, &call_queue, &results_queue);
     bq27742_g1_init();
+    bq27742_g1_fw_version_check();
     // Be sure to do this last
     sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
 }

@@ -6,8 +6,8 @@
 #include <string.h>
 #include "robot.h"
 
-static uint8_t send_buf[2];
-static uint8_t return_buf[2];
+static uint8_t send_buf[4];
+static uint8_t return_buf[4];
 static uint32_t voltage = 0;
 static uint32_t temperature = 0;
 static uint32_t soh = 0;
@@ -167,6 +167,31 @@ void bq27742_g1_init() {
     //               BQ227742_G1_REG_REG_CONT1_ILM_MSB,
     //               BQ227742_G1_REG_REG_CONT1_ILM_DEFAULT);
     // Change internal compensation (COMP)
+}
+
+static void bq27742_g1_control(uint16_t subcommand_code){
+    memset(send_buf, 0, sizeof send_buf);
+    memset(return_buf, 0, sizeof return_buf);
+    send_buf[0] = 0x00;
+    //send_buf[1] = 0x01; // Apparently this is interpreted as the LSB for the SUBCOMMAND.
+    // LSB first (i.e. send 0x02 then 0x00)
+    send_buf[1] = (subcommand_code & 0x00FF);
+    send_buf[2] = (subcommand_code & 0xFF00) >> 8;
+    // This is wrong as it is MSB first
+    //send_buf[2] = (subcommand_code & 0xFF00) >> 8;
+    //send_buf[3] = (subcommand_code & 0x00FF);
+    // This does not work for some unknown reason. I need to write a 0x00 as a 4th byte?
+    //i2c_write_error_handling(i2c0, BQ27742_G1_ADDR, send_buf, 3, true);
+    i2c_write_error_handling(i2c0, BQ27742_G1_ADDR, send_buf, 4, true);
+    // Move pointer back to Control register for reading
+    send_buf[0] = 0x00;
+    i2c_write_error_handling(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
+    i2c_read_error_handling(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
+}
+
+void bq27742_g1_fw_version_check(){
+    bq27742_g1_control(0x0002); // Read FW Version
+    printf("FW Version: 0x%02x%02x\n", return_buf[1], return_buf[0]);
 }
 
 void bq27742_g1_shutdown(){
