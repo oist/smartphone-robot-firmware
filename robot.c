@@ -18,6 +18,7 @@
 
 static queue_t call_queue;
 static queue_t results_queue;
+static bool core1_shutdown_requested = false;
 
 void bq27742_g1_poll();
 void blink_led(uint8_t blinkCnt, int onTime, int offTime);
@@ -31,12 +32,13 @@ void on_start();
 void on_shutdown();
 void results_queue_pop();
 int32_t call_queue_pop();
+static void signal_stop_core1();
 
 volatile CEXCEPTION_T e;
 
 // core1 will be used to process all function calls requested by interrupt calls on core0
 void core1_entry() {
-    while (1) {
+    while (core1_shutdown_requested == false) {
         // Function pointer is passed to us via the queue_entry_t which also
         // contains the function parameter.
         // We provide an int32_t return value by simply pushing it back on the
@@ -56,6 +58,10 @@ int32_t call_queue_pop(){
     int32_t result = (*func)(entry.data);
     printf("core1_entry: result from calling call_queue entry = %d\n", (int)result);
     return result;
+}
+
+void stop_core1(){
+    core1_shutdown_requested = true;
 }
 
 void results_queue_pop(){
@@ -125,6 +131,7 @@ void on_shutdown(){
     //wrm483265_10f5_12v_g_shutdown(WIRELESS_CHG_EN);
     adc_shutdown();
     i2c_stop();
+    signal_stop_core1();
     free_queues();
 }
 
@@ -143,6 +150,14 @@ void free_queues(){
     }
     queue_free(&call_queue);
     queue_free(&results_queue);
+}
+
+static void signal_stop_core1(){
+    queue_entry_t stop_entry = {&stop_core1, 0};
+    if(!queue_try_add(&call_queue, &stop_entry)){
+	printf("call_queue is full");
+        assert(false);
+    }
 }
 
 void i2c_start(){
