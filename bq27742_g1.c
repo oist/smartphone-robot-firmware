@@ -180,6 +180,12 @@ static void bq27742_g1_control(uint16_t subcommand_code){
     // This is wrong as it is MSB first
     //send_buf[2] = (subcommand_code & 0xFF00) >> 8;
     //send_buf[3] = (subcommand_code & 0x00FF);
+    //
+    // void i2c_write_error_handling(i2c_inst_t *i2c, 
+    // uint8_t addr, 
+    // const uint8_t *src, 
+    // size_t len, 
+    // bool nostop);
     // This does not work for some unknown reason. I need to write a 0x00 as a 4th byte?
     //i2c_write_error_handling(i2c0, BQ27742_G1_ADDR, send_buf, 3, true);
     i2c_write_error_handling(i2c0, BQ27742_G1_ADDR, send_buf, 4, true);
