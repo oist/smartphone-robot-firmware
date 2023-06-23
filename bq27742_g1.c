@@ -11,6 +11,7 @@ static uint8_t return_buf[4];
 static uint32_t voltage = 0;
 static uint32_t temperature = 0;
 static uint32_t soh = 0;
+static void bq27742_g1_clear_shutdown();
 
 void bq27742_g1_get_voltage(){
     memset(return_buf, 0, sizeof return_buf);
@@ -157,6 +158,7 @@ void bq27742_g1_get_flags(){
 }
 
 void bq27742_g1_init() {
+    bq27742_g1_clear_shutdown();
     // uint8_t buf[2];
 
     // ToDo Implement Key Daya Flash Parameters somehow.
@@ -195,10 +197,21 @@ static void bq27742_g1_control(uint16_t subcommand_code){
     i2c_read_error_handling(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
 }
 
+static void bq27742_g1_set_shutdown(){
+    bq27742_g1_control(0x0013); 
+    printf("Shutting Down bq27742_g1\n");
+}
+
+static void bq27742_g1_clear_shutdown(){
+    bq27742_g1_control(0x0014); 
+    printf("Clearing Shutdown on bq27742_g1\n");
+}
+
 void bq27742_g1_fw_version_check(){
     bq27742_g1_control(0x0002); // Read FW Version
     printf("FW Version: 0x%02x%02x\n", return_buf[1], return_buf[0]);
 }
 
 void bq27742_g1_shutdown(){
+    bq27742_g1_set_shutdown();
 }

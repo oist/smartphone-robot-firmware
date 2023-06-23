@@ -117,7 +117,7 @@ void on_start(){
 }
 
 void on_shutdown(){
-    //bq27742_g1_shutdown();
+    bq27742_g1_shutdown();
     max77958_shutdown(MAX77958_INTB);
     //sn74ahc125rgyr_shutdown(SN74AHC125RGYR_GPIO);
     //max77976_shutdown();
