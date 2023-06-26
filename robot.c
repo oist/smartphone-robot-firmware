@@ -80,14 +80,14 @@ int main(){
     bool shutdown = false;
     on_start();
     int i = 0;
-    while (i < 1000)
+    while (i < 10000)
     {
 	results_queue_pop();
-        sample_adc_inputs();
+        //sample_adc_inputs();
 	//bq27742_g1_poll();
-	max77976_get_chg_details();
-	max77976_log_current_limit();
-	max77976_toggle_led();
+	//max77976_get_chg_details();
+	//max77976_log_current_limit();
+	//max77976_toggle_led();
 	if (shutdown){
 	    on_shutdown();
 	    break;
@@ -109,7 +109,8 @@ void on_start(){
     init_queues();
     multicore_launch_core1(core1_entry);
     // Waiting to make sure I can catch it within minicom
-    //sleep_ms(3000);
+    sleep_ms(3000);
+    printf("done waiting\n");
     i2c_start();
     adc_init();
     wrm483265_10f5_12v_g_init(WIRELESS_CHG_EN);
@@ -117,6 +118,8 @@ void on_start(){
     max77976_init(BATTERY_CHARGER_INTERRUPT_PIN);
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO);
     max77958_init(MAX77958_INTB, &call_queue, &results_queue);
+    sleep_ms(1000);
+    printf("done waiting 2\n");
     bq27742_g1_init();
     bq27742_g1_fw_version_check();
     // Be sure to do this last
@@ -125,7 +128,6 @@ void on_start(){
 }
 
 void on_shutdown(){
-    bq27742_g1_shutdown();
     printf("Shutting down\n");
     max77958_shutdown(MAX77958_INTB);
     //sn74ahc125rgyr_shutdown(SN74AHC125RGYR_GPIO);
@@ -133,12 +135,13 @@ void on_shutdown(){
     //ncp3901_shutdown();
     //wrm483265_10f5_12v_g_shutdown(WIRELESS_CHG_EN);
     adc_shutdown();
-    i2c_stop();
     // Note this will shut off the battery to the rp2040 so unless you're plugged in, everything will fail here.
     // TODO how do I wake from this if the rp2040 has no power to respond??
 
     signal_stop_core1();
     free_queues();
+    bq27742_g1_shutdown();
+    //i2c_stop();
 }
 
 void init_queues(){
