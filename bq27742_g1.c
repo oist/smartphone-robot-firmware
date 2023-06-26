@@ -158,7 +158,9 @@ void bq27742_g1_get_flags(){
 }
 
 void bq27742_g1_init() {
+    printf("bq27742_g1 init started\n");
     bq27742_g1_clear_shutdown();
+    printf("bq27742_g1 init finished\n");
     // uint8_t buf[2];
 
     // ToDo Implement Key Daya Flash Parameters somehow.

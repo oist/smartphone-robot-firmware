@@ -159,7 +159,7 @@ static void opcode_read(){
 }
 
 void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
-
+    printf("max77958 init started\n");
     call_queue_ptr = cq;
     return_queue_ptr = rq;
     queue_init(&opcode_queue, sizeof(queue_entry_t), 16);
@@ -194,6 +194,7 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     opcode_queue_add(&gpio_set, gpio_bool_to_int32(true, false));
 
     opcode_queue_pop();
+    printf("max77958 init finished\n");
 }
 
 // check if opcode_queue has entries remaining
@@ -204,8 +205,10 @@ static bool opcode_queue_pop(){
     queue_entry_t entry;
     // if there is an entry in the opcode_queue, remove it and add it to the call_queue
     if (queue_try_remove(&opcode_queue, &entry)){
+	printf("removed entry from opcode_queue\n");
 	// if the call_queue is full, assert
 	if(queue_try_add(call_queue_ptr, &entry)){
+	    printf("added opcode entry to call_queue\n");
 	    return true;
 	}else{
 	    printf("opcode_queue_pop: call_queue full\n");

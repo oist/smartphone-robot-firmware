@@ -55,6 +55,7 @@ int32_t call_queue_pop(){
     queue_entry_t entry;
     queue_remove_blocking(&call_queue, &entry);
     int32_t (*func)() = (int32_t(*)())(entry.func);
+    printf("core1_entry: calling function pointer from call_queue entry\n");
     int32_t result = (*func)(entry.data);
     printf("core1_entry: result from calling call_queue entry = %d\n", (int)result);
     return result;
@@ -87,12 +88,11 @@ int main(){
 	max77976_get_chg_details();
 	max77976_log_current_limit();
 	max77976_toggle_led();
-        printf("sampling ..\n");
-	// This sleep or some other time consuming function must occur else can't reset from gdb as thread will be stuck in tight_loop_contents()
 	if (shutdown){
 	    on_shutdown();
 	    break;
 	}else{
+	    // This sleep or some other time consuming function must occur else can't reset from gdb as thread will be stuck in tight_loop_contents()
             sleep_ms(1);
 	    tight_loop_contents();
 	}
@@ -104,6 +104,7 @@ int main(){
 }
 
 void on_start(){
+    printf("on_start\n");
     stdio_init_all();
     init_queues();
     multicore_launch_core1(core1_entry);
@@ -120,10 +121,12 @@ void on_start(){
     bq27742_g1_fw_version_check();
     // Be sure to do this last
     sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
+    printf("on_start complete\n");
 }
 
 void on_shutdown(){
     bq27742_g1_shutdown();
+    printf("Shutting down\n");
     max77958_shutdown(MAX77958_INTB);
     //sn74ahc125rgyr_shutdown(SN74AHC125RGYR_GPIO);
     //max77976_shutdown();
@@ -131,6 +134,9 @@ void on_shutdown(){
     //wrm483265_10f5_12v_g_shutdown(WIRELESS_CHG_EN);
     adc_shutdown();
     i2c_stop();
+    // Note this will shut off the battery to the rp2040 so unless you're plugged in, everything will fail here.
+    // TODO how do I wake from this if the rp2040 has no power to respond??
+
     signal_stop_core1();
     free_queues();
 }
