@@ -79,8 +79,8 @@ void results_queue_pop(){
 int main(){
     bool shutdown = false;
     on_start();
-    int i = 0;
-    while (i < 10000)
+    //int i = 0;
+    while (true)
     {
 	results_queue_pop();
         //sample_adc_inputs();
@@ -96,7 +96,7 @@ int main(){
             sleep_ms(1);
 	    tight_loop_contents();
 	}
-	i++;
+//	i++;
     }
     on_shutdown();
 
