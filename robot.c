@@ -15,6 +15,7 @@
 #include "pico/multicore.h"
 #include <assert.h>
 #include "CException.h"
+#include "quad_encoders.h"
 
 static queue_t call_queue;
 static queue_t results_queue;
@@ -124,6 +125,7 @@ void on_start(){
     bq27742_g1_fw_version_check();
     // Be sure to do this last
     sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
+    encoder_init();
     printf("on_start complete\n");
 }
 
