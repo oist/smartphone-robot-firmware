@@ -447,15 +447,34 @@ static void pd_msg_response(){
     i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
     i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 1, false);
     printf("PD_STATUS0: 0x%02x\n", return_buf[0]);
-    if (return_buf[0] == PDMSG_PRSWAP_SRCTOSWAP){
-        //TODO implement later
-    }else if (return_buf[0] == PDMSG_PRSWAP_SWAPTOSNK){
-	vbus_turn_off();
-    }else if (return_buf[0] == PDMSG_PRSWAP_SNKTOSWAP){
-        //TODO implement later
-    }else if (return_buf[0] == PDMSG_PRSWAP_SWAPTOSRC){
-	vbus_turn_on();
-    }
+    switch (return_buf[0]){
+        case PDMSG_PRSWAP_SRCTOSWAP:
+	    printf("PD Message: PRSWAP_SRCTOSWAP\n");
+	    break;
+	case PDMSG_PRSWAP_SWAPTOSNK:
+	    printf("PD Message: PRSWAP_SWAPTOSNK\n");
+	    vbus_turn_off();
+	    break;
+	case PDMSG_PRSWAP_SNKTOSWAP:
+	    printf("PD Message: PRSWAP_SNKTOSWAP\n");
+	    break;
+	case PDMSG_PRSWAP_SWAPTOSRC:
+	    printf("PD Message: PRSWAP_SWAPTOSRC\n");
+	    vbus_turn_on();
+	    break;
+	case PDMSG_VDM_NAK_RECEIVED:
+	    printf("PD Message: VDM_NAK Received\n");
+	case PDMSG_VDM_BUSY_RECEIVED:
+	    printf("PD Message: VDM_BUSY_RECEIVED\n");
+	case PDMSG_VDM_ACK_RECEIVED:
+	    printf("PD Message: VDM_ACK_RECEIVED\n");
+	case PDMSG_VDM_REQ_RECEIVED:
+	    printf("PD Message: VDM_REQ_RECEIVED\n");
+	    break;
+	default:
+	    printf("PD Message: Unknown\n");
+	    break;
+	}	
 }
 
 void max77958_shutdown(uint gpio_interrupt){
