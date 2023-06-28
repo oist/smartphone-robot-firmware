@@ -85,7 +85,7 @@ static void on_ccstat_change(){
 	    break;
 	case 0b001:
 	    printf("ccstat changed to SINK\n");
-	    //vbus_turn_off();
+	    vbus_turn_off();
 	    break;
 	case 0b010:
 	    printf("ccstat changed to SOURCE\n");
