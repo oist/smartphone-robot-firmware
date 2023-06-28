@@ -125,7 +125,7 @@ void on_start(){
     bq27742_g1_fw_version_check();
     // Be sure to do this last
     sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
-    encoder_init();
+    encoder_init(&call_queue);
     printf("on_start complete\n");
 }
 

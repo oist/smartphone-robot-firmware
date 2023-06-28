@@ -1,6 +1,9 @@
 #ifndef QUAD_ENCODERS_
 #define QUAD_ENCODERS_
 
+#include "pico/types.h"
+#include "pico/util/queue.h"
+
 // GPIO pins on rp2040
 #include <stdint.h>
 #define ENC_11 _u(12)
@@ -10,7 +13,7 @@
 
 #define ENCODER_COUNT 2
 
-void encoder_init();
+void encoder_init(queue_t* call_queue);
 int32_t get_encoder_count(int encoder);
 void set_encoder_count(int encoder, int32_t value);
 
