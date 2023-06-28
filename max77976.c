@@ -45,6 +45,10 @@ int max77976_init(uint GPIO){
     i2c_write_error_handling(i2c1, MAX77976_ADDR, 0x0, 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, &rxdata, 1, false);
     printf("Read CHIP_ID %x.\n", rxdata);
+    if (rxdata != 0x76){
+	printf("MAX77976 not responding. Exiting.\n");
+	assert(false);
+    }
 
     // Unlock the write capability of CHGPROT
     buf[0] = 0x1C; // CHAG_CNFG_06 
