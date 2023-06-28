@@ -35,6 +35,13 @@ static void opcode_queue_add(void (*opcode_func)(), int32_t opcode_data);
 static int32_t gpio_bool_to_int32(bool _GPIO4, bool _GPIO5);
 static void gpio_set(int32_t gpio_val);
 static void set_src_pdos();
+static void on_ccstat_change();
+static void on_chgtype_change();
+static void on_ccvcnstat_change();
+static void on_ccistat_change();
+static void on_ccpinstat_change();
+static void vbus_turn_off();
+static void vbus_turn_on();
 
 static void on_interrupt(unsigned int gpio, long unsigned int events){
     if(!queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry)){
@@ -44,6 +51,7 @@ static void on_interrupt(unsigned int gpio, long unsigned int events){
 }
 
 static int on_pd_msg_received(){
+    printf("Rec PD message\n");
     queue_entry_t on_pd_msg_received_entry = {&pd_msg_response, 0};
     if (!queue_try_add(call_queue_ptr, &on_pd_msg_received_entry)){
 	printf("call_queue is full");
@@ -60,6 +68,57 @@ static int on_opcode_cmd_response(){
         opcodes_finished = true;
     }
     return 0;
+}
+
+static void on_ccstat_change(){
+    printf("ccstat changed\n");
+    memset(send_buf, 0, sizeof send_buf);
+    memset(return_buf, 0, sizeof return_buf);
+    send_buf[0] = 0xC; // CC_STATUS0 
+    i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
+    i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 1, false);
+    uint8_t CCStat = return_buf[0] & 0b111;
+    switch (CCStat){
+	case 0b000:
+	    printf("ccstat changed to no connection\n");
+	    vbus_turn_off();
+	    break;
+	case 0b001:
+	    printf("ccstat changed to SINK\n");
+	    //vbus_turn_off();
+	    break;
+	case 0b010:
+	    printf("ccstat changed to SOURCE\n");
+	    //vbus_turn_on();
+	    break;
+	default: 
+	    printf("ccstat changed to %d\n", CCStat);
+	    break;
+	}
+}
+
+static void on_chgtype_change(){
+    printf("chgtype changed\n");
+    memset(send_buf, 0, sizeof send_buf);
+    memset(return_buf, 0, sizeof return_buf);
+    send_buf[0] = 0xA; // BC_STATUS
+    i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
+    i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 1, false);
+    uint8_t ChgType = return_buf[0] & 0b11;
+    switch (ChgType){
+	case 0b000:
+	    printf("ChgTyp changed to nothing attached\n");
+	    break;
+	case 0b001:
+	    printf("ChgTyp changed to SDP, USB cable attached\n");
+	    break;
+	case 0b010:
+	    printf("ChgTyp changed to CDP, Charging Downstream Port\n");
+	    break;
+	default: 
+	    printf("ChgTyp changed to DCP, Dedicated charger\n");
+	    break;
+	}
 }
 
 static void opcode_queue_add(void (*opcode_func)(), int32_t opcode_data){
@@ -81,18 +140,51 @@ static int parse_interrupt_vals(){
     uint APCmdResI_mask = 1 << 7;
     uint PSRDYI_mask = 1 << 6;
     uint PDMsgI = 1 << 7;
+    uint CCStat = 1 << 0;
+    uint ChgType = 1 << 1;
+    uint CCVcnStatI = 1 << 1;
+    uint CCIStatI = 1 << 2;
+    uint CCPinStatI = 1 << 3;
     if (*UIC_INT & APCmdResI_mask){
 	on_opcode_cmd_response();
-    }else if (*PD_INT & PSRDYI_mask){
+    }
+    if (*PD_INT & PSRDYI_mask){
 	printf("Power source ready\n");
 	//on_power_source_ready();
-    }else if (*PD_INT & PDMsgI){
-        printf("Rec PD message\n");
+    }
+    if (*PD_INT & PDMsgI){
 	on_pd_msg_received();
+    }
+    if (*UIC_INT & ChgType){
+	on_chgtype_change();
+    }
+    if (*CC_INT & CCStat){
+	on_ccstat_change();
+    }
+    if (*CC_INT & CCVcnStatI){
+	on_ccvcnstat_change();
+    }
+    if (*CC_INT & CCIStatI){
+	on_ccistat_change();
+    }
+    if (*CC_INT & CCPinStatI){
+	on_ccpinstat_change();
     }
     return -1;
     
     // Check for other relevant interrupts here and do something with that info...
+}
+
+static void on_ccvcnstat_change(){
+    printf("CCStat changed\n");
+}
+
+static void on_ccistat_change(){
+    printf("CCIStat changed\n");
+}
+
+static void on_ccpinstat_change(){
+    printf("CCPinStat changed\n");
 }
 
 static void get_interrupt_vals(){
@@ -115,9 +207,9 @@ static void get_interrupt_masks(){
 static void set_interrupt_masks(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = REG_UIC_INT_M; // 0x10 UIC_INT_M Register
-    send_buf[1] = 0b01111111; // UIC_INT 0x4
-    send_buf[2] = 0b11111111; // CC_INT 0x5 all masked by default
-    send_buf[3] = 0b00111111; // PD_INT 0x6 unmasking PSRDYI
+    send_buf[1] = 0b01111101; // UIC_INT_M 0x10 values
+    send_buf[2] = 0b11110000; // CC_INT_M 0x11 values
+    send_buf[3] = 0b00111111; // PD_INT_M 0x12 unmasking PSRDYI
     i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 4, false);
 }
 
@@ -337,6 +429,16 @@ static void set_snk_pdos(){
     opcode_write(send_buf);
 }
 
+static void vbus_turn_off(){
+    opcode_queue_add(&gpio_set, gpio_bool_to_int32(false, true));
+    opcode_queue_pop();
+}
+
+static void vbus_turn_on(){
+    opcode_queue_add(&gpio_set, gpio_bool_to_int32(true, true));
+    opcode_queue_pop();
+}
+
 static void pd_msg_response(){
     // Read the 0xE PD_STATUS0 register as it contains the PD message Type recieved 
     memset(send_buf, 0, sizeof send_buf);
@@ -346,17 +448,13 @@ static void pd_msg_response(){
     i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 1, false);
     printf("PD_STATUS0: 0x%02x\n", return_buf[0]);
     if (return_buf[0] == PDMSG_PRSWAP_SRCTOSWAP){
-	    //TODO implement later
+        //TODO implement later
     }else if (return_buf[0] == PDMSG_PRSWAP_SWAPTOSNK){
-	    // turn off VBus
-	    opcode_queue_add(&gpio_set, gpio_bool_to_int32(false, true));
-            opcode_queue_pop();
+	vbus_turn_off();
     }else if (return_buf[0] == PDMSG_PRSWAP_SNKTOSWAP){
-	    //TODO implement later
+        //TODO implement later
     }else if (return_buf[0] == PDMSG_PRSWAP_SWAPTOSRC){
-	    // turn on Vbus
-	    opcode_queue_add(&gpio_set, gpio_bool_to_int32(true, true));
-	    opcode_queue_pop();
+	vbus_turn_on();
     }
 }
 
