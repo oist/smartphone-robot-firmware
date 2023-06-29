@@ -16,6 +16,7 @@
 #include <assert.h>
 #include "CException.h"
 #include "quad_encoders.h"
+#include "drv8830.h"
 
 static queue_t call_queue;
 static queue_t results_queue;
@@ -126,6 +127,7 @@ void on_start(){
     // Be sure to do this last
     sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
     encoder_init(&call_queue);
+    drv8830_init();
     printf("on_start complete\n");
 }
 
