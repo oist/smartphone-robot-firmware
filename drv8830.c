@@ -25,6 +25,12 @@ void drv8830_init() {
     i2c_write_error_handling(i2c, MOTOR_RIGHT_ADDRESS, send_buf, 1, true);
     i2c_read_error_handling(i2c, MOTOR_RIGHT_ADDRESS, return_buf, 2, false);
     printf("Right motor fault register: %d\n", return_buf[0]);
+
+    set_voltage(MOTOR_LEFT, 3.0);
+    set_voltage(MOTOR_RIGHT, 3.0);
+    sleep_ms(5000);
+    set_voltage(MOTOR_LEFT, 0.0);
+    set_voltage(MOTOR_RIGHT, 0.0);
 }
 
 void set_voltage(Motor motor, float voltage) {
