@@ -33,6 +33,12 @@ void drv8830_init() {
     set_voltage(MOTOR_RIGHT, 0.0);
 }
 
+/*
+ * Set the voltage of the specified motor.
+ *
+ * @param motor The motor to set the voltage of.
+ * @param voltage The voltage to set the motor to. This should be between -5.06V and 5.06V.
+ */
 void set_voltage(Motor motor, float voltage) {
     // Exclude or truncate voltages between -0.48V and 0.48V to 0V
     if (voltage >= -0.48 && voltage <= 0.48) {
