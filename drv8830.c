@@ -57,6 +57,8 @@ void set_voltage(Motor motor, float voltage) {
 
     // Convert voltage to control value (-0x3F to 0x3F)
     int16_t control_value = (int16_t)(((64 * abs_voltage) / (4 * 1.285)) - 1);
+    // voltage is defined by bits 2-7. Shift the control value to the correct position
+    control_value = control_value << 2;
 
     // Set the IN1 and IN2 bits based on the sign of the voltage
     if (voltage < 0) {
