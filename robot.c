@@ -46,7 +46,7 @@ void core1_entry() {
         // We provide an int32_t return value by simply pushing it back on the
         // return queue which also indicates the result is ready.
 
-	sleep_ms(1);
+	//sleep_ms(1);
 	int32_t result = call_queue_pop();
         queue_add_blocking(&results_queue, &result);
         // as an alternative to polling the return queue, you can send an irq to core0 to add another entry to call_queue
@@ -56,10 +56,9 @@ void core1_entry() {
 int32_t call_queue_pop(){
     queue_entry_t entry;
     queue_remove_blocking(&call_queue, &entry);
+    printf("call_queue entry removed. call_queue has %d entries remaining to handle\n", queue_get_level(&call_queue));
     int32_t (*func)() = (int32_t(*)())(entry.func);
-    printf("core1_entry: calling function pointer from call_queue entry\n");
     int32_t result = (*func)(entry.data);
-    printf("core1_entry: result from calling call_queue entry = %d\n", (int)result);
     return result;
 }
 
@@ -74,7 +73,7 @@ void results_queue_pop(){
         //queue_try_remove(&results_queue, &entry);
         queue_remove_blocking(&results_queue, &entry);
         // TODO implement what to do with results_queue entries.
-        printf("Handled an entry from the results queue\n");
+        printf("results_queue has %d entries remaining to handle\n", queue_get_level(&results_queue));
     }
 }
 
@@ -95,7 +94,7 @@ int main(){
 	    break;
 	}else{
 	    // This sleep or some other time consuming function must occur else can't reset from gdb as thread will be stuck in tight_loop_contents()
-            sleep_ms(1);
+            // sleep_ms(1);
 	    tight_loop_contents();
 	}
 //	i++;
@@ -127,6 +126,7 @@ void on_start(){
     // Be sure to do this last
     sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
     encoder_init(&call_queue);
+    sleep_ms(1000);
     drv8830_init();
     printf("on_start complete\n");
 }
@@ -149,7 +149,7 @@ void on_shutdown(){
 }
 
 void init_queues(){
-    queue_init(&call_queue, sizeof(queue_entry_t), 8);
+    queue_init(&call_queue, sizeof(queue_entry_t), 256);
     queue_init(&results_queue, sizeof(int32_t), 8);
 }
 
