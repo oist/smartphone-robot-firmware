@@ -34,8 +34,8 @@ void encoder_init(queue_t* call_queue) {
 static void on_edge_fall(uint gpio, uint32_t events){
     queue_entry_t on_edge_fall_entry = {&encoder_interrupt_handler, gpio};
     if (!queue_try_add(call_queue_ptr, &on_edge_fall_entry)){
-	printf("call_queue is full");
-	assert(false);
+        printf("call_queue is full");
+        assert(false);
     }
 }
 
