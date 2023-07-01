@@ -46,6 +46,7 @@ void encoder_interrupt_handler(uint gpio) {
             uint32_t channel_b = gpio_get(encoder_pins[i][1]);
             int32_t increment = (channel_a == channel_b) ? 1 : -1;
             encoder_count[i] += increment;
+            printf("encoder %d count: %d\n", i, (int) encoder_count[i]);
             break;
         }
     }

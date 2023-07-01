@@ -126,8 +126,10 @@ void on_start(){
     // Be sure to do this last
     sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
     encoder_init(&call_queue);
-    sleep_ms(1000);
     drv8830_init();
+    sleep_ms(1000);
+    set_voltage(MOTOR_LEFT, 3);
+    set_voltage(MOTOR_RIGHT, 3);
     printf("on_start complete\n");
 }
 
