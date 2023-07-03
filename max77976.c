@@ -11,6 +11,7 @@ static void max77976_onEXTUSBCHG_disconnect();
 static void max77976_onHardwareInterrupt();
 static uint8_t send_buf[3];
 static uint8_t return_buf[2];
+static uint8_t _gpio;
 
 void max77976_factory_ship_mode_check(){
     // Check if CONNECTION_ANDROID or CONNECTION_PC occured in last hour
@@ -23,8 +24,12 @@ void max77976_factory_ship_mode_check(){
 }
 
 // on interrupt from MAX77976
-static void on_interrupt(uint gpio, ulong events)
+static void on_interrupt()
 {
+    if (gpio_get_irq_event_mask(_gpio) & GPIO_IRQ_EDGE_RISE){
+	gpio_acknowledge_irq(_gpio, GPIO_IRQ_EDGE_RISE);
+	// printf("Rising edge detected on max77976.\n");
+    }
     // Put the GPIO event(s) that just happened into event_str
     // so we can print it
     // gpio_event_string(event_str, events);
@@ -34,7 +39,10 @@ static void on_interrupt(uint gpio, ulong events)
 
 
 int max77976_init(uint GPIO){
-    gpio_set_irq_enabled_with_callback(GPIO, GPIO_IRQ_EDGE_RISE, true, &on_interrupt);
+    _gpio = GPIO;
+
+    gpio_add_raw_irq_handler(_gpio, &on_interrupt);
+    gpio_set_irq_enabled(_gpio, GPIO_IRQ_EDGE_RISE, true);
     
     // Check if responding as i2c slave before trying to write to it
     uint8_t rxdata;
