@@ -13,7 +13,7 @@
 static uint8_t send_buf[33] = {0};
 static uint8_t return_buf[33] = {0}; // Will read full buffer from registers 0x52 to 0x71
 static int parse_interrupt_vals();
-static void on_interrupt(uint gpio, long unsigned int events);
+static void on_interrupt();
 static void get_interrupt_vals();
 static void get_interrupt_masks();
 static void set_interrupt_masks();
@@ -42,11 +42,16 @@ static void on_ccistat_change();
 static void on_ccpinstat_change();
 static void vbus_turn_off();
 static void vbus_turn_on();
+static uint8_t _gpio_interrupt;
+static uint8_t interrupt_mask = GPIO_IRQ_EDGE_FALL;
 
-static void on_interrupt(unsigned int gpio, long unsigned int events){
-    if(!queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry)){
-	printf("call_queue is full");
-        assert(false);
+static void on_interrupt(){
+    if (gpio_get_irq_event_mask(_gpio_interrupt) & interrupt_mask){
+        gpio_acknowledge_irq(_gpio_interrupt, interrupt_mask);	
+        if(!queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry)){
+            printf("call_queue is full");
+            assert(false);
+        }
     }
 }
 
@@ -251,6 +256,8 @@ static void opcode_read(){
 }
 
 void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
+    _gpio_interrupt = gpio_interrupt;
+
     printf("max77958 init started\n");
     call_queue_ptr = cq;
     return_queue_ptr = rq;
@@ -272,7 +279,9 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     gpio_set_dir(gpio_interrupt, GPIO_IN);
     gpio_get(gpio_interrupt);
     gpio_pull_up(gpio_interrupt);
-    gpio_set_irq_enabled_with_callback(gpio_interrupt, GPIO_IRQ_EDGE_FALL, true, &on_interrupt);
+    gpio_add_raw_irq_handler(_gpio_interrupt, &on_interrupt);
+    gpio_set_irq_enabled(_gpio_interrupt, GPIO_IRQ_EDGE_FALL, true); 
+
     // clear interupts
     get_interrupt_vals();
 
