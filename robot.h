@@ -45,4 +45,10 @@ typedef struct
 #define CHARGER_INT _u(6)
 #define MODE _u(0x16) // CHG_CNFG_00
 
+// Quad encoder pins
+#define ENCODER_1_CHANNEL_A _u(12)
+#define ENCODER_1_CHANNEL_B _u(13)
+#define ENCODER_2_CHANNEL_A _u(14)
+#define ENCODER_2_CHANNEL_B _u(15)
+
 #endif
