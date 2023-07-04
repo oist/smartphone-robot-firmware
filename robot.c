@@ -137,8 +137,13 @@ void on_start(){
     printf("done waiting, turning on motors.\n");
     set_voltage(MOTOR_LEFT, 2.5);
     set_voltage(MOTOR_RIGHT, 2.5);
-    sleep_ms(100);
-    printf("done waiting, turning off motors\n");
+    int i = 0;
+    while (i < 500){
+	quad_encoder_update();
+	i++;
+	tight_loop_contents();
+    }
+    printf("done counting, turning off motors\n");
     set_voltage(MOTOR_LEFT, 0);
     set_voltage(MOTOR_RIGHT, 0);
     printf("on_start complete\n");
@@ -278,12 +283,6 @@ static void robot_interrupt_handler(uint gpio, uint32_t event_mask){
 	    break;
 	case MAX77958_INTB:
 	    max77958_on_interrupt(gpio, event_mask);
-	    break;
-	case ENCODER_1_CHANNEL_A:
-	    quad_encoders_on_interrupt(gpio, event_mask);
-	    // Intentionally no break here as the interrupt is shared between encoders
-	case ENCODER_2_CHANNEL_A:
-	    quad_encoders_on_interrupt(gpio, event_mask);
 	    break;
     }
 }

@@ -56,6 +56,8 @@ add_executable(robot
 	       ${CMAKE_SOURCE_DIR}/include/unity/src
 	       )
        
+pico_generate_pio_header(robot ${CMAKE_CURRENT_LIST_DIR}/quadrature_encoder.pio)
+
 pico_set_program_name(robot "robot")
 pico_set_program_version(robot "0.1")
 
@@ -78,7 +80,11 @@ target_include_directories(robot PRIVATE
 target_link_libraries(robot 
     hardware_adc 
     hardware_i2c
-    CException)
+    CException
+    pico_stdlib
+    pico_multicore
+    hardware_pio
+    )
 
 pico_add_extra_outputs(robot)
 
