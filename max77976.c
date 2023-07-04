@@ -24,11 +24,12 @@ void max77976_factory_ship_mode_check(){
 }
 
 // on interrupt from MAX77976
-static void on_interrupt()
+void max77976_on_battery_charger_interrupt(uint gpio, uint32_t events)
 {
-    if (gpio_get_irq_event_mask(_gpio) & GPIO_IRQ_EDGE_RISE){
-	gpio_acknowledge_irq(_gpio, GPIO_IRQ_EDGE_RISE);
+    if (events & GPIO_IRQ_EDGE_RISE){
+	gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_RISE);
 	// printf("Rising edge detected on max77976.\n");
+	// remember this should only add to the call_queue, not execute the function
     }
     // Put the GPIO event(s) that just happened into event_str
     // so we can print it
@@ -41,7 +42,6 @@ static void on_interrupt()
 int max77976_init(uint GPIO){
     _gpio = GPIO;
 
-    gpio_add_raw_irq_handler(_gpio, &on_interrupt);
     gpio_set_irq_enabled(_gpio, GPIO_IRQ_EDGE_RISE, true);
     
     // Check if responding as i2c slave before trying to write to it

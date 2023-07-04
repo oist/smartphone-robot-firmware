@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
+#include "pico/types.h"
 #include "robot.h"
 #include "hardware/i2c.h"
 #include "hardware/gpio.h"
@@ -35,6 +36,7 @@ void on_shutdown();
 void results_queue_pop();
 int32_t call_queue_pop();
 static void signal_stop_core1();
+static void robot_interrupt_handler(uint gpio, uint32_t event_mask);
 
 volatile CEXCEPTION_T e;
 
@@ -46,7 +48,7 @@ void core1_entry() {
         // We provide an int32_t return value by simply pushing it back on the
         // return queue which also indicates the result is ready.
 
-	//sleep_ms(1);
+//sleep_ms(1);
 	int32_t result = call_queue_pop();
         queue_add_blocking(&results_queue, &result);
         // as an alternative to polling the return queue, you can send an irq to core0 to add another entry to call_queue
@@ -56,7 +58,7 @@ void core1_entry() {
 int32_t call_queue_pop(){
     queue_entry_t entry;
     queue_remove_blocking(&call_queue, &entry);
-    //printf("call_queue entry removed. call_queue has %d entries remaining to handle\n", queue_get_level(&call_queue));
+    printf("call_queue entry removed. call_queue has %d entries remaining to handle\n", queue_get_level(&call_queue));
     int32_t (*func)() = (int32_t(*)())(entry.func);
     int32_t result = (*func)(entry.data);
     return result;
@@ -73,7 +75,7 @@ void results_queue_pop(){
         //queue_try_remove(&results_queue, &entry);
         queue_remove_blocking(&results_queue, &entry);
         // TODO implement what to do with results_queue entries.
-        // printf("results_queue has %d entries remaining to handle\n", queue_get_level(&results_queue));
+        printf("results_queue has %d entries remaining to handle\n", queue_get_level(&results_queue));
     }
 }
 
@@ -107,6 +109,8 @@ int main(){
 void on_start(){
     printf("on_start\n");
     stdio_init_all();
+    gpio_set_irq_callback(&robot_interrupt_handler);
+    irq_set_enabled(IO_IRQ_BANK0, true);
     init_queues();
     multicore_launch_core1(core1_entry);
     // Waiting to make sure I can catch it within minicom
@@ -128,9 +132,15 @@ void on_start(){
     drv8830_init();
     sleep_ms(1000);
     encoder_init(&call_queue);
+    printf("encoders initialize. Waiting 1 second\n");
     sleep_ms(1000);
-    set_voltage(MOTOR_LEFT, 3);
-    set_voltage(MOTOR_RIGHT, 3);
+    printf("done waiting, turning on motors.\n");
+    set_voltage(MOTOR_LEFT, 2.5);
+    set_voltage(MOTOR_RIGHT, 2.5);
+    sleep_ms(100);
+    printf("done waiting, turning off motors\n");
+    set_voltage(MOTOR_LEFT, 0);
+    set_voltage(MOTOR_RIGHT, 0);
     printf("on_start complete\n");
 }
 
@@ -257,6 +267,35 @@ void drv8830drcr_set_moto_lvl(){
 //---------------------------------------------------------------------
 // Interrupt Callbacks
 //---------------------------------------------------------------------
+
+static void robot_interrupt_handler(uint gpio, uint32_t event_mask){
+    switch (gpio){
+	case GPIO_WIRELESS_AVAILABLE:
+	    ncp3901_on_wireless_charger_interrupt(gpio, event_mask);
+	    break;
+	case BATTERY_CHARGER_INTERRUPT_PIN:
+	    max77976_on_battery_charger_interrupt(gpio, event_mask);
+	    break;
+	case MAX77958_INTB:
+	    max77958_on_interrupt(gpio, event_mask);
+	    break;
+	case ENCODER_1_CHANNEL_A:
+	    quad_encoders_on_interrupt(gpio, event_mask);
+	    // Intentionally no break here as the interrupt is shared between encoders
+	case ENCODER_2_CHANNEL_A:
+	    quad_encoders_on_interrupt(gpio, event_mask);
+	    break;
+    }
+}
+
+void call_queue_try_add(void *func, int32_t arg){
+    queue_entry_t entry = {func, arg};
+    //printf("call_queue currently has %i entries\n", queue_get_level(&call_queue));
+    if(!queue_try_add(&call_queue, &entry)){
+        printf("call_queue is full");
+    	assert(false);
+    }
+}
 
 void quad_encoders_callback(){
     // GPIO12-15 monitor past and current states to determine counts

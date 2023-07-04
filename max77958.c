@@ -45,13 +45,10 @@ static void vbus_turn_on();
 static uint8_t _gpio_interrupt;
 static uint8_t interrupt_mask = GPIO_IRQ_EDGE_FALL;
 
-static void on_interrupt(){
+void max77958_on_interrupt(uint gpio, uint32_t event_mask){
     if (gpio_get_irq_event_mask(_gpio_interrupt) & interrupt_mask){
         gpio_acknowledge_irq(_gpio_interrupt, interrupt_mask);	
-        if(!queue_try_add(call_queue_ptr, &parse_interrupt_vals_entry)){
-            printf("call_queue is full");
-            assert(false);
-        }
+	call_queue_try_add(&parse_interrupt_vals_entry, 0);
     }
 }
 
@@ -279,7 +276,6 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     gpio_set_dir(gpio_interrupt, GPIO_IN);
     gpio_get(gpio_interrupt);
     gpio_pull_up(gpio_interrupt);
-    gpio_add_raw_irq_handler(_gpio_interrupt, &on_interrupt);
     gpio_set_irq_enabled(_gpio_interrupt, GPIO_IRQ_EDGE_FALL, true); 
 
     // clear interupts

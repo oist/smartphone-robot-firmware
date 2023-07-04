@@ -16,5 +16,6 @@
 void encoder_init(queue_t* call_queue);
 int32_t get_encoder_count(int encoder);
 void set_encoder_count(int encoder, int32_t value);
+void quad_encoders_on_interrupt(uint gpio, uint32_t events) ;
 
 #endif

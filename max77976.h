@@ -4,6 +4,7 @@
 // -----------------------------------------------------------------------------
 // Device Slave Addresses
 // -----------------------------------------------------------------------------
+#include "pico/types.h"
 #define MAX77976_ADDR _u(0x6B)       // device has 7-bit address of 0x6B
 #define MAX77976_ADDR_WRITE _u(0xD6) // Write address (8-bit)
 #define MAX77976_ADDR_READ _u(0xD7)  // Read address (8-bit)
@@ -73,5 +74,6 @@ void max77976_get_chg_details();
 void max77976_toggle_led();
 void max77976_log_current_limit();
 void max77976_shutdown();
+void max77976_on_battery_charger_interrupt(uint GPIO, uint32_t events);
 
 #endif // MAX77976_

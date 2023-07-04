@@ -4,20 +4,24 @@
 #include "quad_encoders.h"
 #include "robot.h"
 #include <stdio.h>
+#include <inttypes.h>
 
-volatile int32_t encoder_count[ENCODER_COUNT] = {0};
+int32_t encoder_count[ENCODER_COUNT] = {0};
 static queue_t* call_queue_ptr;
 static int gpio;
 static bool channel_a;
 static bool channel_b;
-static uint8_t increment;
+static bool increment;
 
-static void on_edge_fall();
-static void encoder_interrupt_handler() ;
+static void quad_encoders_interrupt_handler(uint gpio) ;
 
 // Initialize quadrature encoder pins and interrupts
 void encoder_init(queue_t* call_queue) {
     call_queue_ptr = call_queue;
+
+    for (int i = 0; i < ENCODER_COUNT; i++) {
+        encoder_count[i] = 0;
+    }
 
     gpio_init(ENCODER_1_CHANNEL_A);
     gpio_init(ENCODER_1_CHANNEL_B);
@@ -31,38 +35,40 @@ void encoder_init(queue_t* call_queue) {
     gpio_pull_up(ENCODER_1_CHANNEL_B);
     gpio_pull_up(ENCODER_2_CHANNEL_A);
     gpio_pull_up(ENCODER_2_CHANNEL_B);
-    gpio_add_raw_irq_handler_masked(ENCODER_1_CHANNEL_A | ENCODER_2_CHANNEL_A, &on_edge_fall);
     gpio_set_irq_enabled(ENCODER_1_CHANNEL_A, GPIO_IRQ_EDGE_FALL, true);
     gpio_set_irq_enabled(ENCODER_2_CHANNEL_A, GPIO_IRQ_EDGE_FALL, true);
 }
 
-static void on_edge_fall(){
-    if (gpio_get_irq_event_mask(ENCODER_1_CHANNEL_A) & GPIO_IRQ_EDGE_FALL){
+void quad_encoders_on_interrupt(uint gpio, uint32_t events) {
+    if ((gpio == ENCODER_1_CHANNEL_A) && (events & GPIO_IRQ_EDGE_FALL)){
 	gpio_acknowledge_irq(ENCODER_1_CHANNEL_A, GPIO_IRQ_EDGE_FALL);
-	gpio = ENCODER_1_CHANNEL_A;
 	}
-    if (gpio_get_irq_event_mask(ENCODER_2_CHANNEL_A) & GPIO_IRQ_EDGE_FALL){
+    if ((gpio == ENCODER_2_CHANNEL_A) && (events & GPIO_IRQ_EDGE_FALL)){
 	gpio_acknowledge_irq(ENCODER_2_CHANNEL_A, GPIO_IRQ_EDGE_FALL);
-	gpio = ENCODER_2_CHANNEL_A;
 	}
-    queue_entry_t on_edge_fall_entry = {&encoder_interrupt_handler, gpio};
-    if (!queue_try_add(call_queue_ptr, &on_edge_fall_entry)){
-        printf("call_queue is full");
-        assert(false);
-    }
+    call_queue_try_add(&quad_encoders_interrupt_handler, gpio);
 }
 
-static void encoder_interrupt_handler() {
+static void quad_encoders_interrupt_handler(uint gpio) {
     //printf("encoder int on gpio %d\n", gpio);
     channel_a = gpio_get(gpio);
     channel_b = gpio_get(gpio + 1);
-    increment = (channel_a == channel_b) ? 1 : -1;
     if (gpio == ENCODER_1_CHANNEL_A) {
-	encoder_count[0] += increment;
-	printf("A encoder count: %d\n", (int) encoder_count[0]);
+	//printf("A encoder count prior to increment: %" PRId32 "\n", encoder_count[0]);
+        if (channel_a == channel_b){
+	    encoder_count[0]++;
+	}else{
+	    encoder_count[0]--;
+	}
+	printf("A encoder count post increment: %" PRId32 "\n", encoder_count[0]);
     } else if (gpio == ENCODER_2_CHANNEL_A) {
-	encoder_count[1] += increment;
-	printf("B encoder count: %d\n", (int) encoder_count[1]);
+	//printf("B encoder count prior to increment: %" PRId32 "\n", encoder_count[1]);
+        if (channel_a == channel_b){
+	    encoder_count[1]++;
+	}else{
+	    encoder_count[1]--;
+	}
+	printf("B encoder count post increment: %" PRId32 "\n", encoder_count[1]);
     }
 }
 

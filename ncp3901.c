@@ -8,16 +8,18 @@ static int8_t _gpio_wireless_charger;
 static int8_t _gpio_otg;
 
 // on wireless power available
-void on_wireless_charger()
+void ncp3901_on_wireless_charger_interrupt(uint gpio, uint32_t event_mask)
 {
-    if (gpio_get_irq_event_mask(_gpio_wireless_charger) & GPIO_IRQ_EDGE_RISE){
-	gpio_acknowledge_irq(_gpio_wireless_charger, GPIO_IRQ_EDGE_RISE);
+    if (event_mask & GPIO_IRQ_EDGE_RISE){
+	gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_RISE);
 	//printf("Wireless power available\n");
 	// send to Android to inform that wireless power available.
-    } else if (gpio_get_irq_event_mask(_gpio_wireless_charger) & GPIO_IRQ_EDGE_FALL){
-	gpio_acknowledge_irq(_gpio_wireless_charger, GPIO_IRQ_EDGE_FALL);
+	// remember this should only add to the call_queue, not actually call the function.
+    } else if (gpio_get_irq_event_mask(gpio) & GPIO_IRQ_EDGE_FALL){
+	gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_FALL);
 	//printf("Wireless power unavailable\n");
 	// send to Android to inform that wireless power unavailable.
+	// remember this should only add to the call_queue, not actually call the function.
     }	
 }
 
@@ -27,7 +29,6 @@ void ncp3901_init(uint gpio_wireless_charger, uint gpio_otg)
     _gpio_wireless_charger = gpio_wireless_charger;
     _gpio_otg = gpio_otg;
 
-    gpio_add_raw_irq_handler(_gpio_wireless_charger, &on_wireless_charger);
     // flag pin is normally low, but when wireless charger present will go high
     // so rising edge indicates charger present, while falling edge indicates charger removed
     gpio_set_irq_enabled(_gpio_wireless_charger, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
