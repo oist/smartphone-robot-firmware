@@ -131,7 +131,7 @@ static void opcode_queue_add(void (*opcode_func)(), int32_t opcode_data){
 	printf("opcode_queue is full");
 	assert(false);
     }
-    printf("Added %s to opcode_queue. %d entries remaining\n", TOSTRING(opcode_func), queue_get_level(&opcode_queue));
+    printf("Added to opcode_queue. %d entries remaining\n", queue_get_level(&opcode_queue));
 } 
 
 static int parse_interrupt_vals(){
@@ -342,7 +342,7 @@ static bool opcode_queue_pop(){
     queue_entry_t entry;
     // if there is an entry in the opcode_queue, remove it and add it to the call_queue
     if (queue_try_remove(&opcode_queue, &entry)){
-	printf("Removed %s(%s) entry from opcode_queue. %d entries remaining\n", entry.func, entry.data, queue_get_level(&opcode_queue));
+	printf("Removed entry from opcode_queue. %d entries remaining\n", queue_get_level(&opcode_queue));
 	// if the call_queue is full, assert
 	if(queue_try_add(call_queue_ptr, &entry)){
 	    printf("added opcode entry to call_queue\n");
