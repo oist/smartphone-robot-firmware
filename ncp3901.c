@@ -15,7 +15,7 @@ void ncp3901_on_wireless_charger_interrupt(uint gpio, uint32_t event_mask)
 	//printf("Wireless power available\n");
 	// send to Android to inform that wireless power available.
 	// remember this should only add to the call_queue, not actually call the function.
-    } else if (gpio_get_irq_event_mask(gpio) & GPIO_IRQ_EDGE_FALL){
+    } else if (event_mask & GPIO_IRQ_EDGE_FALL){
 	gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_FALL);
 	//printf("Wireless power unavailable\n");
 	// send to Android to inform that wireless power unavailable.

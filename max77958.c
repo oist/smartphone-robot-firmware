@@ -47,7 +47,7 @@ static uint8_t _gpio_interrupt;
 static uint8_t interrupt_mask = GPIO_IRQ_EDGE_FALL;
 
 void max77958_on_interrupt(uint gpio, uint32_t event_mask){
-    if (gpio_get_irq_event_mask(_gpio_interrupt) & interrupt_mask){
+    if (event_mask & interrupt_mask){
         gpio_acknowledge_irq(_gpio_interrupt, interrupt_mask);	
 	call_queue_try_add(&parse_interrupt_vals_entry, 0);
     }
