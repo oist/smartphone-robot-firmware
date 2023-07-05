@@ -37,6 +37,7 @@ void results_queue_pop();
 int32_t call_queue_pop();
 static void signal_stop_core1();
 static void robot_interrupt_handler(uint gpio, uint32_t event_mask);
+void robot_unit_tests();
 
 volatile CEXCEPTION_T e;
 
@@ -146,7 +147,14 @@ void on_start(){
     printf("done counting, turning off motors\n");
     set_voltage(MOTOR_LEFT, 0);
     set_voltage(MOTOR_RIGHT, 0);
+
+    robot_unit_tests();
     printf("on_start complete\n");
+}
+
+void robot_unit_tests(){
+    test_max77958_get_id();
+    test_max77958_get_customer_config_id();
 }
 
 void on_shutdown(){

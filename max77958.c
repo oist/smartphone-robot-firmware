@@ -42,6 +42,7 @@ static void on_ccistat_change();
 static void on_ccpinstat_change();
 static void vbus_turn_off();
 static void vbus_turn_on();
+static void customer_config_read();
 static uint8_t _gpio_interrupt;
 static uint8_t interrupt_mask = GPIO_IRQ_EDGE_FALL;
 
@@ -130,6 +131,7 @@ static void opcode_queue_add(void (*opcode_func)(), int32_t opcode_data){
 	printf("opcode_queue is full");
 	assert(false);
     }
+    printf("Added %s to opcode_queue. %d entries remaining\n", TOSTRING(opcode_func), queue_get_level(&opcode_queue));
 } 
 
 static int parse_interrupt_vals(){
@@ -252,14 +254,7 @@ static void opcode_read(){
     //i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 32, false);
 }
 
-void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
-    _gpio_interrupt = gpio_interrupt;
-
-    printf("max77958 init started\n");
-    call_queue_ptr = cq;
-    return_queue_ptr = rq;
-    queue_init(&opcode_queue, sizeof(queue_entry_t), 16);
-
+void test_max77958_get_id(){
     // Testing for just DEVICE_ID
     // Write the register 0x00 to set the pointer there before reading its value
     memset(send_buf, 0, sizeof send_buf);
@@ -268,6 +263,51 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 2, false);
     printf("DEVICE_ID = %x\n", return_buf[0]);
     printf("DEVICE_REV = %x\n", return_buf[1]);
+    if (return_buf[0] != 0x58){
+	printf("DEVICE_ID should be 0x58");
+	assert(false);
+    }
+    if (return_buf[1] != 0x02){
+	printf("DEVICE_REV should be 0x02");
+	assert(false);
+    }
+}
+
+void test_max77958_get_customer_config_id(){
+    opcode_queue_add(&customer_config_read, 0);
+    opcode_queue_pop();
+    int i = 0;
+    while (!opcodes_finished){
+	sleep_ms(100);
+	i++;
+	if (i > 10){
+	    printf("Error: Timed out waiting for GPIO to finish\n");
+	    assert(false);
+	}
+    }
+    if (return_buf[0] != 0x55){
+	printf("OPCODE should be 0x55");
+	assert(false);
+    }
+    if ((return_buf[2] | (return_buf[3] << 8)) != 0x0B6A){
+        printf("CUSTOMER_CONFIG_ID should be 0x0B6A");	
+	assert(false);
+    }
+    if ((return_buf[4] | (return_buf[5] << 8)) != 0x6860){
+	printf("CUSTOMER_CONFIG_REV should be 0x6860");
+	assert(false);
+    }
+}
+
+void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
+    _gpio_interrupt = gpio_interrupt;
+
+    printf("max77958 init started\n");
+    call_queue_ptr = cq;
+    return_queue_ptr = rq;
+    queue_init(&opcode_queue, sizeof(queue_entry_t), 16);
+
+    test_max77958_get_id();
 
     set_interrupt_masks();
     
@@ -302,7 +342,7 @@ static bool opcode_queue_pop(){
     queue_entry_t entry;
     // if there is an entry in the opcode_queue, remove it and add it to the call_queue
     if (queue_try_remove(&opcode_queue, &entry)){
-	printf("removed entry from opcode_queue\n");
+	printf("Removed %s(%s) entry from opcode_queue. %d entries remaining\n", entry.func, entry.data, queue_get_level(&opcode_queue));
 	// if the call_queue is full, assert
 	if(queue_try_add(call_queue_ptr, &entry)){
 	    printf("added opcode entry to call_queue\n");
@@ -317,6 +357,13 @@ static bool opcode_queue_pop(){
 	printf("opcode_queue_pop: opcode_queue empty\n");
     	return false;
     }
+}
+
+static void customer_config_read(){
+    memset(send_buf, 0, sizeof send_buf);
+    send_buf[0] = OPCODE_WRITE;
+    send_buf[1] = 0x55; // Customer Configuration Write 
+    opcode_write(send_buf);
 }
 
 static void customer_config_write(){

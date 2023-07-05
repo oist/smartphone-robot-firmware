@@ -49,6 +49,6 @@ void quad_encoder_update(){
 	encoders[encoder].count_current = quadrature_encoder_get_count(pio, encoder);
 	encoders[encoder].count_delta = encoders[encoder].count_current - encoders[encoder].count_previous;
 	encoders[encoder].count_previous = encoders[encoder].count_current;
-        printf("Encoder %d: %8d, delta: %6d\n", encoder, encoders[encoder].count_current, encoders[encoder].count_delta);
+        printf("Encoder %d: %" PRIu32 ", delta: %" PRIu32 "\n", encoder, encoders[encoder].count_current, encoders[encoder].count_delta);
     }
 }
