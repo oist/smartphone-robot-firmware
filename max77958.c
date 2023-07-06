@@ -21,7 +21,6 @@ static void opcode_read();
 static int opcode_write(uint8_t *send_buf);
 static queue_t* call_queue_ptr;
 static queue_t* return_queue_ptr;
-static queue_entry_t parse_interrupt_vals_entry = {&parse_interrupt_vals, 0};
 static bool opcode_cmd_finished = false;
 static bool power_swap_enabled = true;
 static queue_t opcode_queue;
@@ -49,7 +48,7 @@ static uint8_t interrupt_mask = GPIO_IRQ_EDGE_FALL;
 void max77958_on_interrupt(uint gpio, uint32_t event_mask){
     if (event_mask & interrupt_mask){
         gpio_acknowledge_irq(_gpio_interrupt, interrupt_mask);	
-	call_queue_try_add(&parse_interrupt_vals_entry, 0);
+	call_queue_try_add(&parse_interrupt_vals, 0);
     }
 }
 
