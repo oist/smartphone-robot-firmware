@@ -17,13 +17,13 @@ static void quad_encoders_interrupt_handler(uint gpio) ;
 
 typedef struct Encoder
 {
-    uint32_t count_current;
-    uint32_t count_previous;
-    uint32_t count_delta;
-    uint32_t speed_current;
-    uint32_t speed_previous;
-    uint32_t speed_delta;
-    uint32_t speed_average;
+    int32_t count_current;
+    int32_t count_previous;
+    int32_t count_delta;
+    int32_t speed_current;
+    int32_t speed_previous;
+    int32_t speed_delta;
+    int32_t speed_average;
 } encoder;
 
 encoder encoders[2];
@@ -49,6 +49,6 @@ void quad_encoder_update(){
 	encoders[encoder].count_current = quadrature_encoder_get_count(pio, encoder);
 	encoders[encoder].count_delta = encoders[encoder].count_current - encoders[encoder].count_previous;
 	encoders[encoder].count_previous = encoders[encoder].count_current;
-        printf("Encoder %d: %" PRIu32 ", delta: %" PRIu32 "\n", encoder, encoders[encoder].count_current, encoders[encoder].count_delta);
+        printf("Encoder %d: %" PRId32 ", delta: %" PRId32 "\n", encoder, encoders[encoder].count_current, encoders[encoder].count_delta);
     }
 }
