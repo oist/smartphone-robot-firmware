@@ -86,5 +86,6 @@ void max77976_log_current_limit();
 void max77976_shutdown();
 void max77976_on_battery_charger_interrupt(uint GPIO, uint32_t events);
 void test_max77976_get_id();
+void test_max77976_interrupt();
 
 #endif // MAX77976_

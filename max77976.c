@@ -37,8 +37,9 @@ void max77976_on_battery_charger_interrupt(uint gpio, uint32_t event_mask){
     if (event_mask & interrupt_mask){
         gpio_acknowledge_irq(_gpio_interrupt, interrupt_mask);	
 	call_queue_try_add(&max77976_parse_interrupt_vals, 0);
-	// remember this should only add to the call_queue, not execute the function
+	printf("MAX77976 added max77976_parse_interrupt_vals to call_queue.\n");
     }
+	// remember this should only add to the call_queue, not execute the function
 }
 
 static uint16_t max77976_parse_interrupt_vals(){
@@ -107,6 +108,9 @@ static uint16_t max77976_parse_interrupt_vals(){
         }else {
 	    printf("MAX77976: The bypass node is okay.\n");
 	}
+    }
+    if (buf[0] == 0){
+        test_max77976_interrupt_bool = true;  
     }
     return buf[1] << 8 | buf[0];
 }
@@ -405,11 +409,11 @@ void test_max77976_get_id(){
 
     i2c_write_error_handling(i2c1, MAX77976_ADDR, 0x0, 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, &rxdata, 1, false);
-    printf("Read CHIP_ID %x.\n", rxdata);
     if (rxdata != 0x76){
 	printf("MAX77976 not responding. Exiting.\n");
 	assert(false);
     }
+    printf("test_max77976_get_id passed. Read CHIP_ID %x.\n", rxdata);
 }
 
 void test_max77976_interrupt(){

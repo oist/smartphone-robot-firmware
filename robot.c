@@ -153,12 +153,13 @@ void on_start(){
 }
 
 void robot_unit_tests(){
-    printf("Running robot unit tests\n");
+    printf("----------Running robot unit tests-----------\n");
     test_max77958_get_id();
     test_max77958_get_customer_config_id();
     test_max77958_interrupt();
     test_max77976_get_id();
-    printf("robot unit tests complete\n");
+    test_max77976_interrupt();
+    printf("-----------robot unit tests complete-----------\n");
 }
 
 void on_shutdown(){
