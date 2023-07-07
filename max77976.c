@@ -5,13 +5,22 @@
 #include "bit_ops.h"
 #include <string.h>
 #include "robot.h"
+#include <inttypes.h>
 
 static void max77976_onEXTUSBCHG_connect();
 static void max77976_onEXTUSBCHG_disconnect();
 static void max77976_onHardwareInterrupt();
+static uint16_t max77976_parse_interrupt_vals();
+static void max77976_set_interrupt_masks();
+static void max77976_set_interrupt_masks_all_masked();
+static void max77976_get_interrupt_vals(uint8_t* buf_ptr) ;
 static uint8_t send_buf[3];
 static uint8_t return_buf[2];
-static uint8_t _gpio;
+static uint8_t _gpio_interrupt;
+static bool test_max77976_interrupt_bool = false;
+static queue_t* call_queue_ptr;
+static queue_t* return_queue_ptr;
+static uint8_t interrupt_mask = GPIO_IRQ_EDGE_FALL;
 
 void max77976_factory_ship_mode_check(){
     // Check if CONNECTION_ANDROID or CONNECTION_PC occured in last hour
@@ -24,38 +33,113 @@ void max77976_factory_ship_mode_check(){
 }
 
 // on interrupt from MAX77976
-void max77976_on_battery_charger_interrupt(uint gpio, uint32_t events)
-{
-    if (events & GPIO_IRQ_EDGE_RISE){
-	gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_RISE);
-	// printf("Rising edge detected on max77976.\n");
+void max77976_on_battery_charger_interrupt(uint gpio, uint32_t event_mask){
+    if (event_mask & interrupt_mask){
+        gpio_acknowledge_irq(_gpio_interrupt, interrupt_mask);	
+	call_queue_try_add(&max77976_parse_interrupt_vals, 0);
 	// remember this should only add to the call_queue, not execute the function
     }
-    // Put the GPIO event(s) that just happened into event_str
-    // so we can print it
-    // gpio_event_string(event_str, events);
-
-    // do something if necessary. Currently don't know a use for this
 }
 
-void test_max77976_get_id(){
-    // Check if responding as i2c slave before trying to write to it
-    uint8_t rxdata;
+static uint16_t max77976_parse_interrupt_vals(){
+    uint8_t buf[MAX77976_INT_BUF_LEN];
+    max77976_get_interrupt_vals(buf);
+    uint8_t AICL_I = 1 << 7;
+    uint8_t CHGIN_I = 1 << 6;
+    uint8_t INLIM_I = 1 << 5;
+    uint8_t CHG_I = 1 << 4;
+    uint8_t BAT_I = 1 << 3;
+    uint8_t DISQBAT_I = 1 << 1;
+    uint8_t BYP_I = 1 << 0;
 
-    i2c_write_error_handling(i2c1, MAX77976_ADDR, 0x0, 1, true);
-    i2c_read_error_handling(i2c1, MAX77976_ADDR, &rxdata, 1, false);
-    printf("Read CHIP_ID %x.\n", rxdata);
-    if (rxdata != 0x76){
-	printf("MAX77976 not responding. Exiting.\n");
-	assert(false);
+    if (buf[0] & AICL_I){
+	printf("MAX77976: AICL_I interrupt detected.\n");
+        if (buf[2] & AICL_I){
+	    printf("MAX77976: AICL mode.\n");
+	}else {
+	    printf("MAX77976: AICL mode not detected.\n");
+        }
     }
+    if (buf[0] & CHGIN_I){
+	printf("MAX77976: CHGIN_I interrupt detected.\n");
+        if (buf[2] & CHGIN_I){
+	    printf("MAX77976: CHGIN input is valid.\n");
+	}else {
+	    printf("MAX77976: CHGIN input is not valid.\n");
+        }
+    }
+    if (buf[0] & INLIM_I){
+	printf("MAX77976: INLIM_I interrupt detected.\n");
+        if (buf[2] & INLIM_I){
+	    printf("MAX77976: The CHGIN input current has been reaching the current limit for at least 30ms.\n");
+        }else {
+	    printf("MAX77976: The CHGIN input current has not reached the current limit.\n");
+	}
+    }
+    if (buf[0] & CHG_I){
+	printf("MAX77976: CHG_I interrupt detected.\n");
+        if (buf[2] & CHG_I){
+	    printf("MAX77976: The charger has suspended charging or TREG = 1.\n");
+        }else {
+	    printf("MAX77976: The charger is okay or the charger is off.\n");
+	}
+    }
+    if (buf[0] & BAT_I){
+	printf("MAX77976: BAT_I interrupt detected.\n");
+        if (buf[2] & BAT_I){
+	    printf("MAX77976: The battery has an issue or the charger has been suspended.\n");
+        }else {
+	    printf("MAX77976: The battery is okay.\n");
+	}
+    }
+    if (buf[0] & DISQBAT_I){
+	printf("MAX77976: DISQBAT_I interrupt detected.\n");
+        if (buf[2] & DISQBAT_I){
+	    printf("MAX77976: DISQBAT is high and QBATT is disabled.\n");
+        }else {
+	    printf("MAX77976: DISQBAT is low and QBATT is not disabled.\n");
+	}
+    }
+    if (buf[0] & BYP_I){
+	printf("MAX77976: BYP_I interrupt detected.\n");
+        if (buf[2] & BYP_I){
+	    printf("MAX77976: Something powered by the bypass node has hit current limit.\n");
+        }else {
+	    printf("MAX77976: The bypass node is okay.\n");
+	}
+    }
+    return buf[1] << 8 | buf[0];
 }
 
-int max77976_init(uint GPIO){
-    _gpio = GPIO;
+static void max77976_get_interrupt_vals(uint8_t* buf_ptr) {
+    memset(buf_ptr, 0, sizeof MAX77976_INT_BUF_LEN);
+    uint8_t addr = MAX77976_REG_CHG_INT; // 0x04 Register
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, &addr, 1, true);
+    i2c_read_error_handling(i2c1, MAX77976_ADDR, buf_ptr, 3, false);
+    printf("MAX77976 interrupts vals: 0x10: 0x%02x, 0x11: 0x%02x, 0x12: 0x%02x\n", buf_ptr[0], buf_ptr[1], buf_ptr[2]);
+}
 
-    gpio_set_irq_enabled(_gpio, GPIO_IRQ_EDGE_RISE, true);
-    uint8_t buf[2];
+
+int max77976_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
+    _gpio_interrupt = gpio_interrupt;
+
+    printf("max77958 init started\n");
+    call_queue_ptr = cq;
+    return_queue_ptr = rq;
+
+    // max77976 sends active LOW on IRQB connected to GPIO6 on the rp2040. Setup interrupt callback here
+    gpio_init(_gpio_interrupt);
+    gpio_set_dir(_gpio_interrupt, GPIO_IN);
+    gpio_get(_gpio_interrupt);
+    gpio_pull_up(_gpio_interrupt);
+    gpio_set_irq_enabled(_gpio_interrupt, GPIO_IRQ_EDGE_FALL, true);
+    uint8_t buf[MAX77976_INT_BUF_LEN];
+
+    max77976_set_interrupt_masks();
+
+    // clear interupts
+    max77976_get_interrupt_vals(buf);
+    memset(buf, 0, MAX77976_INT_BUF_LEN);
 
     // Unlock the write capability of CHGPROT
     buf[0] = 0x1C; // CHAG_CNFG_06 
@@ -286,4 +370,64 @@ void max77976_get_chg_details(){
 }
 
 void max77976_shutdown(){
+}
+
+// Mask all interrupts for unit test purposes
+static void max77976_set_interrupt_masks_all_masked(){
+    memset(send_buf, 0, sizeof send_buf);
+    send_buf[0] = MAX77976_REG_CHG_INT_MASK;
+    send_buf[1] = 0b11111111;
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, send_buf, 4, false);
+}
+
+// Note this also masks everything, but that is the defualt reset values.
+// Will need to change this later when implementing the interrupts for detecting
+// charger interrupt
+static void max77976_set_interrupt_masks(){
+    memset(send_buf, 0, sizeof send_buf);
+    send_buf[0] = MAX77976_REG_CHG_INT_MASK; 
+    uint8_t AICL_M = 1 << 7;
+    uint8_t CHGIN_M = 0 << 6; // Turning off this mask
+    uint8_t INLIM_M = 1 << 5;
+    uint8_t CHG_M = 1 << 4;
+    uint8_t BAT_M = 1 << 3;
+    uint8_t SPR2 = 1 << 2;
+    uint8_t DISQBAT_M = 1 << 1;
+    uint8_t BYP_M = 1 << 0;
+
+    send_buf[1] = AICL_M | CHGIN_M | INLIM_M | CHG_M | BAT_M | SPR2 | DISQBAT_M | BYP_M;;  
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, send_buf, 4, false);
+}
+
+void test_max77976_get_id(){
+    // Check if responding as i2c slave before trying to write to it
+    uint8_t rxdata;
+
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, 0x0, 1, true);
+    i2c_read_error_handling(i2c1, MAX77976_ADDR, &rxdata, 1, false);
+    printf("Read CHIP_ID %x.\n", rxdata);
+    if (rxdata != 0x76){
+	printf("MAX77976 not responding. Exiting.\n");
+	assert(false);
+    }
+}
+
+void test_max77976_interrupt(){
+    max77976_set_interrupt_masks_all_masked();
+    gpio_pull_down(_gpio_interrupt);
+    uint32_t i = 0;
+    while (!test_max77976_interrupt_bool){
+        sleep_ms(10);
+	tight_loop_contents();
+	i++;
+	if (i > 1000){
+	    printf("test_max77976_interrupt timed out\n");
+	    assert(false);
+	}
+    }
+    // Reset all masks to defualts
+    gpio_pull_up(_gpio_interrupt);
+    max77976_set_interrupt_masks();
+    test_max77976_interrupt_bool = false;
+    printf("test_max77976_interrupt: Passed after %" PRIu32 " milliseconds.\n", i*10);
 }

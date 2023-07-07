@@ -121,7 +121,7 @@ void on_start(){
     adc_init();
     wrm483265_10f5_12v_g_init(WIRELESS_CHG_EN);
     ncp3901_init(GPIO_WIRELESS_AVAILABLE, GPIO_OTG);
-    max77976_init(BATTERY_CHARGER_INTERRUPT_PIN);
+    max77976_init(BATTERY_CHARGER_INTERRUPT_PIN, &call_queue, &results_queue);
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO);
     max77958_init(MAX77958_INTB, &call_queue, &results_queue);
     sleep_ms(1000);

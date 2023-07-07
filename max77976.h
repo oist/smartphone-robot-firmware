@@ -5,12 +5,18 @@
 // Device Slave Addresses
 // -----------------------------------------------------------------------------
 #include "pico/types.h"
+#include "pico/util/queue.h"
 #define MAX77976_ADDR _u(0x6B)       // device has 7-bit address of 0x6B
 #define MAX77976_ADDR_WRITE _u(0xD6) // Write address (8-bit)
 #define MAX77976_ADDR_READ _u(0xD7)  // Read address (8-bit)
 // -----------------------------------------------------------------------------
 // Registers
 // -----------------------------------------------------------------------------
+
+#define MAX77976_REG_CHG_INT _u(0x10)
+#define MAX77976_REG_CHG_INT_MASK _u(0x11)
+#define MAX77976_REG_CHG_INT_OK _u(0x12)
+
 #define MAX77976_REG_CHG_CNFG_00_ADDR _u(0x16)
 #define MAX77976_REG_CHG_CNFG_00_SPR_7_4_LSB _u(4)
 #define MAX77976_REG_CHG_CNFG_00_SPR_7_4_MSB _u(7)
@@ -68,8 +74,12 @@
 #define MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_MSB _u(5)
 #define MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_RESET _u(0x9)
 #define MAX77976_REG_CHG_CNFG_09_CHGIN_ILIM_3000 _u(0x3B)
+// -----------------------------------------------------------------------------
+// Variable defines
+#define MAX77976_INT_BUF_LEN _u(3)
 
-int max77976_init(uint GPIO);
+
+int max77976_init(uint gpio_interrupt, queue_t* cq, queue_t* rq);
 void max77976_get_chg_details();
 void max77976_toggle_led();
 void max77976_log_current_limit();
