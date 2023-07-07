@@ -51,7 +51,7 @@ void core1_entry() {
 
 //sleep_ms(1);
 	int32_t result = call_queue_pop();
-        queue_add_blocking(&results_queue, &result);
+	results_queue_try_add(&tight_loop_contents, result);
         // as an alternative to polling the return queue, you can send an irq to core0 to add another entry to call_queue
     }
 }
@@ -180,7 +180,7 @@ void on_shutdown(){
 
 void init_queues(){
     queue_init(&call_queue, sizeof(queue_entry_t), 256);
-    queue_init(&results_queue, sizeof(int32_t), 8);
+    queue_init(&results_queue, sizeof(int32_t), 256);
 }
 
 void free_queues(){
@@ -296,6 +296,15 @@ static void robot_interrupt_handler(uint gpio, uint32_t event_mask){
 	case MAX77958_INTB:
 	    max77958_on_interrupt(gpio, event_mask);
 	    break;
+    }
+}
+
+void results_queue_try_add(void *func, int32_t arg){
+    queue_entry_t entry = {func, arg};
+    //printf("call_queue currently has %i entries\n", queue_get_level(&call_queue));
+    if(!queue_try_add(&results_queue, &entry)){
+        printf("results_queue is full");
+    	assert(false);
     }
 }
 

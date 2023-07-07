@@ -16,6 +16,7 @@ void init_queues();
 void i2c_read_error_handling(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t len, bool nostop);
 void i2c_write_error_handling(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src, size_t len, bool nostop);
 void call_queue_try_add(void *func, int32_t arg);
+void results_queue_try_add(void *func, int32_t arg);
 
 typedef struct
 {
