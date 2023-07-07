@@ -159,6 +159,7 @@ void robot_unit_tests(){
     test_max77958_interrupt();
     test_max77976_get_id();
     test_max77976_interrupt();
+    test_ncp3901_interrupt();
     printf("-----------robot unit tests complete-----------\n");
 }
 
