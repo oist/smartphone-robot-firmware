@@ -357,10 +357,10 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     set_interrupt_masks();
     
     // max77958 sends active LOW on INTB connected to GPIO7 on the rp2040. Setup interrupt callback here
-    gpio_init(gpio_interrupt);
-    gpio_set_dir(gpio_interrupt, GPIO_IN);
-    gpio_get(gpio_interrupt);
-    gpio_pull_up(gpio_interrupt);
+    gpio_init(_gpio_interrupt);
+    gpio_set_dir(_gpio_interrupt, GPIO_IN);
+    gpio_get(_gpio_interrupt);
+    gpio_pull_up(_gpio_interrupt);
     gpio_set_irq_enabled(_gpio_interrupt, GPIO_IRQ_EDGE_FALL, true); 
 
     // clear interupts
