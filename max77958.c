@@ -134,6 +134,7 @@ static void opcode_queue_add(void (*opcode_func)(), int32_t opcode_data){
 } 
 
 static int parse_interrupt_vals(){
+    uint16_t return_val = 0;
     get_interrupt_vals();
     // don't really need these, but makes it easier to understand what each entry to the return_buf represents
     uint8_t* UIC_INT = &return_buf[0]; 
@@ -150,30 +151,38 @@ static int parse_interrupt_vals(){
     uint CCPinStatI = 1 << 3;
     if (*UIC_INT & APCmdResI_mask){
 	on_opcode_cmd_response();
+	return_val |= 1 << 0;
     }
     if (*PD_INT & PSRDYI_mask){
 	printf("Power source ready\n");
 	//on_power_source_ready();
+	return_val |= 1 << 1;
     }
     if (*PD_INT & PDMsgI){
 	on_pd_msg_received();
+	return_val |= 1 << 2;
     }
     if (*UIC_INT & ChgType){
 	on_chgtype_change();
+	return_val |= 1 << 3;
     }
     if (*CC_INT & CCStat){
 	on_ccstat_change();
+	return_val |= 1 << 4;
     }
     if (*CC_INT & CCVcnStatI){
 	on_ccvcnstat_change();
+	return_val |= 1 << 5;
     }
     if (*CC_INT & CCIStatI){
 	on_ccistat_change();
+	return_val |= 1 << 6;
     }
     if (*CC_INT & CCPinStatI){
 	on_ccpinstat_change();
+	return_val |= 1 << 7;
     }
-    return -1;
+    return return_val;
     
     // Check for other relevant interrupts here and do something with that info...
 }
