@@ -38,18 +38,10 @@ void max77976_on_battery_charger_interrupt(uint gpio, uint32_t events)
     // do something if necessary. Currently don't know a use for this
 }
 
-
-int max77976_init(uint GPIO){
-    _gpio = GPIO;
-
-    gpio_set_irq_enabled(_gpio, GPIO_IRQ_EDGE_RISE, true);
-    
+void test_max77976_get_id(){
     // Check if responding as i2c slave before trying to write to it
     uint8_t rxdata;
-    int ret;
-    i2c_read_error_handling(i2c1,MAX77976_ADDR, &rxdata, 1, false);
 
-    uint8_t buf[2];
     i2c_write_error_handling(i2c1, MAX77976_ADDR, 0x0, 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, &rxdata, 1, false);
     printf("Read CHIP_ID %x.\n", rxdata);
@@ -57,6 +49,13 @@ int max77976_init(uint GPIO){
 	printf("MAX77976 not responding. Exiting.\n");
 	assert(false);
     }
+}
+
+int max77976_init(uint GPIO){
+    _gpio = GPIO;
+
+    gpio_set_irq_enabled(_gpio, GPIO_IRQ_EDGE_RISE, true);
+    uint8_t buf[2];
 
     // Unlock the write capability of CHGPROT
     buf[0] = 0x1C; // CHAG_CNFG_06 
