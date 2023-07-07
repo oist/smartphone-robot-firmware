@@ -9,6 +9,7 @@
 #include "bit_ops.h"
 #include "robot.h"
 #include <assert.h>
+#include <inttypes.h>
 
 static uint8_t send_buf[33] = {0};
 static uint8_t return_buf[33] = {0}; // Will read full buffer from registers 0x52 to 0x71
@@ -44,6 +45,7 @@ static void vbus_turn_on();
 static void customer_config_read();
 static uint8_t _gpio_interrupt;
 static uint8_t interrupt_mask = GPIO_IRQ_EDGE_FALL;
+static bool test_max77958_interrupt_bool = false;
 
 void max77958_on_interrupt(uint gpio, uint32_t event_mask){
     if (event_mask & interrupt_mask){
@@ -182,6 +184,9 @@ static int parse_interrupt_vals(){
 	on_ccpinstat_change();
 	return_val |= 1 << 7;
     }
+    if (return_val == 0){
+	test_max77958_interrupt_bool = true;
+    }
     return return_val;
     
     // Check for other relevant interrupts here and do something with that info...
@@ -214,6 +219,16 @@ static void get_interrupt_masks(){
     send_buf[0] = REG_UIC_INT_M; // 0x10 UIC_INT_M Register
     i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
     i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 4, false);
+}
+
+// Mask all interrupts for unit test purposes
+static void set_interrupt_masks_all_masked(){
+    memset(send_buf, 0, sizeof send_buf);
+    send_buf[0] = REG_UIC_INT_M; // 0x10 UIC_INT_M Register
+    send_buf[1] = 0b11111111; // UIC_INT_M 0x10 values
+    send_buf[2] = 0b11111111; // CC_INT_M 0x11 values
+    send_buf[3] = 0b11111111; // PD_INT_M 0x12 unmasking PSRDYI
+    i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 4, false);
 }
 
 static void set_interrupt_masks(){
@@ -269,8 +284,6 @@ void test_max77958_get_id(){
     memset(return_buf, 0, sizeof return_buf);
     i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
     i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 2, false);
-    printf("DEVICE_ID = %x\n", return_buf[0]);
-    printf("DEVICE_REV = %x\n", return_buf[1]);
     if (return_buf[0] != 0x58){
 	printf("DEVICE_ID should be 0x58");
 	assert(false);
@@ -279,6 +292,8 @@ void test_max77958_get_id(){
 	printf("DEVICE_REV should be 0x02");
 	assert(false);
     }
+    printf("test_max77958_get_id: DEVICE_ID = %x\n", return_buf[0]);
+    printf("test_max77958_get_id: DEVICE_REV = %x\n", return_buf[1]);
 }
 
 void test_max77958_get_customer_config_id(){
@@ -305,6 +320,28 @@ void test_max77958_get_customer_config_id(){
 	printf("CUSTOMER_CONFIG_REV should be 0x6860");
 	assert(false);
     }
+    printf("test_max77958_get_customer_config_id: CUSTOMER_CONFIG_ID = 0x%04x\n", (return_buf[2] | (return_buf[3] << 8)));
+    printf("test_max77958_get_customer_config_id: CUSTOMER_CONFIG_REV = 0x%04x\n", (return_buf[4] | (return_buf[5] << 8)));
+}
+
+void test_max77958_interrupt(){
+    set_interrupt_masks_all_masked();
+    gpio_pull_down(_gpio_interrupt);
+    uint32_t i = 0;
+    while (!test_max77958_interrupt_bool){
+        sleep_ms(10);
+	tight_loop_contents();
+	i++;
+	if (i > 1000){
+	    printf("test_max77958_interrupt timed out\n");
+	    assert(false);
+	}
+    }
+    // Reset all masks to defualts
+    gpio_pull_up(_gpio_interrupt);
+    set_interrupt_masks();
+    test_max77958_interrupt_bool = false;
+    printf("test_max77958_interrupt: Passed after %" PRIu32 " milliseconds.\n", i*10);
 }
 
 void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
