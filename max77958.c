@@ -57,10 +57,7 @@ void max77958_on_interrupt(uint gpio, uint32_t event_mask){
 static int on_pd_msg_received(){
     printf("Rec PD message\n");
     queue_entry_t on_pd_msg_received_entry = {&pd_msg_response, 0};
-    if (!queue_try_add(call_queue_ptr, &on_pd_msg_received_entry)){
-	printf("call_queue is full");
-	assert(false);
-    }
+    call_queue_try_add(&on_pd_msg_received_entry, 0);
     return 0;
 }
 
