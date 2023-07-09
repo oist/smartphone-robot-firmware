@@ -31,6 +31,9 @@ typedef struct
 #define SN74AHC125RGYR_GPIO _u(16) // GPIO16
 #define MAX77958_INTB _u(7) // GPIO7
 
+#define DRV8830_FAULT1 _u(10) // GPIO10
+#define DRV8830_FAULT2 _u(11) // GPIO11
+
 // I2C defines
 // Use I2C0 on GPIO0 (SDA) and GPIO1 (SCL) running at 400KHz.
 #define I2C_SDA0 _u(0)

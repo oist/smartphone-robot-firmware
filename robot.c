@@ -130,7 +130,7 @@ void on_start(){
     bq27742_g1_fw_version_check();
     // Be sure to do this last
     sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
-    drv8830_init();
+    drv8830_init(DRV8830_FAULT1, DRV8830_FAULT2);
     sleep_ms(1000);
     encoder_init(&call_queue);
     printf("encoders initialize. Waiting 1 second\n");
@@ -160,6 +160,8 @@ void robot_unit_tests(){
     test_max77976_get_id();
     test_max77976_interrupt();
     test_ncp3901_interrupt();
+    test_drv8830_get_faults();
+    test_drv8830_interrupt();
     printf("-----------robot unit tests complete-----------\n");
 }
 
@@ -297,6 +299,12 @@ static void robot_interrupt_handler(uint gpio, uint32_t event_mask){
 	    break;
 	case MAX77958_INTB:
 	    max77958_on_interrupt(gpio, event_mask);
+	    break;
+	case DRV8830_FAULT1:
+	    drv8830_on_interrupt(gpio, event_mask);
+	    break;
+	case DRV8830_FAULT2:
+	    drv8830_on_interrupt(gpio, event_mask);
 	    break;
     }
 }

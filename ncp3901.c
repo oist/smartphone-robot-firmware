@@ -79,6 +79,7 @@ void ncp3901_shutdown(){
 }
 
 void test_ncp3901_interrupt(){
+    printf("test_ncp3901_interrupt: starting...\n");
     test_ncp3901 = true;
     gpio_pull_up(_gpio_wireless_charger);
     uint32_t i = 0;
@@ -94,7 +95,7 @@ void test_ncp3901_interrupt(){
     // Reset all masks to defualts
     gpio_pull_down(_gpio_wireless_charger);
     test_ncp3901_interrupt_bool= false;
-    printf("test_ncp3901_interrupt: Passed after %" PRIu32 " milliseconds.\n", i*10);
+    printf("test_ncp3901_interrupt: PASSED after %" PRIu32 " milliseconds.\n", i*10);
 }
 
 static void test_ncp3901_response(){

@@ -404,6 +404,7 @@ static void max77976_set_interrupt_masks(){
 }
 
 void test_max77976_get_id(){
+    printf("test_max77976_get_id started...\n"); 
     // Check if responding as i2c slave before trying to write to it
     uint8_t rxdata;
 
@@ -413,7 +414,7 @@ void test_max77976_get_id(){
 	printf("MAX77976 not responding. Exiting.\n");
 	assert(false);
     }
-    printf("test_max77976_get_id passed. Read CHIP_ID %x.\n", rxdata);
+    printf("test_max77976_get_id PASSED. Read CHIP_ID %x.\n", rxdata);
 }
 
 void test_max77976_interrupt(){

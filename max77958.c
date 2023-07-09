@@ -275,6 +275,7 @@ static void opcode_read(){
 }
 
 void test_max77958_get_id(){
+    printf("test_max77958_get_id started...\n");
     // Testing for just DEVICE_ID
     // Write the register 0x00 to set the pointer there before reading its value
     memset(send_buf, 0, sizeof send_buf);
@@ -289,11 +290,12 @@ void test_max77958_get_id(){
 	printf("DEVICE_REV should be 0x02");
 	assert(false);
     }
-    printf("test_max77958_get_id: DEVICE_ID = %x\n", return_buf[0]);
-    printf("test_max77958_get_id: DEVICE_REV = %x\n", return_buf[1]);
+    printf("test_max77958_get_id PASSED: DEVICE_ID = %x\n", return_buf[0]);
+    printf("test_max77958_get_id PASSED: DEVICE_REV = %x\n", return_buf[1]);
 }
 
 void test_max77958_get_customer_config_id(){
+    printf("test_max77958_get_customer_config_id started...\n");
     opcode_queue_add(&customer_config_read, 0);
     opcode_queue_pop();
     int i = 0;
@@ -317,11 +319,12 @@ void test_max77958_get_customer_config_id(){
 	printf("CUSTOMER_CONFIG_REV should be 0x6860");
 	assert(false);
     }
-    printf("test_max77958_get_customer_config_id: CUSTOMER_CONFIG_ID = 0x%04x\n", (return_buf[2] | (return_buf[3] << 8)));
-    printf("test_max77958_get_customer_config_id: CUSTOMER_CONFIG_REV = 0x%04x\n", (return_buf[4] | (return_buf[5] << 8)));
+    printf("test_max77958_get_customer_config_id PASSED: CUSTOMER_CONFIG_ID = 0x%04x\n", (return_buf[2] | (return_buf[3] << 8)));
+    printf("test_max77958_get_customer_config_id PASSED: CUSTOMER_CONFIG_REV = 0x%04x\n", (return_buf[4] | (return_buf[5] << 8)));
 }
 
 void test_max77958_interrupt(){
+    printf("test_max77958_interrupt started...\n");
     set_interrupt_masks_all_masked();
     gpio_pull_down(_gpio_interrupt);
     uint32_t i = 0;
@@ -338,7 +341,7 @@ void test_max77958_interrupt(){
     gpio_pull_up(_gpio_interrupt);
     set_interrupt_masks();
     test_max77958_interrupt_bool = false;
-    printf("test_max77958_interrupt: Passed after %" PRIu32 " milliseconds.\n", i*10);
+    printf("test_max77958_interrupt: PASSED after %" PRIu32 " milliseconds.\n", i*10);
 }
 
 void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){

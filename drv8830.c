@@ -5,29 +5,76 @@
 #include "robot.h"
 #include "drv8830.h"
 #include <string.h>
+#include <inttypes.h>
 
 static i2c_inst_t *i2c = i2c0;
 static uint8_t send_buf[2] = {0};
 static uint8_t return_buf[2] = {0}; // Will read full buffer from registers 0x52 to 0x71
+				    
+void drv8830_fault_handler(uint gpio);
+static void drv8830_test_response();
+void test_drv8830_interrupt();
+static int8_t _gpio_fault1;
+static int8_t _gpio_fault2;
+static bool test_drv8830_started = false;
+static bool test_drv8830_completed = false;
+const uint32_t drv8830_irq_mask = GPIO_IRQ_EDGE_FALL;
 
-void drv8830_init() {
-    // read the fault register from both motors and assert false if no response
-    memset(send_buf, 0, sizeof send_buf);
-    memset(return_buf, 0, sizeof return_buf);
-    send_buf[0] = DRV8830_REG_FAULT;
-    i2c_write_error_handling(i2c, MOTOR_LEFT_ADDRESS, send_buf, 1, true);
-    i2c_read_error_handling(i2c, MOTOR_LEFT_ADDRESS, return_buf, 2, false);
-    printf("Left motor fault register: %d\n", return_buf[0]);
+void drv8830_on_interrupt(uint gpio, uint32_t event_mask){
+    printf("DRV8830 interrupt\n");
+    if (test_drv8830_started){
+	gpio_acknowledge_irq(gpio, drv8830_irq_mask);
+	call_queue_try_add(&drv8830_test_response, 1);
+    }else{
+        if (event_mask & drv8830_irq_mask){
+            gpio_acknowledge_irq(gpio, drv8830_irq_mask);
+	    //TODO remember to retrieve this gpio from the fault handler to interpret which motor has the fault
+            call_queue_try_add(&drv8830_fault_handler, gpio);
+	}
+    }
+}
 
-    memset(send_buf, 0, sizeof send_buf);
-    memset(return_buf, 0, sizeof return_buf);
-    send_buf[0] = DRV8830_REG_FAULT;
-    i2c_write_error_handling(i2c, MOTOR_RIGHT_ADDRESS, send_buf, 1, true);
-    i2c_read_error_handling(i2c, MOTOR_RIGHT_ADDRESS, return_buf, 2, false);
-    printf("Right motor fault register: %d\n", return_buf[0]);
+void drv8830_fault_handler(uint gpio){
+    uint8_t fault_values = 0; 
+    uint8_t addr = 0;
+    uint8_t reg = DRV8830_REG_FAULT;
+    char *motor;
+    if (gpio == _gpio_fault1){
+	printf("Left motor fault\n");
+	addr = MOTOR_LEFT_ADDRESS;
+	motor = "Left";
+    }else if (gpio == _gpio_fault2){
+	printf("Right motor fault\n");
+	addr = MOTOR_RIGHT_ADDRESS;
+	motor = "Right";
+    }
+
+    if (addr == 0){
+	printf("Error: invalid motor fault\n");
+	return;
+    }else{
+        i2c_write_error_handling(i2c, addr, &reg, 1, true);
+        i2c_read_error_handling(i2c, addr, &fault_values, 1, false);
+        printf("Fault values for Motor %s: 0x%x\n", motor, fault_values);
+    }
+}
+
+void drv8830_init(uint gpio_fault1, uint gpio_fault2) {
+    printf("DRV8830 init\n");
+    _gpio_fault1 = gpio_fault1;
+    _gpio_fault2 = gpio_fault2;
+    gpio_init(gpio_fault1);
+    gpio_init(gpio_fault2);
+    gpio_set_dir(gpio_fault1, GPIO_IN);
+    gpio_set_dir(gpio_fault2, GPIO_IN);
+    gpio_pull_up(gpio_fault1);
+    gpio_pull_up(gpio_fault2);
+    gpio_set_irq_enabled(_gpio_fault1, drv8830_irq_mask, true);
+    gpio_set_irq_enabled(_gpio_fault2, drv8830_irq_mask, true);
 
     set_voltage(MOTOR_LEFT, 0);
     set_voltage(MOTOR_RIGHT, 0);
+    printf("DRV8830 init complete\n");
 }
 
 /*
@@ -79,5 +126,76 @@ void set_voltage(Motor motor, float voltage) {
 
     uint8_t buffer[] = { DRV8830_REG_CONTROL, (uint8_t)control_value };
     i2c_write_blocking(i2c, i2c_address, buffer, sizeof(buffer), false);
+}
+
+static void drv8830_clear_faults(){
+    uint8_t addr[2] = {MOTOR_LEFT_ADDRESS, MOTOR_RIGHT_ADDRESS};
+    uint8_t buf[2] = {0};
+    buf[0] = DRV8830_REG_FAULT;
+    // Setting this to one ensures the assert function works only if the read value is in fact 0
+    uint8_t fault_value = 1;
+    for (int i = 0; i < 2; i++){
+        // Clear the faults
+        i2c_write_error_handling(i2c, addr[i], buf, 2, false);
+        // Set the fault register for reading. 
+        i2c_write_error_handling(i2c, addr[i], buf, 1, true);
+        // Read the fault register
+        i2c_read_error_handling(i2c, addr[i], &fault_value, 1, false);
+        if (fault_value != 0){
+            printf("Motor %d cannot clear faults. Exiting.\n", i);
+            assert(false);
+        }
+    }
+}
+
+void test_drv8830_get_faults(){
+    printf("test_drv8830_get_faults starting...\n");
+    // This already does what a test would otherwise do. 
+    drv8830_clear_faults();
+    printf("test_drv8830_get_faults: PASSED.\n");
+}
+
+void test_drv8830_interrupt(){
+    printf("test_drv8830_interrupt starting...\n");
+    test_drv8830_started = true;
+    printf("test_drv8830_interrupt: prior to pulling down GPIO%d. Current Value:%d\n", _gpio_fault1, gpio_get(_gpio_fault1));
+    printf("GPIO%d is pulled up? %d", _gpio_fault1, gpio_is_pulled_up(_gpio_fault1));
+    gpio_pull_down(_gpio_fault1);
+    if (gpio_get(_gpio_fault1) != 0){
+	printf("test_drv8830_interrupt: GPIO%d did not pull down. Current Value:%d\n", _gpio_fault1, gpio_get(_gpio_fault1));
+	assert(false);
+    }
+    printf("test_drv8830_interrupt: after pulling down GPIO%d. Current Value:%d\n", _gpio_fault1, gpio_get(_gpio_fault1));
+    uint32_t i = 0;
+    while (!test_drv8830_completed){
+        sleep_ms(10);
+	tight_loop_contents();
+	i++;
+	if (i > 1000){
+	    printf("test_drv8830_interrupt timed out\n");
+	    assert(false);
+	}
+    }
+    gpio_pull_up(_gpio_fault1);
+    test_drv8830_started = false;
+    printf("test_drv8830_interrupt: Encoder 1 PASSED after %" PRIu32 " milliseconds.\n", i*10);
+    test_drv8830_started = true;
+    gpio_pull_down(_gpio_fault1);
+    while (!test_drv8830_completed){
+        sleep_ms(10);
+	tight_loop_contents();
+	i++;
+	if (i > 1000){
+	    printf("test_drv8830_interrupt timed out\n");
+	    assert(false);
+	}
+    }
+    gpio_pull_up(_gpio_fault2);
+    test_drv8830_started = false;
+    printf("test_drv8830_interrupt: Encoder 2 PASSED after %" PRIu32 " milliseconds.\n", i*10);
+}
+
+static void drv8830_test_response(){
+    test_drv8830_completed = true;
 }
 
