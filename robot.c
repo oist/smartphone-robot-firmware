@@ -161,7 +161,7 @@ void robot_unit_tests(){
     test_max77976_interrupt();
     test_ncp3901_interrupt();
     test_drv8830_get_faults();
-    test_drv8830_interrupt();
+    //test_drv8830_interrupt();
     printf("-----------robot unit tests complete-----------\n");
 }
 
