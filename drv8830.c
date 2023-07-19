@@ -23,14 +23,12 @@ const uint32_t drv8830_irq_mask = GPIO_IRQ_EDGE_FALL;
 void drv8830_on_interrupt(uint gpio, uint32_t event_mask){
     printf("DRV8830 interrupt\n");
     if (test_drv8830_started){
-	gpio_acknowledge_irq(gpio, drv8830_irq_mask);
 	call_queue_try_add(&drv8830_test_response, 1);
-    }else{
-        if (event_mask & drv8830_irq_mask){
-            gpio_acknowledge_irq(gpio, drv8830_irq_mask);
-	    //TODO remember to retrieve this gpio from the fault handler to interpret which motor has the fault
-            call_queue_try_add(&drv8830_fault_handler, gpio);
-	}
+    }
+    if (event_mask & drv8830_irq_mask){
+        gpio_acknowledge_irq(gpio, drv8830_irq_mask);
+        //TODO remember to retrieve this gpio from the fault handler to interpret which motor has the fault
+        call_queue_try_add(&drv8830_fault_handler, gpio);
     }
 }
 
@@ -65,6 +63,9 @@ void drv8830_init(uint gpio_fault1, uint gpio_fault2) {
     _gpio_fault2 = gpio_fault2;
     gpio_init(gpio_fault1);
     gpio_init(gpio_fault2);
+    // Ensure the output value is low so when turning it on later, it doesn't start high and damage something. 
+    gpio_put(gpio_fault1, 0);
+    gpio_put(gpio_fault2, 0);
     gpio_set_dir(gpio_fault1, GPIO_IN);
     gpio_set_dir(gpio_fault2, GPIO_IN);
     gpio_pull_up(gpio_fault1);
@@ -158,14 +159,13 @@ void test_drv8830_get_faults(){
 void test_drv8830_interrupt(){
     printf("test_drv8830_interrupt starting...\n");
     test_drv8830_started = true;
-    printf("test_drv8830_interrupt: prior to pulling down GPIO%d. Current Value:%d\n", _gpio_fault1, gpio_get(_gpio_fault1));
-    printf("GPIO%d is pulled up? %d", _gpio_fault1, gpio_is_pulled_up(_gpio_fault1));
-    gpio_pull_down(_gpio_fault1);
+    printf("test_drv8830_interrupt: prior to driving low GPIO%d. Current Value:%d\n", _gpio_fault1, gpio_get(_gpio_fault1));
+    gpio_set_dir(_gpio_fault1, GPIO_OUT);
     if (gpio_get(_gpio_fault1) != 0){
-	printf("test_drv8830_interrupt: GPIO%d did not pull down. Current Value:%d\n", _gpio_fault1, gpio_get(_gpio_fault1));
+	printf("test_drv8830_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_fault1, gpio_get(_gpio_fault1));
 	assert(false);
     }
-    printf("test_drv8830_interrupt: after pulling down GPIO%d. Current Value:%d\n", _gpio_fault1, gpio_get(_gpio_fault1));
+    printf("test_drv8830_interrupt: after driving low GPIO%d. Current Value:%d\n", _gpio_fault1, gpio_get(_gpio_fault1));
     uint32_t i = 0;
     while (!test_drv8830_completed){
         sleep_ms(10);
@@ -176,11 +176,12 @@ void test_drv8830_interrupt(){
 	    assert(false);
 	}
     }
-    gpio_pull_up(_gpio_fault1);
+    gpio_set_dir(_gpio_fault1, GPIO_IN);
     test_drv8830_started = false;
+    test_drv8830_completed = false;
     printf("test_drv8830_interrupt: Encoder 1 PASSED after %" PRIu32 " milliseconds.\n", i*10);
     test_drv8830_started = true;
-    gpio_pull_down(_gpio_fault1);
+    gpio_set_dir(_gpio_fault2, GPIO_OUT);
     while (!test_drv8830_completed){
         sleep_ms(10);
 	tight_loop_contents();
@@ -190,7 +191,7 @@ void test_drv8830_interrupt(){
 	    assert(false);
 	}
     }
-    gpio_pull_up(_gpio_fault2);
+    gpio_set_dir(_gpio_fault2, GPIO_IN);
     test_drv8830_started = false;
     printf("test_drv8830_interrupt: Encoder 2 PASSED after %" PRIu32 " milliseconds.\n", i*10);
 }
