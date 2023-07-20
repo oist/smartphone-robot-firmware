@@ -13,6 +13,7 @@ static void max77976_onHardwareInterrupt();
 static uint16_t max77976_parse_interrupt_vals();
 static void max77976_set_interrupt_masks();
 static void max77976_set_interrupt_masks_all_masked();
+static void max77976_test_response();
 static void max77976_get_interrupt_vals(uint8_t* buf_ptr) ;
 static uint8_t send_buf[3];
 static uint8_t return_buf[2];
@@ -21,6 +22,8 @@ static bool test_max77976_interrupt_bool = false;
 static queue_t* call_queue_ptr;
 static queue_t* return_queue_ptr;
 static uint8_t interrupt_mask = GPIO_IRQ_EDGE_FALL;
+static bool test_max77976_started = false;
+static bool test_max77976_completed = false;
 
 void max77976_factory_ship_mode_check(){
     // Check if CONNECTION_ANDROID or CONNECTION_PC occured in last hour
@@ -38,6 +41,9 @@ void max77976_on_battery_charger_interrupt(uint gpio, uint32_t event_mask){
         gpio_acknowledge_irq(_gpio_interrupt, interrupt_mask);	
 	call_queue_try_add(&max77976_parse_interrupt_vals, 0);
 	printf("MAX77976 added max77976_parse_interrupt_vals to call_queue.\n");
+    }
+    if (test_max77976_started){
+	call_queue_try_add(&max77976_test_response, 1);
     }
 	// remember this should only add to the call_queue, not execute the function
 }
@@ -133,8 +139,8 @@ int max77976_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
 
     // max77976 sends active LOW on IRQB connected to GPIO6 on the rp2040. Setup interrupt callback here
     gpio_init(_gpio_interrupt);
+    gpio_put(_gpio_interrupt, 0);
     gpio_set_dir(_gpio_interrupt, GPIO_IN);
-    gpio_get(_gpio_interrupt);
     gpio_pull_up(_gpio_interrupt);
     gpio_set_irq_enabled(_gpio_interrupt, GPIO_IRQ_EDGE_FALL, true);
     uint8_t buf[MAX77976_INT_BUF_LEN];
@@ -405,6 +411,7 @@ static void max77976_set_interrupt_masks(){
 
 void test_max77976_get_id(){
     printf("test_max77976_get_id started...\n"); 
+    max77976_set_interrupt_masks_all_masked();
     // Check if responding as i2c slave before trying to write to it
     uint8_t rxdata;
 
@@ -414,14 +421,27 @@ void test_max77976_get_id(){
 	printf("MAX77976 not responding. Exiting.\n");
 	assert(false);
     }
+    max77976_set_interrupt_masks();
     printf("test_max77976_get_id PASSED. Read CHIP_ID %x.\n", rxdata);
 }
 
+static void max77976_test_response(){
+    test_max77976_completed = true;
+}
+
 void test_max77976_interrupt(){
+    printf("test_max77976_interrupt starting...\n");
     max77976_set_interrupt_masks_all_masked();
-    gpio_pull_down(_gpio_interrupt);
+    test_max77976_started = true;
+    printf("test_max77976_interrupt: prior to driving low GPIO%d. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
+    gpio_set_dir(_gpio_interrupt, GPIO_OUT);
+    if (gpio_get(_gpio_interrupt) != 0){
+	printf("test_max77976_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
+	assert(false);
+    }
+    printf("test_max77976_interrupt: after driving low GPIO%d. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
     uint32_t i = 0;
-    while (!test_max77976_interrupt_bool){
+    while (!test_max77976_completed){
         sleep_ms(10);
 	tight_loop_contents();
 	i++;
@@ -430,9 +450,10 @@ void test_max77976_interrupt(){
 	    assert(false);
 	}
     }
-    // Reset all masks to defualts
-    gpio_pull_up(_gpio_interrupt);
+    gpio_set_dir(_gpio_interrupt, GPIO_IN);
+    test_max77976_started = false;
+    test_max77976_completed = false;
     max77976_set_interrupt_masks();
-    test_max77976_interrupt_bool = false;
+
     printf("test_max77976_interrupt: Passed after %" PRIu32 " milliseconds.\n", i*10);
 }
