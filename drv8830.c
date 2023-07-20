@@ -22,13 +22,13 @@ const uint32_t drv8830_irq_mask = GPIO_IRQ_EDGE_FALL;
 
 void drv8830_on_interrupt(uint gpio, uint32_t event_mask){
     printf("DRV8830 interrupt\n");
-    if (test_drv8830_started){
-	call_queue_try_add(&drv8830_test_response, 1);
-    }
     if (event_mask & drv8830_irq_mask){
         gpio_acknowledge_irq(gpio, drv8830_irq_mask);
         //TODO remember to retrieve this gpio from the fault handler to interpret which motor has the fault
         call_queue_try_add(&drv8830_fault_handler, gpio);
+    }
+    if (test_drv8830_started){
+	call_queue_try_add(&drv8830_test_response, 1);
     }
 }
 
