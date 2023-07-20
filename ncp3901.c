@@ -8,28 +8,28 @@
 
 static void ncp3901_on_wireless_charger_attached(int32_t test);
 static void ncp3901_on_wireless_charger_detached(int32_t test);
-static void test_ncp3901_response();
+static void ncp3901_test_response();
 static int8_t _gpio_wireless_charger;
 static int8_t _gpio_otg;
-static bool test_ncp3901 = false;
-static bool test_ncp3901_interrupt_bool = false;
+static bool test_ncp3901_started = false;
+static bool test_ncp3901_completed = false;
 
 // on wireless power available
 void ncp3901_on_wireless_charger_interrupt(uint gpio, uint32_t event_mask)
 {
-    if (test_ncp3901){
-	gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_RISE);
-	call_queue_try_add(&test_ncp3901_response, 1);
-    }else{
-
-        if (event_mask & GPIO_IRQ_EDGE_RISE){
-            gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_RISE);
-            call_queue_try_add(&ncp3901_on_wireless_charger_attached, 0);
-        } else if (event_mask & GPIO_IRQ_EDGE_FALL){
-            gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_FALL);
-            call_queue_try_add(&ncp3901_on_wireless_charger_detached, 0);
-        }	
-    }
+    if (event_mask & GPIO_IRQ_EDGE_RISE){
+        gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_RISE);
+        call_queue_try_add(&ncp3901_on_wireless_charger_attached, 0);
+        if (test_ncp3901_started){
+            call_queue_try_add(&ncp3901_test_response, 1);
+        }
+    } else if (event_mask & GPIO_IRQ_EDGE_FALL){
+        gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_FALL);
+        call_queue_try_add(&ncp3901_on_wireless_charger_detached, 0);
+        if (test_ncp3901_started){
+            call_queue_try_add(&ncp3901_test_response, 1);
+        }
+    }	
 }
 
 static void ncp3901_on_wireless_charger_attached(int32_t test){
@@ -49,13 +49,19 @@ void ncp3901_init(uint gpio_wireless_charger, uint gpio_otg)
     _gpio_otg = gpio_otg;
 
     // flag pin is normally low, but when wireless charger present will go high
-    // so rising edge indicates charger present, while falling edge indicates charger removed
+    // that being said, with the voltage translation, it was reversed (i.e. when FLAG is
+    // LOW VIN_B_EN/FLAG is HIGH and vice versa. 
+    // so rising edge indicates charger was removed, while falling edge indicates charger attached
+    gpio_init(_gpio_wireless_charger);
+    gpio_put(_gpio_wireless_charger, 0);
+    gpio_set_dir(_gpio_wireless_charger, GPIO_IN);
+    gpio_pull_up(_gpio_wireless_charger);
     gpio_set_irq_enabled(_gpio_wireless_charger, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
 
     // OTG Disabled by default
     gpio_init(gpio_otg);
-    gpio_set_dir(gpio_otg, GPIO_OUT);
     gpio_put(gpio_otg, 0);
+    gpio_set_dir(gpio_otg, GPIO_OUT);
 
     // init ADC0 as analog input (sampling should be done in main loop)
     // Make sure GPIO is high-impedance, no pullups etc
@@ -79,26 +85,54 @@ void ncp3901_shutdown(){
 }
 
 void test_ncp3901_interrupt(){
-    printf("test_ncp3901_interrupt: starting...\n");
-    test_ncp3901 = true;
-    gpio_pull_up(_gpio_wireless_charger);
+    printf("test_ncp3901_interrupt: starting test of wireless connection...\n");
+    test_ncp3901_started = true;
+    printf("test_ncp3901_interrupt: prior to driving low GPIO%d. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
+    gpio_set_dir(_gpio_wireless_charger, GPIO_OUT);
+    if (gpio_get(_gpio_wireless_charger) != 0){
+	printf("test_ncp3901_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
+	assert(false);
+    }
+    printf("test_ncp3901_interrupt: after driving low GPIO%d. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
     uint32_t i = 0;
-    while (!test_ncp3901_interrupt_bool){
+    while (!test_ncp3901_completed){
         sleep_ms(10);
 	tight_loop_contents();
 	i++;
 	if (i > 1000){
-	    printf("test_max77976_interrupt timed out\n");
+	    printf("test_ncp3901_interrupt wireless connect timed out\n");
 	    assert(false);
 	}
     }
-    // Reset all masks to defualts
-    gpio_pull_down(_gpio_wireless_charger);
-    test_ncp3901_interrupt_bool= false;
-    printf("test_ncp3901_interrupt: PASSED after %" PRIu32 " milliseconds.\n", i*10);
+    test_ncp3901_started = false;
+    test_ncp3901_completed = false;
+    printf("test_ncp3901_interrupt_wireless_connect: PASSED after %" PRIu32 " milliseconds.\n", i*10);
+
+    // This should trigger the opposite interrupt EGDE_RISE
+    printf("test_ncp3901_interrupt: starting test of wireless disconnection...\n");
+    test_ncp3901_started = true;
+    printf("test_ncp3901_interrupt: prior to pulling up GPIO%d. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
+    gpio_set_dir(_gpio_wireless_charger, GPIO_IN);
+    gpio_pull_up(_gpio_wireless_charger);
+    if (gpio_get(_gpio_wireless_charger) != 1){
+	printf("test_ncp3901_interrupt: GPIO%d was pulled up. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
+	assert(false);
+    }
+    printf("test_ncp3901_interrupt: after pulling up GPIO%d. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
+    i = 0;
+    while (!test_ncp3901_completed){
+        sleep_ms(10);
+	tight_loop_contents();
+	i++;
+	if (i > 1000){
+	    printf("test_ncp3901_interrupt wireless disconnect timed out\n");
+	    assert(false);
+	}
+    }
+    printf("test_ncp3901_interrupt_wireless_disconnect: PASSED after %" PRIu32 " milliseconds.\n", i*10);
 }
 
-static void test_ncp3901_response(){
-    test_ncp3901_interrupt_bool = true;
+static void ncp3901_test_response(){
+    test_ncp3901_completed = true;
 }
 
