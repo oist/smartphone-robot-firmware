@@ -11,8 +11,8 @@ static i2c_inst_t *i2c = i2c0;
 static uint8_t send_buf[2] = {0};
 static uint8_t return_buf[2] = {0}; // Will read full buffer from registers 0x52 to 0x71
 				    
-void drv8830_fault_handler(uint gpio);
-static void drv8830_test_response();
+int32_t drv8830_fault_handler(int32_t gpio);
+static int32_t drv8830_test_response();
 void test_drv8830_interrupt();
 static int8_t _gpio_fault1;
 static int8_t _gpio_fault2;
@@ -32,7 +32,7 @@ void drv8830_on_interrupt(uint gpio, uint32_t event_mask){
     }
 }
 
-void drv8830_fault_handler(uint gpio){
+int32_t drv8830_fault_handler(int32_t gpio){
     uint8_t fault_values = 0; 
     uint8_t addr = 0;
     uint8_t reg = DRV8830_REG_FAULT;
@@ -49,11 +49,12 @@ void drv8830_fault_handler(uint gpio){
 
     if (addr == 0){
 	printf("Error: invalid motor fault\n");
-	return;
+	return -1;
     }else{
         i2c_write_error_handling(i2c, addr, &reg, 1, true);
         i2c_read_error_handling(i2c, addr, &fault_values, 1, false);
         printf("Fault values for Motor %s: 0x%x\n", motor, fault_values);
+	return 0;
     }
 }
 
@@ -198,7 +199,8 @@ void test_drv8830_interrupt(){
     printf("test_drv8830_interrupt: Encoder 2 PASSED after %" PRIu32 " milliseconds.\n", i*10);
 }
 
-static void drv8830_test_response(){
+static int32_t drv8830_test_response(){
     test_drv8830_completed = true;
+    return 0;
 }
 

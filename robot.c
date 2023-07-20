@@ -60,13 +60,13 @@ int32_t call_queue_pop(){
     queue_entry_t entry;
     queue_remove_blocking(&call_queue, &entry);
     printf("call_queue entry removed. call_queue has %d entries remaining to handle\n", queue_get_level(&call_queue));
-    int32_t (*func)() = (int32_t(*)())(entry.func);
-    int32_t result = (*func)(entry.data);
+    int32_t result = entry.func(entry.data);
     return result;
 }
 
-void stop_core1(){
+int32_t stop_core1(){
     core1_shutdown_requested = true;
+    return 0;
 }
 
 void results_queue_pop(){
@@ -200,7 +200,7 @@ void free_queues(){
 }
 
 static void signal_stop_core1(){
-    queue_entry_t stop_entry = {&stop_core1, 0};
+    queue_entry_t stop_entry = {stop_core1, 0};
     if(!queue_try_add(&call_queue, &stop_entry)){
 	printf("call_queue is full");
         assert(false);
@@ -318,7 +318,7 @@ void results_queue_try_add(void *func, int32_t arg){
     }
 }
 
-void call_queue_try_add(void *func, int32_t arg){
+void call_queue_try_add(entry_func func, int32_t arg){
     queue_entry_t entry = {func, arg};
     //printf("call_queue currently has %i entries\n", queue_get_level(&call_queue));
     if(!queue_try_add(&call_queue, &entry)){

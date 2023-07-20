@@ -3,6 +3,13 @@
 
 #include "hardware/i2c.h"
 
+typedef int32_t (*entry_func)(int32_t); 
+typedef struct
+{
+    entry_func func;
+    int32_t data;
+} queue_entry_t;
+
 void on_start();
 void i2c_start();
 void bq27742_g1_init();
@@ -15,14 +22,8 @@ void sample_adc_inputs();
 void init_queues();
 void i2c_read_error_handling(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t len, bool nostop);
 void i2c_write_error_handling(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src, size_t len, bool nostop);
-void call_queue_try_add(void *func, int32_t arg);
+void call_queue_try_add(entry_func func, int32_t arg);
 void results_queue_try_add(void *func, int32_t arg);
-
-typedef struct
-{
-    void *func;
-    int32_t data;
-} queue_entry_t;
 
 #define CONVERSION_FACTOR _u(3).3f / (1 << 12)
 #define GPIO_WIRELESS_AVAILABLE _u(4) // GPIO4

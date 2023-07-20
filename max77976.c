@@ -10,10 +10,10 @@
 static void max77976_onEXTUSBCHG_connect();
 static void max77976_onEXTUSBCHG_disconnect();
 static void max77976_onHardwareInterrupt();
-static uint16_t max77976_parse_interrupt_vals();
+static int32_t max77976_parse_interrupt_vals();
 static void max77976_set_interrupt_masks();
 static void max77976_set_interrupt_masks_all_masked();
-static void max77976_test_response();
+static int32_t max77976_test_response();
 static void max77976_get_interrupt_vals(uint8_t* buf_ptr) ;
 static uint8_t send_buf[3];
 static uint8_t return_buf[2];
@@ -47,7 +47,7 @@ void max77976_on_battery_charger_interrupt(uint gpio, uint32_t event_mask){
     }
 }
 
-static uint16_t max77976_parse_interrupt_vals(){
+static int32_t max77976_parse_interrupt_vals(){
     uint8_t buf[MAX77976_INT_BUF_LEN];
     max77976_get_interrupt_vals(buf);
     uint8_t AICL_I = 1 << 7;
@@ -424,8 +424,9 @@ void test_max77976_get_id(){
     printf("test_max77976_get_id PASSED. Read CHIP_ID %x.\n", rxdata);
 }
 
-static void max77976_test_response(){
+static int32_t max77976_test_response(){
     test_max77976_completed = true;
+    return 0;
 }
 
 void test_max77976_interrupt(){

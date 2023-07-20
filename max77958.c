@@ -13,14 +13,14 @@
 
 static uint8_t send_buf[33] = {0};
 static uint8_t return_buf[33] = {0}; // Will read full buffer from registers 0x52 to 0x71
-static int parse_interrupt_vals();
+static int32_t parse_interrupt_vals();
 static void on_interrupt();
 static void get_interrupt_vals();
 static void get_interrupt_masks();
 static void set_interrupt_masks();
 static void opcode_read();
 static int opcode_write(uint8_t *send_buf);
-static void max77958_test_response();
+static int32_t max77958_test_response();
 static queue_t* call_queue_ptr;
 static queue_t* return_queue_ptr;
 static bool opcode_cmd_finished = false;
@@ -28,13 +28,13 @@ static bool power_swap_enabled = true;
 static queue_t opcode_queue;
 static void power_swap_request();
 static void set_snk_pdos();
-static void pd_msg_response();
-static void customer_config_write();
+static int32_t pd_msg_response();
+static int32_t customer_config_write();
 static bool opcode_queue_pop();
 bool opcodes_finished = false;
-static void opcode_queue_add(void (*opcode_func)(), int32_t opcode_data);
+static void opcode_queue_add(int32_t (*opcode_func)(), int32_t opcode_data);
 static int32_t gpio_bool_to_int32(bool _GPIO4, bool _GPIO5);
-static void gpio_set(int32_t gpio_val);
+static int32_t gpio_set(int32_t gpio_val);
 static void set_src_pdos();
 static void on_ccstat_change();
 static void on_chgtype_change();
@@ -43,7 +43,7 @@ static void on_ccistat_change();
 static void on_ccpinstat_change();
 static void vbus_turn_off();
 static void vbus_turn_on();
-static void customer_config_read();
+static int32_t customer_config_read();
 static uint8_t _gpio_interrupt;
 static uint8_t interrupt_mask = GPIO_IRQ_EDGE_FALL;
 static bool test_max77958_interrupt_bool = false;
@@ -62,8 +62,7 @@ void max77958_on_interrupt(uint gpio, uint32_t event_mask){
 
 static int on_pd_msg_received(){
     printf("Rec PD message\n");
-    queue_entry_t on_pd_msg_received_entry = {&pd_msg_response, 0};
-    call_queue_try_add(&on_pd_msg_received_entry, 0);
+    call_queue_try_add(&pd_msg_response, 0);
     return 0;
 }
 
@@ -128,7 +127,7 @@ static void on_chgtype_change(){
 	}
 }
 
-static void opcode_queue_add(void (*opcode_func)(), int32_t opcode_data){
+static void opcode_queue_add(int32_t (opcode_func)(), int32_t opcode_data){
     opcodes_finished = false;
     queue_entry_t opcode_entry = {opcode_func, opcode_data};
     if(!queue_try_add(&opcode_queue, &opcode_entry)){
@@ -138,7 +137,7 @@ static void opcode_queue_add(void (*opcode_func)(), int32_t opcode_data){
     printf("Added to opcode_queue. %d entries remaining\n", queue_get_level(&opcode_queue));
 } 
 
-static int parse_interrupt_vals(){
+static int32_t parse_interrupt_vals(){
     uint16_t return_val = 0;
     get_interrupt_vals();
     // don't really need these, but makes it easier to understand what each entry to the return_buf represents
@@ -302,7 +301,7 @@ void test_max77958_get_id(){
 
 void test_max77958_get_customer_config_id(){
     printf("test_max77958_get_customer_config_id started...\n");
-    opcode_queue_add(&customer_config_read, 0);
+    opcode_queue_add(customer_config_read, 0);
     opcode_queue_pop();
     int i = 0;
     while (!opcodes_finished){
@@ -360,8 +359,9 @@ void test_max77958_interrupt(){
     printf("test_max77958_interrupt: PASSED after %" PRIu32 " milliseconds.\n", i*10);
 }
 
-static void max77958_test_response(){
+static int32_t max77958_test_response(){
     test_max77958_completed = true;
+    return 0;
 }
 
 void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
@@ -387,13 +387,13 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     get_interrupt_vals();
 
     // Add all opcode commands in order to a queue. These will be called sequentially from core1 via the call_queue
-    opcode_queue_add(&customer_config_write, 0);
+    opcode_queue_add(customer_config_write, 0);
     //opcode_queue_add(&set_snk_pdos, 0);
     //opcode_queue_add(&set_src_pdos, 0);
     // Set GPIO5 and GPIO4 to LOW
-    opcode_queue_add(&gpio_set, gpio_bool_to_int32(false, false));
+    opcode_queue_add(gpio_set, gpio_bool_to_int32(false, false));
     // Set GPIO5 to HIGH and GPIO4 to LOW
-    opcode_queue_add(&gpio_set, gpio_bool_to_int32(true, false));
+    opcode_queue_add(gpio_set, gpio_bool_to_int32(true, false));
 
     opcode_queue_pop();
     printf("max77958 init finished\n");
@@ -424,14 +424,15 @@ static bool opcode_queue_pop(){
     }
 }
 
-static void customer_config_read(){
+static int32_t customer_config_read(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = 0x55; // Customer Configuration Write 
     opcode_write(send_buf);
+    return 0;
 }
 
-static void customer_config_write(){
+static int32_t customer_config_write(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = 0x56; // Customer Configuration Write 
@@ -446,6 +447,7 @@ static void customer_config_write(){
     send_buf[10] = 0x14; // SRC_PDO_MaxI
     send_buf[11] = 0x00; // SRC_PDO_MaxI = 1.0A (0x64=100, and 100*10mA)
     opcode_write(send_buf);
+    return 0;
 }
 
 // A function to make turning on/off GPIO4 and 5 more readable
@@ -455,13 +457,14 @@ static int32_t gpio_bool_to_int32(bool _GPIO4, bool _GPIO5){
 }
 
 // A function to set the GPIO of the max77958 taking as input two bool values setting GPIO4 and GPIO5
-static void gpio_set(int32_t gpio_val){
+static int32_t gpio_set(int32_t gpio_val){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = OPCODE_SET_GPIO; 
     send_buf[2] = 0x00; //Reg 0x22 by default should be all 0s
     send_buf[3] = gpio_val;
     opcode_write(send_buf);
+    return 0;
 }
 
 static void power_swap_request(){
@@ -556,7 +559,7 @@ static void vbus_turn_on(){
     opcode_queue_pop();
 }
 
-static void pd_msg_response(){
+static int32_t pd_msg_response(){
     // Read the 0xE PD_STATUS0 register as it contains the PD message Type recieved 
     memset(send_buf, 0, sizeof send_buf);
     memset(return_buf, 0, sizeof return_buf);
@@ -592,10 +595,11 @@ static void pd_msg_response(){
 	    printf("PD Message: Unknown\n");
 	    break;
 	}	
+    return 0;
 }
 
 void max77958_shutdown(uint gpio_interrupt){
-    opcode_queue_add(&gpio_set, gpio_bool_to_int32(false, false));
+    opcode_queue_add(gpio_set, gpio_bool_to_int32(false, false));
     opcode_queue_pop();
     int i = 0;
     while (!opcodes_finished){

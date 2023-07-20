@@ -6,9 +6,9 @@
 #include "robot.h"
 #include <inttypes.h>
 
-static void ncp3901_on_wireless_charger_attached(int32_t test);
-static void ncp3901_on_wireless_charger_detached(int32_t test);
-static void ncp3901_test_response();
+static int32_t ncp3901_on_wireless_charger_attached(int32_t test);
+static int32_t ncp3901_on_wireless_charger_detached(int32_t test);
+static int32_t ncp3901_test_response();
 static int8_t _gpio_wireless_charger;
 static int8_t _gpio_otg;
 static bool test_ncp3901_started = false;
@@ -32,14 +32,16 @@ void ncp3901_on_wireless_charger_interrupt(uint gpio, uint32_t event_mask)
     }	
 }
 
-static void ncp3901_on_wireless_charger_attached(int32_t test){
+static int32_t ncp3901_on_wireless_charger_attached(int32_t test){
     printf("Wireless power available\n");
     // send to Android to inform that wireless power available.
+    return 0;
 }
 
-static void ncp3901_on_wireless_charger_detached(int32_t test){
+static int32_t ncp3901_on_wireless_charger_detached(int32_t test){
     printf("Wireless power unavailable\n");
     // send to Android to inform that wireless power unavailable.
+    return 0;
 }
 
 // Power mux initialization
@@ -132,7 +134,8 @@ void test_ncp3901_interrupt(){
     printf("test_ncp3901_interrupt_wireless_disconnect: PASSED after %" PRIu32 " milliseconds.\n", i*10);
 }
 
-static void ncp3901_test_response(){
+static int32_t ncp3901_test_response(){
     test_ncp3901_completed = true;
+    return 0;
 }
 
