@@ -20,6 +20,7 @@ static void get_interrupt_masks();
 static void set_interrupt_masks();
 static void opcode_read();
 static int opcode_write(uint8_t *send_buf);
+static void max77958_test_response();
 static queue_t* call_queue_ptr;
 static queue_t* return_queue_ptr;
 static bool opcode_cmd_finished = false;
@@ -46,11 +47,16 @@ static void customer_config_read();
 static uint8_t _gpio_interrupt;
 static uint8_t interrupt_mask = GPIO_IRQ_EDGE_FALL;
 static bool test_max77958_interrupt_bool = false;
+static bool test_max77958_started = false;
+static bool test_max77958_completed = false;
 
 void max77958_on_interrupt(uint gpio, uint32_t event_mask){
     if (event_mask & interrupt_mask){
         gpio_acknowledge_irq(_gpio_interrupt, interrupt_mask);	
 	call_queue_try_add(&parse_interrupt_vals, 0);
+    }
+    if (test_max77958_started){
+	call_queue_try_add(&max77958_test_response, 1);
     }
 }
 
@@ -326,9 +332,17 @@ void test_max77958_get_customer_config_id(){
 void test_max77958_interrupt(){
     printf("test_max77958_interrupt started...\n");
     set_interrupt_masks_all_masked();
-    gpio_pull_down(_gpio_interrupt);
+
+    test_max77958_started = true;
+    printf("test_max77958_interrupt: prior to driving low GPIO%d. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
+    gpio_set_dir(_gpio_interrupt, GPIO_OUT);
+    if (gpio_get(_gpio_interrupt) != 0){
+	printf("test_max77958_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
+	assert(false);
+    }
+    printf("test_max77958_interrupt: after driving low GPIO%d. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
     uint32_t i = 0;
-    while (!test_max77958_interrupt_bool){
+    while (!test_max77958_completed){
         sleep_ms(10);
 	tight_loop_contents();
 	i++;
@@ -337,11 +351,16 @@ void test_max77958_interrupt(){
 	    assert(false);
 	}
     }
-    // Reset all masks to defualts
-    gpio_pull_up(_gpio_interrupt);
+    gpio_set_dir(_gpio_interrupt, GPIO_IN);
+    test_max77958_started = false;
+    test_max77958_completed = false;
     set_interrupt_masks();
     test_max77958_interrupt_bool = false;
     printf("test_max77958_interrupt: PASSED after %" PRIu32 " milliseconds.\n", i*10);
+}
+
+static void max77958_test_response(){
+    test_max77958_completed = true;
 }
 
 void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
@@ -358,8 +377,8 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     
     // max77958 sends active LOW on INTB connected to GPIO7 on the rp2040. Setup interrupt callback here
     gpio_init(_gpio_interrupt);
+    gpio_put(_gpio_interrupt, 0);
     gpio_set_dir(_gpio_interrupt, GPIO_IN);
-    gpio_get(_gpio_interrupt);
     gpio_pull_up(_gpio_interrupt);
     gpio_set_irq_enabled(_gpio_interrupt, GPIO_IRQ_EDGE_FALL, true); 
 
