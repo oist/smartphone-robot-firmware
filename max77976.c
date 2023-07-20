@@ -41,11 +41,10 @@ void max77976_on_battery_charger_interrupt(uint gpio, uint32_t event_mask){
         gpio_acknowledge_irq(_gpio_interrupt, interrupt_mask);	
 	call_queue_try_add(&max77976_parse_interrupt_vals, 0);
 	printf("MAX77976 added max77976_parse_interrupt_vals to call_queue.\n");
+        if (test_max77976_started){
+            call_queue_try_add(&max77976_test_response, 1);
+        }
     }
-    if (test_max77976_started){
-	call_queue_try_add(&max77976_test_response, 1);
-    }
-	// remember this should only add to the call_queue, not execute the function
 }
 
 static uint16_t max77976_parse_interrupt_vals(){

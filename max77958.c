@@ -54,9 +54,9 @@ void max77958_on_interrupt(uint gpio, uint32_t event_mask){
     if (event_mask & interrupt_mask){
         gpio_acknowledge_irq(_gpio_interrupt, interrupt_mask);	
 	call_queue_try_add(&parse_interrupt_vals, 0);
-    }
-    if (test_max77958_started){
-	call_queue_try_add(&max77958_test_response, 1);
+        if (test_max77958_started){
+            call_queue_try_add(&max77958_test_response, 1);
+        }
     }
 }
 
