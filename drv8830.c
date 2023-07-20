@@ -177,6 +177,7 @@ void test_drv8830_interrupt(){
 	}
     }
     gpio_set_dir(_gpio_fault1, GPIO_IN);
+    gpio_pull_up(_gpio_fault1);
     test_drv8830_started = false;
     test_drv8830_completed = false;
     printf("test_drv8830_interrupt: Encoder 1 PASSED after %" PRIu32 " milliseconds.\n", i*10);
@@ -192,6 +193,7 @@ void test_drv8830_interrupt(){
 	}
     }
     gpio_set_dir(_gpio_fault2, GPIO_IN);
+    gpio_pull_up(_gpio_fault2);
     test_drv8830_started = false;
     printf("test_drv8830_interrupt: Encoder 2 PASSED after %" PRIu32 " milliseconds.\n", i*10);
 }

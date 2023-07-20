@@ -450,6 +450,7 @@ void test_max77976_interrupt(){
 	}
     }
     gpio_set_dir(_gpio_interrupt, GPIO_IN);
+    gpio_pull_up(_gpio_interrupt);
     test_max77976_started = false;
     test_max77976_completed = false;
     max77976_set_interrupt_masks();
