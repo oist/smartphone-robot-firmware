@@ -51,7 +51,7 @@ void core1_entry() {
 
 //sleep_ms(1);
 	int32_t result = call_queue_pop();
-	results_queue_try_add(&tight_loop_contents, result);
+	//results_queue_try_add(&tight_loop_contents, result);
         // as an alternative to polling the return queue, you can send an irq to core0 to add another entry to call_queue
     }
 }
@@ -86,10 +86,15 @@ int main(){
     //int i = 0;
     while (true)
     {
-	results_queue_pop();
+	//results_queue_pop();
         //sample_adc_inputs();
 	//bq27742_g1_poll();
-	//max77976_get_chg_details();
+	max77976_get_chg_details();
+        set_voltage(MOTOR_LEFT, 2.5);
+        set_voltage(MOTOR_RIGHT, 2.5);
+	sleep_ms(1000);
+	set_voltage(MOTOR_LEFT, 0);
+	set_voltage(MOTOR_RIGHT, 0);
 	//max77976_log_current_limit();
 	//max77976_toggle_led();
 	if (shutdown){
@@ -97,7 +102,7 @@ int main(){
 	    break;
 	}else{
 	    // This sleep or some other time consuming function must occur else can't reset from gdb as thread will be stuck in tight_loop_contents()
-            // sleep_ms(1);
+            sleep_ms(1000);
 	    tight_loop_contents();
 	}
 //	i++;
