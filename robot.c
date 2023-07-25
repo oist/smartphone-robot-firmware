@@ -89,12 +89,14 @@ int main(){
 	//results_queue_pop();
         //sample_adc_inputs();
 	//bq27742_g1_poll();
-	max77976_get_chg_details();
-        set_voltage(MOTOR_LEFT, 2.5);
-        set_voltage(MOTOR_RIGHT, 2.5);
-	sleep_ms(1000);
-	set_voltage(MOTOR_LEFT, 0);
-	set_voltage(MOTOR_RIGHT, 0);
+	//max77976_get_chg_details();
+	quad_encoder_update();
+        set_voltage(MOTOR_LEFT, 5.0);
+        set_voltage(MOTOR_RIGHT, 5.0);
+	//sleep_ms(100);
+	//set_voltage(MOTOR_LEFT, 0);
+	//set_voltage(MOTOR_RIGHT, 0);
+	//quad_encoder_update();
 	//max77976_log_current_limit();
 	//max77976_toggle_led();
 	if (shutdown){
@@ -102,7 +104,7 @@ int main(){
 	    break;
 	}else{
 	    // This sleep or some other time consuming function must occur else can't reset from gdb as thread will be stuck in tight_loop_contents()
-            sleep_ms(1000);
+            sleep_ms(100);
 	    tight_loop_contents();
 	}
 //	i++;
