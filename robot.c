@@ -18,6 +18,7 @@
 #include "CException.h"
 #include "quad_encoders.h"
 #include "drv8830.h"
+#include "hardware/uart.h"
 
 static queue_t call_queue;
 static queue_t results_queue;
@@ -38,6 +39,8 @@ int32_t call_queue_pop();
 static void signal_stop_core1();
 static void robot_interrupt_handler(uint gpio, uint32_t event_mask);
 void robot_unit_tests();
+void handle_block(uint8_t *buffer);
+void send_block(uint8_t *buffer, uint8_t buffer_length);
 
 volatile CEXCEPTION_T e;
 
@@ -80,6 +83,74 @@ void results_queue_pop(){
     }
 }
 
+uint16_t get_block(uint8_t *buffer) {
+    bool needs_handling = false;
+    uint16_t buffer_index= 0;
+    while (true) {
+        int c = getchar_timeout_us(100);
+        if (c != PICO_ERROR_TIMEOUT && buffer_index < ANDROID_BUFFER_LENGTH) {
+            buffer[buffer_index++] = (c & 0xFF);
+	    needs_handling = true;
+        } else {
+            break;
+        }
+    }
+    if (needs_handling){
+	handle_block(buffer);
+    }
+
+    return buffer_index;
+}
+
+void handle_block(uint8_t *buffer){
+    // Start with NACK response and only change to ACK upon success
+    uint8_t response[RESPONSE_BUFFER_LENGTH] = {START_MARKER, NACK, END_MARKER};
+    uint8_t command = buffer[0];
+    switch (command){
+	case GET_USB_VOLTAGE:
+		// TODO
+		break;
+	case GET_CHARGE_DETAILS:
+		response[1] = ACK;
+		// TODO
+		break;
+	case GET_LOG:
+		// TODO
+		break;
+	case VARIOUS:
+		// TODO
+		break;
+	case GET_ENCODER_COUNT:
+		// TODO
+		break;
+	case RESET_ENCODER_COUNT:
+		// TODO
+		break;
+	case SET_MOTOR_LEVEL:
+		// TODO
+		break;
+	case SET_MOTOR_BRAKE:
+		// TODO
+		break;
+    }
+    send_block(response, RESPONSE_BUFFER_LENGTH);
+}
+
+void send_block(uint8_t *buffer, uint8_t buffer_length){
+    //printf("Testing");
+    // Check if buffer[0] is START_MARKER and buffer[buffer_length-1] is END_MARKER
+    if (buffer[0] != START_MARKER || buffer[buffer_length-1] != END_MARKER){
+	printf("Invalid block received\n");
+	assert (false);
+	return;
+    }
+
+    //for (int i = 0; i < buffer_length; i++){
+    //    printf("%c", buffer[i]);
+    //}
+    printf("%.*s", buffer_length, buffer);
+}
+
 int main(){
     bool shutdown = false;
     on_start();
@@ -90,15 +161,16 @@ int main(){
         //sample_adc_inputs();
 	//bq27742_g1_poll();
 	//max77976_get_chg_details();
-	quad_encoder_update();
-        set_voltage(MOTOR_LEFT, 5.0);
-        set_voltage(MOTOR_RIGHT, 5.0);
+	//quad_encoder_update();
+        //set_voltage(MOTOR_LEFT, 5.0);
+        //set_voltage(MOTOR_RIGHT, 5.0);
 	//sleep_ms(100);
-	//set_voltage(MOTOR_LEFT, 0);
-	//set_voltage(MOTOR_RIGHT, 0);
+	//set_voltage(MOTOR_LEFT, -5.0);
+	//set_voltage(MOTOR_RIGHT, -5.0);
 	//quad_encoder_update();
 	//max77976_log_current_limit();
 	//max77976_toggle_led();
+        uint16_t buffer_index = get_block(android_buf);
 	if (shutdown){
 	    on_shutdown();
 	    break;
@@ -157,6 +229,10 @@ void on_start(){
 
     robot_unit_tests();
     printf("on_start complete\n");
+    //while(!stdio_usb_connected()){
+    //    sleep_ms(100);
+    //}
+    //printf("USB connected\n"); 
 }
 
 void robot_unit_tests(){
@@ -165,6 +241,7 @@ void robot_unit_tests(){
     test_max77958_get_customer_config_id();
     test_max77958_interrupt();
     test_max77976_get_id();
+    test_max77976_get_FSW();
     test_max77976_interrupt();
     test_ncp3901_interrupt();
     test_drv8830_get_faults();

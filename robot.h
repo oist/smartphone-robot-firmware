@@ -57,4 +57,30 @@ void results_queue_try_add(void *func, int32_t arg);
 #define ENCODER_2_CHANNEL_A _u(14)
 #define ENCODER_2_CHANNEL_B _u(15)
 
+#define ANDROID_BUFFER_LENGTH _u(64)
+#define RESPONSE_BUFFER_LENGTH _u(3)
+
+#define DO_NOTHING 0x00
+#define GET_CHARGE_DETAILS 0x01
+#define GET_LOG 0x02
+#define VARIOUS 0x03
+#define GET_ENCODER_COUNT 0x04
+#define RESET_ENCODER_COUNT 0x05
+#define SET_MOTOR_LEVEL 0x06
+#define SET_MOTOR_BRAKE 0x07
+#define GET_USB_VOLTAGE 0x08
+
+#define ON_WIRELESS_ATTACHED 0x00
+#define ON_WIRELESS_DETACHED 0x01
+#define ON_MOTOR_FAULT 0x02
+#define ON_USB_ERROR 0x03
+
+#define NACK 0xFC
+#define ACK 0xFD
+#define START_MARKER 0xFE
+#define END_MARKER 0xFF
+
+
+static uint8_t android_buf[ANDROID_BUFFER_LENGTH] = {0};
+
 #endif
