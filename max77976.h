@@ -25,6 +25,7 @@
 #define MAX77976_REG_CHG_CNFG_00_MODE_MSB _u(3)
 #define MAX77976_REG_CHG_CNFG_00_MODE_RESET _u(0X4)
 #define MAX77976_REG_CHG_CNFG_00_MODE_CHARGE_BUCK _u(0x5)
+#define MAX77976_REG_CHG_CNFG_00_MODE_BATTERY_BOOST_FLASH _u(0x9)
 // -----------------------------------------------------------------------------
 #define MAX77976_REG_CHG_CNFG_02_ADDR _u(0x18)
 #define MAX77976_REG_CHG_CNFG_02_SPR_7_LSB _u(7)
@@ -86,6 +87,7 @@ void max77976_log_current_limit();
 void max77976_shutdown();
 void max77976_on_battery_charger_interrupt(uint GPIO, uint32_t events);
 void test_max77976_get_id();
+void test_max77976_get_FSW();
 void test_max77976_interrupt();
 
 #endif // MAX77976_

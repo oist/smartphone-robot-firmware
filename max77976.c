@@ -15,7 +15,7 @@ static void max77976_set_interrupt_masks();
 static void max77976_set_interrupt_masks_all_masked();
 static int32_t max77976_test_response();
 static void max77976_get_interrupt_vals(uint8_t* buf_ptr) ;
-static uint8_t send_buf[3];
+static uint8_t send_buf[4];
 static uint8_t return_buf[2];
 static uint8_t _gpio_interrupt;
 static bool test_max77976_interrupt_bool = false;
@@ -70,8 +70,16 @@ static int32_t max77976_parse_interrupt_vals(){
 	printf("MAX77976: CHGIN_I interrupt detected.\n");
         if (buf[2] & CHGIN_I){
 	    printf("MAX77976: CHGIN input is valid.\n");
+            // Set Charge mode to default mode to Charge Buck while charging
+            //buf[0] = MAX77976_REG_CHG_CNFG_00_ADDR;
+            //buf[1] = MAX77976_REG_CHG_CNFG_00_MODE_CHARGE_BUCK;
+            //i2c_write_error_handling(i2c1, MAX77976_ADDR, buf, 2, false);
 	}else {
 	    printf("MAX77976: CHGIN input is not valid.\n");
+            // Set mode to Battery-boot (flash) while no charger present
+            //buf[0] = MAX77976_REG_CHG_CNFG_00_ADDR;
+            //buf[1] = MAX77976_REG_CHG_CNFG_00_MODE_BATTERY_BOOST_FLASH;
+            //i2c_write_error_handling(i2c1, MAX77976_ADDR, buf, 2, false);
         }
     }
     if (buf[0] & INLIM_I){
@@ -155,8 +163,9 @@ int max77976_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     buf[1] = 0x0C;   
     i2c_write_error_handling(i2c1, MAX77976_ADDR, buf, 2, false);
 
-    // Set default mode to CHARGE-BUCK
+    // Set default mode to Battery-boot (flash)
     buf[0] = MAX77976_REG_CHG_CNFG_00_ADDR;
+    //buf[1] = MAX77976_REG_CHG_CNFG_00_MODE_BATTERY_BOOST_FLASH;
     buf[1] = MAX77976_REG_CHG_CNFG_00_MODE_CHARGE_BUCK;
     i2c_write_error_handling(i2c1, MAX77976_ADDR, buf, 2, false);
 
@@ -170,6 +179,7 @@ int max77976_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     buf[1] = bit_assign(MAX77976_REG_CHG_CNFG_08_RESET,
                         MAX77976_REG_CHG_CNFG_08_FSW_2P6, 
                         MAX77976_REG_CHG_CNFG_08_FSW_LSB); // All reset values are 0 other than FSW. Seeting this also to 0 results in 2.6MHz
+    //buf[1] = MAX77976_REG_CHG_CNFG_08_RESET;
     i2c_write_error_handling(i2c1, MAX77976_ADDR, buf, 2, false);
 
     // Set charge input current limit to 3000mA and leave Input Current Limit Soft Start Clock as default value (1024 usec)
@@ -234,6 +244,7 @@ void max77976_get_chg_details(){
     send_buf[0] = 0x13; //CHG_DETAILS_00
     send_buf[1] = 0x14; //CHG_DETAILS_01
     send_buf[2] = 0x15; //CHG_DETAILS_02
+    send_buf[3] = 0x16; //CHG_CNFG_00
     
     i2c_write_error_handling(i2c1, MAX77976_ADDR, &send_buf[0], 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
@@ -376,6 +387,12 @@ void max77976_get_chg_details(){
 	    break;
     }printf("\n"); 
 
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, &send_buf[3], 1, true);
+    i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
+    uint8_t CHG_CNFG_00 = return_buf[0];
+    uint8_t _MODE = (CHG_CNFG_00 & 0x0F);
+    printf("CHG_CNFG_00: 0x%x\n", _MODE);
+
 }
 
 void max77976_shutdown(){
@@ -422,6 +439,22 @@ void test_max77976_get_id(){
     }
     max77976_set_interrupt_masks();
     printf("test_max77976_get_id PASSED. Read CHIP_ID %x.\n", rxdata);
+}
+
+void test_max77976_get_FSW(){
+    printf("test_max77976_get_FSW started...\n"); 
+    max77976_set_interrupt_masks_all_masked();
+    uint8_t rxdata;
+
+    uint8_t reg = MAX77976_REG_CHG_CNFG_08_ADDR;
+    i2c_write_error_handling(i2c1, MAX77976_ADDR, &reg, 1, true);
+    i2c_read_error_handling(i2c1, MAX77976_ADDR, &rxdata, 1, false);
+    if (rxdata != 0x0){
+	printf("MAX77976 FSW Not 0x0. Exiting.\n");
+	assert(false);
+    }
+    max77976_set_interrupt_masks();
+    printf("test_max77976_get_FSW PASSED. Read register 0x1E to be %x.\n", rxdata);
 }
 
 static int32_t max77976_test_response(){
