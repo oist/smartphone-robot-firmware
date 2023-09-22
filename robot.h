@@ -58,7 +58,7 @@ void results_queue_try_add(void *func, int32_t arg);
 #define ENCODER_2_CHANNEL_B _u(15)
 
 #define ANDROID_BUFFER_LENGTH _u(64)
-#define RESPONSE_BUFFER_LENGTH _u(3)
+#define RESPONSE_BUFFER_LENGTH _u(64)
 
 #define DO_NOTHING 0x00
 #define GET_CHARGE_DETAILS 0x01

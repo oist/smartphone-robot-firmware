@@ -83,35 +83,65 @@ void results_queue_pop(){
     }
 }
 
-uint16_t get_block(uint8_t *buffer) {
-    bool needs_handling = false;
+// reads data from the UART and stores it in buffer. If no data is available, returns immediately.
+// if new data is available, reads it until the buffer is full or both start and stop markers detected
+// calls handle_block to process the data if both markers are detected
+void get_block(uint8_t *buffer) {
+    // initialize as -1 as a way of detecting the absence of each marker in the buffer
+    static int8_t start_idx = -1;
+    static int8_t end_idx = -1;
     uint16_t buffer_index= 0;
-    while (true) {
+    // Do while start and end idx remain undetected
+    while (start_idx == -1 || end_idx == -1) {
         int c = getchar_timeout_us(100);
+	// PICO_ERROR_TIMEOUT is returned if no data is available (-1)
         if (c != PICO_ERROR_TIMEOUT && buffer_index < ANDROID_BUFFER_LENGTH) {
-            buffer[buffer_index++] = (c & 0xFF);
-	    needs_handling = true;
-        } else {
-            break;
+	    // If start marker is detected in the previous read, start adding to the buffer
+	    // If end marker is not yet detected, keep adding to the buffer
+	    if (start_idx != -1 && end_idx == -1){
+		if (c == START_MARKER){
+		    printf("Start marker detected twice before end marker.\n");
+		    assert (false);
+		}else{
+                    buffer[buffer_index++] = (c & 0xFF);
+		}
+	    }
+	    switch (c){
+		case START_MARKER:
+		    start_idx = buffer_index; 
+		    break;
+		case END_MARKER:
+		    end_idx = buffer_index;
+		    // handle the block after the end marker is detected
+	            handle_block(buffer);
+		    break;
+		default:
+		    // Ignored characters no processed
+		    break;
+	    }
+        } else{
+	    if (buffer_index >= ANDROID_BUFFER_LENGTH){
+		printf("ANDROID_BUFFER_LENGTH exeeded.\n");
+		if (start_idx == -1){
+		    printf("No start marker detected before buffer filled.\n");
+		}else if (end_idx == -1){
+		    printf("No end marker detected before buffer filled.\n");
+	        }
+	    assert (false);
+	    }
         }
     }
-    if (needs_handling){
-	handle_block(buffer);
-    }
-
-    return buffer_index;
 }
 
 void handle_block(uint8_t *buffer){
-    // Start with NACK response and only change to ACK upon success
-    uint8_t response[RESPONSE_BUFFER_LENGTH] = {START_MARKER, NACK, END_MARKER};
+    // Start with ACK response and only change to NACK if default case reached
+    uint8_t response[1] = {ACK};
     uint8_t command = buffer[0];
     switch (command){
-	case GET_USB_VOLTAGE:
-		// TODO
-		break;
+    	case DO_NOTHING:
+	        // TODO
+	        break;
 	case GET_CHARGE_DETAILS:
-		response[1] = ACK;
 		// TODO
 		break;
 	case GET_LOG:
@@ -132,23 +162,32 @@ void handle_block(uint8_t *buffer){
 	case SET_MOTOR_BRAKE:
 		// TODO
 		break;
+	case GET_USB_VOLTAGE:
+		// TODO
+		break;
+	default:
+		response[0] = NACK;
+		break;
     }
-    send_block(response, RESPONSE_BUFFER_LENGTH);
+    send_block(response, 1);
 }
 
 void send_block(uint8_t *buffer, uint8_t buffer_length){
     //printf("Testing");
-    // Check if buffer[0] is START_MARKER and buffer[buffer_length-1] is END_MARKER
-    if (buffer[0] != START_MARKER || buffer[buffer_length-1] != END_MARKER){
-	printf("Invalid block received\n");
+    uint8_t response[RESPONSE_BUFFER_LENGTH];
+    // check whether mResponse is large enough to hold all of response and the start/stop marks
+    if (buffer_length > RESPONSE_BUFFER_LENGTH - 2){
+	printf("buffer is too large to be sent");
 	assert (false);
-	return;
     }
-
-    //for (int i = 0; i < buffer_length; i++){
-    //    printf("%c", buffer[i]);
-    //}
-    printf("%.*s", buffer_length, buffer);
+    else{
+	response[0] = START_MARKER;
+	for (int i = 0; i < buffer_length; i++){
+	    response[i+1] = buffer[i];
+	}
+	response[buffer_length+1] = END_MARKER;
+        printf("%.*s", RESPONSE_BUFFER_LENGTH, response);
+    }
 }
 
 int main(){
@@ -170,7 +209,7 @@ int main(){
 	//quad_encoder_update();
 	//max77976_log_current_limit();
 	//max77976_toggle_led();
-        uint16_t buffer_index = get_block(android_buf);
+        get_block(android_buf);
 	if (shutdown){
 	    on_shutdown();
 	    break;
