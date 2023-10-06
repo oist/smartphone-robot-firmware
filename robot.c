@@ -19,6 +19,7 @@
 #include "quad_encoders.h"
 #include "drv8830.h"
 #include "hardware/uart.h"
+#include <string.h>
 
 static queue_t call_queue;
 static queue_t results_queue;
@@ -41,6 +42,7 @@ static void robot_interrupt_handler(uint gpio, uint32_t event_mask);
 void robot_unit_tests();
 void handle_block(uint8_t *buffer);
 void send_block(uint8_t *buffer, uint8_t buffer_length);
+void process_motor_level(uint8_t *buffer);
 
 volatile CEXCEPTION_T e;
 
@@ -111,8 +113,12 @@ void get_block(uint8_t *buffer) {
 		    start_idx = buffer_index; 
 		    break;
 		case END_MARKER:
-		    end_idx = buffer_index;
+		    // Reset the values of start and end idx to detect the next block
+		    start_idx = -1;
+		    end_idx = -1;
+		    buffer_index = 0;
 		    // handle the block after the end marker is detected
+		    // TODO put this onto the call_queue
 	            handle_block(buffer);
 		    break;
 		default:
@@ -157,7 +163,8 @@ void handle_block(uint8_t *buffer){
 		// TODO
 		break;
 	case SET_MOTOR_LEVEL:
-		// TODO
+		// TODO make this into a function
+		process_motor_level(buffer);
 		break;
 	case SET_MOTOR_BRAKE:
 		// TODO
@@ -172,6 +179,20 @@ void handle_block(uint8_t *buffer){
     send_block(response, 1);
 }
 
+void process_motor_level(uint8_t *buffer){
+    float left, right;
+    if (sizeof(float) == 4){
+        memcpy(&left, &buffer[1], sizeof(float));
+        memcpy(&right, &buffer[5], sizeof(float));
+    }else{
+        printf("float is not 4 bytes\n");
+        assert (false);
+    }
+    set_voltage(MOTOR_LEFT, left);
+    set_voltage(MOTOR_RIGHT, right);
+}
+
+
 void send_block(uint8_t *buffer, uint8_t buffer_length){
     //printf("Testing");
     uint8_t response[RESPONSE_BUFFER_LENGTH];
@@ -181,12 +202,18 @@ void send_block(uint8_t *buffer, uint8_t buffer_length){
 	assert (false);
     }
     else{
+	// clear the response buffer
+	memset(response, 0, RESPONSE_BUFFER_LENGTH);
 	response[0] = START_MARKER;
 	for (int i = 0; i < buffer_length; i++){
 	    response[i+1] = buffer[i];
 	}
 	response[buffer_length+1] = END_MARKER;
-        printf("%.*s", RESPONSE_BUFFER_LENGTH, response);
+	// print the response to the serial port including the start and end markers (+2)
+	for (int i = 0; i < buffer_length + 2; i++){
+	    putchar(response[i]);
+	}
+
     }
 }
 
