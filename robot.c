@@ -40,9 +40,11 @@ int32_t call_queue_pop();
 static void signal_stop_core1();
 static void robot_interrupt_handler(uint gpio, uint32_t event_mask);
 void robot_unit_tests();
-void handle_block(uint8_t *buffer);
+void handle_packet(IncomingPacketFromAndroid *packet);
 void send_block(uint8_t *buffer, uint8_t buffer_length);
 void process_motor_level(uint8_t *buffer);
+uint8_t response[RESPONSE_BUFFER_LENGTH];
+static IncomingPacketFromAndroid incoming_packet_from_android;
 
 volatile CEXCEPTION_T e;
 
@@ -88,62 +90,72 @@ void results_queue_pop(){
 // reads data from the UART and stores it in buffer. If no data is available, returns immediately.
 // if new data is available, reads it until the buffer is full or both start and stop markers detected
 // calls handle_block to process the data if both markers are detected
-void get_block(uint8_t *buffer) {
+void get_block(IncomingPacketFromAndroid *packet) {
     // initialize as -1 as a way of detecting the absence of each marker in the buffer
     static int8_t start_idx = -1;
     static int8_t end_idx = -1;
     uint16_t buffer_index= 0;
-    // Do while start and end idx remain undetected
-    while (start_idx == -1 || end_idx == -1) {
-        int c = getchar_timeout_us(100);
-	// PICO_ERROR_TIMEOUT is returned if no data is available (-1)
-        if (c != PICO_ERROR_TIMEOUT && buffer_index < ANDROID_BUFFER_LENGTH) {
-	    // If start marker is detected in the previous read, start adding to the buffer
-	    // If end marker is not yet detected, keep adding to the buffer
-	    if (start_idx != -1 && end_idx == -1){
-		if (c == START_MARKER){
-		    printf("Start marker detected twice before end marker.\n");
-		    assert (false);
-		}else{
-                    buffer[buffer_index++] = (c & 0xFF);
-		}
-	    }
-	    switch (c){
-		case START_MARKER:
-		    start_idx = buffer_index; 
-		    break;
-		case END_MARKER:
-		    // Reset the values of start and end idx to detect the next block
-		    start_idx = -1;
-		    end_idx = -1;
-		    buffer_index = 0;
-		    // handle the block after the end marker is detected
-		    // TODO put this onto the call_queue
-	            handle_block(buffer);
-		    break;
-		default:
-		    // Ignored characters no processed
-		    break;
-	    }
-        } else{
-	    if (buffer_index >= ANDROID_BUFFER_LENGTH){
-		printf("ANDROID_BUFFER_LENGTH exeeded.\n");
-		if (start_idx == -1){
-		    printf("No start marker detected before buffer filled.\n");
-		}else if (end_idx == -1){
-		    printf("No end marker detected before buffer filled.\n");
-	        }
-	    assert (false);
-	    }
+    uint8_t i = 0;
+    uint8_t MAX_SERIAL_GET_COUNT = 100;
+    
+    int c = getchar_timeout_us(100);
+    // Only process data after finding the START_MARKER
+    if (c != PICO_ERROR_TIMEOUT && c == START_MARKER){
+        start_idx = buffer_index;
+	// After finding the start marker get the rest of the packet or until MAX_SERIAL_GET_COUNT
+	// to prevent an infinite loop
+        while (buffer_index < sizeof(IncomingPacketFromAndroid) || i == MAX_SERIAL_GET_COUNT) {
+            c = getchar_timeout_us(100);
+    
+    	    if (c != PICO_ERROR_TIMEOUT){
+    	        if (buffer_index == 0){
+    	    	    // First byte after start marker is the command
+    	    	    packet->packet_type = (c & 0xFF);
+    	    	    buffer_index++;
+    	        }else{
+    	    	    packet->data[buffer_index - 1] = (c & 0xFF);
+    	    	    buffer_index++;
+    	        }
+    	    }else {
+    	        assert(false);
+    	    }
+    	    i++;
         }
+	
+	c = getchar_timeout_us(100);
+
+        if (c != PICO_ERROR_TIMEOUT && c == END_MARKER){
+            // Calculate the length of the packet
+            uint16_t packet_length = end_idx - start_idx;
+            if (packet_length >= sizeof(IncomingPacketFromAndroid)) {
+                // Call the handle_block function with the packet data
+                handle_packet(packet);
+                // Reset the values of start and end idx to detect the next block
+                start_idx = -1;
+                end_idx = -1;
+                buffer_index = 0;
+	        // Reset the packet
+	        memset(packet, 0, sizeof(IncomingPacketFromAndroid));
+            } else {
+                printf("Received incomplete packet.\n");
+		assert(false);
+            }
+        }else{
+	    printf("Received packet with no end marker.\n");
+	    assert(false);
+	}
+
     }
 }
 
-void handle_block(uint8_t *buffer){
+void handle_packet(IncomingPacketFromAndroid *packet){
+    // clear the response buffer
+    memset(response, 0, RESPONSE_BUFFER_LENGTH);
+    response[0] = START_MARKER;
     // Start with ACK response and only change to NACK if default case reached
-    uint8_t response[1] = {ACK};
-    uint8_t command = buffer[0];
-    switch (command){
+    response[1] = ACK;
+    uint8_t buffer_length = 3; // default to include START, ACK, and END markers
+    switch (packet->packet_type){
     	case DO_NOTHING:
 	        // TODO
 	        break;
@@ -164,7 +176,7 @@ void handle_block(uint8_t *buffer){
 		break;
 	case SET_MOTOR_LEVEL:
 		// TODO make this into a function
-		process_motor_level(buffer);
+	        process_motor_level(packet->data);
 		break;
 	case SET_MOTOR_BRAKE:
 		// TODO
@@ -176,14 +188,32 @@ void handle_block(uint8_t *buffer){
 		response[0] = NACK;
 		break;
     }
-    send_block(response, 1);
+    response[buffer_length - 1] = END_MARKER;
+    for (int i = 0; i < buffer_length; i++){
+        putchar(response[i]);
+    }
 }
 
-void process_motor_level(uint8_t *buffer){
+// Takes the response and add the quad encoder counts to it
+void get_encoder_count(uint8_t *response){
+	uint32_t left, right;
+	left = quad_encoder_get_count(MOTOR_LEFT);
+	right = quad_encoder_get_count(MOTOR_RIGHT);
+	
+	if (sizeof(uint32_t) == 4){
+		memcpy(&left, &response[1], sizeof(uint32_t));
+		memcpy(&right, &response[5], sizeof(uint32_t));
+	}else{
+		printf("uint32_t is not 4 bytes\n");
+		assert (false);
+	}
+}
+
+void process_motor_level(uint8_t *data){
     float left, right;
     if (sizeof(float) == 4){
-        memcpy(&left, &buffer[1], sizeof(float));
-        memcpy(&right, &buffer[5], sizeof(float));
+        memcpy(&left, &data[0], sizeof(float));
+        memcpy(&right, &data[4], sizeof(float));
     }else{
         printf("float is not 4 bytes\n");
         assert (false);
@@ -195,24 +225,16 @@ void process_motor_level(uint8_t *buffer){
 
 void send_block(uint8_t *buffer, uint8_t buffer_length){
     //printf("Testing");
-    uint8_t response[RESPONSE_BUFFER_LENGTH];
     // check whether mResponse is large enough to hold all of response and the start/stop marks
     if (buffer_length > RESPONSE_BUFFER_LENGTH - 2){
 	printf("buffer is too large to be sent");
 	assert (false);
     }
     else{
-	// clear the response buffer
-	memset(response, 0, RESPONSE_BUFFER_LENGTH);
-	response[0] = START_MARKER;
 	for (int i = 0; i < buffer_length; i++){
 	    response[i+1] = buffer[i];
 	}
-	response[buffer_length+1] = END_MARKER;
 	// print the response to the serial port including the start and end markers (+2)
-	for (int i = 0; i < buffer_length + 2; i++){
-	    putchar(response[i]);
-	}
 
     }
 }
@@ -236,13 +258,13 @@ int main(){
 	//quad_encoder_update();
 	//max77976_log_current_limit();
 	//max77976_toggle_led();
-        get_block(android_buf);
+        get_block(&incoming_packet_from_android);
 	if (shutdown){
 	    on_shutdown();
 	    break;
 	}else{
 	    // This sleep or some other time consuming function must occur else can't reset from gdb as thread will be stuck in tight_loop_contents()
-            sleep_ms(100);
+            sleep_ms(10);
 	    tight_loop_contents();
 	}
 //	i++;

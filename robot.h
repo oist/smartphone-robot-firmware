@@ -10,6 +10,13 @@ typedef struct
     int32_t data;
 } queue_entry_t;
 
+#define ANDROID_BUFFER_LENGTH _u(8)
+typedef struct 
+{
+    uint8_t packet_type;
+    uint8_t data[ANDROID_BUFFER_LENGTH];
+} IncomingPacketFromAndroid;
+
 void on_start();
 void i2c_start();
 void bq27742_g1_init();
@@ -57,7 +64,6 @@ void results_queue_try_add(void *func, int32_t arg);
 #define ENCODER_2_CHANNEL_A _u(14)
 #define ENCODER_2_CHANNEL_B _u(15)
 
-#define ANDROID_BUFFER_LENGTH _u(64)
 #define RESPONSE_BUFFER_LENGTH _u(64)
 
 #define DO_NOTHING 0x00
@@ -79,8 +85,5 @@ void results_queue_try_add(void *func, int32_t arg);
 #define ACK 0xFD
 #define START_MARKER 0xFE
 #define END_MARKER 0xFF
-
-
-static uint8_t android_buf[ANDROID_BUFFER_LENGTH] = {0};
 
 #endif
