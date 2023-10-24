@@ -185,7 +185,7 @@ void handle_packet(IncomingPacketFromAndroid *packet){
 		// TODO
 		break;
 	default:
-		response[0] = NACK;
+		response[1] = NACK;
 		break;
     }
     response[buffer_length - 1] = END_MARKER;
