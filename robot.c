@@ -188,8 +188,8 @@ void handle_packet(IncomingPacketFromAndroid *packet){
 		response[1] = NACK;
 		break;
     }
-    response[buffer_length - 1] = END_MARKER;
-    for (int i = 0; i < buffer_length; i++){
+    response[RESPONSE_BUFFER_LENGTH - 1] = END_MARKER;
+    for (int i = 0; i < RESPONSE_BUFFER_LENGTH; i++){
         putchar(response[i]);
     }
 }
