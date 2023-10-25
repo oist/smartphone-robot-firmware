@@ -8,6 +8,7 @@
 #include "quadrature_encoder.pio.h"
 #include "hardware/pio.h"
 #include "hardware/timer.h"
+#include "custom_printf.h"
 
 const PIO pio = pio0;
 const uint sm0 = 0;
@@ -49,6 +50,6 @@ void quad_encoder_update(){
 	encoders[encoder].count_current = quadrature_encoder_get_count(pio, encoder);
 	encoders[encoder].count_delta = encoders[encoder].count_current - encoders[encoder].count_previous;
 	encoders[encoder].count_previous = encoders[encoder].count_current;
-        printf("Encoder %d: %" PRId32 ", delta: %" PRId32 "\n", encoder, encoders[encoder].count_current, encoders[encoder].count_delta);
+        synchronized_printf("Encoder %d: %" PRId32 ", delta: %" PRId32 "\n", encoder, encoders[encoder].count_current, encoders[encoder].count_delta);
     }
 }
