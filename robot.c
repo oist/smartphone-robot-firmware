@@ -20,6 +20,7 @@
 #include "drv8830.h"
 #include "hardware/uart.h"
 #include <string.h>
+#include "custom_printf.h"
 
 static queue_t call_queue;
 static queue_t results_queue;
