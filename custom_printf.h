@@ -7,8 +7,10 @@
 // Function to print with synchronization
 void synchronized_printf(const char* format, ...);
 
-// Function to initialize the synchronization mechanism
-void initialize_printf_synchronization();
+void lock_printf_synchronization();
+void unlock_printf_synchronization();
+// Function to block until printf buffer is empty
+void block_until_printf_empty();
 
 #endif
 

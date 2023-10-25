@@ -190,9 +190,12 @@ void handle_packet(IncomingPacketFromAndroid *packet){
 		break;
     }
     response[RESPONSE_BUFFER_LENGTH - 1] = END_MARKER;
+    lock_printf_synchronization();
+    //sleep_ms(100);
     for (int i = 0; i < RESPONSE_BUFFER_LENGTH; i++){
         putchar(response[i]);
     }
+    unlock_printf_synchronization();
 }
 
 // Takes the response and add the quad encoder counts to it
