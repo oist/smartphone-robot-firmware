@@ -26,7 +26,7 @@ void bq27742_g1_get_voltage(){
     i2c_read_error_handling(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
 
     voltage = (return_buf[1] << 8) | return_buf[0];
-    synchronized_printf("Voltage: %d\n", (int) voltage);
+    //synchronized_printf("Voltage: %d\n", (int) voltage);
 }
 
 void bq27742_g1_get_safety_stats(){
@@ -39,33 +39,33 @@ void bq27742_g1_get_safety_stats(){
     
     uint8_t low_byte = return_buf[0];
     bool error = false;
-    synchronized_printf("SafetyStats: ");
+    //synchronized_printf("SafetyStats: ");
     if (low_byte & ISD_MASK){
-        synchronized_printf("Internal Short condition detected, ");
+        //synchronized_printf("Internal Short condition detected, ");
         error = true;
     }
     if (low_byte & TDD_MASK){
-        synchronized_printf("Tab Disconnect condition detected, ");
+        //synchronized_printf("Tab Disconnect condition detected, ");
         error = true;
     }
     if (low_byte & OTC_MASK){
-        synchronized_printf("Overtemperature in charge condition detected, ");
+        //synchronized_printf("Overtemperature in charge condition detected, ");
         error = true;
     }
     if (low_byte & OTD_MASK){
-        synchronized_printf("Overtemperature in discharge condition detected, ");
+        //synchronized_printf("Overtemperature in discharge condition detected, ");
         error = true;
     }
     if (low_byte & OVP_MASK){
-        synchronized_printf("Overvoltage condition detected, ");
+        //synchronized_printf("Overvoltage condition detected, ");
         error = true;
     }
     if (low_byte & UVP_MASK){
-        synchronized_printf("Undervoltage condition detected, ");
+        //synchronized_printf("Undervoltage condition detected, ");
         error = true;
     }
     if (!error){
-        synchronized_printf("No error detected in battery protection\n");
+        //synchronized_printf("No error detected in battery protection\n");
     }
     
 }
@@ -83,7 +83,7 @@ void bq27742_g1_get_temp(){
 
     uint32_t temperature_k = ((return_buf[1] << 8) | return_buf[0]) / 10;
     temperature = temperature_k - 273;
-    synchronized_printf("Temperature: %d\n", (int)temperature);
+    //synchronized_printf("Temperature: %d\n", (int)temperature);
 }
 
 void bq27742_g1_get_soh(){
@@ -95,9 +95,9 @@ void bq27742_g1_get_soh(){
     i2c_write_error_handling(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
     i2c_read_error_handling(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
 
-    synchronized_printf("SOH: 0x2e=%02x, 0x2f=%02x\n", return_buf[0], return_buf[1]);
+    //synchronized_printf("SOH: 0x2e=%02x, 0x2f=%02x\n", return_buf[0], return_buf[1]);
     float soh = (float)return_buf[0] / 100;
-    synchronized_printf("SOH: %02f\n", soh);
+    //synchronized_printf("SOH: %02f\n", soh);
 }
 
 void bq27742_g1_get_flags(){
@@ -111,57 +111,57 @@ void bq27742_g1_get_flags(){
     uint8_t flags = (return_buf[1] << 8) | return_buf[0];
     bool error = false;
 
-    synchronized_printf("Tags: ");
+    //synchronized_printf("Tags: ");
     if (flags & BATHI_MASK){
-        synchronized_printf("High battery voltage condition BATHI detected, ");
+        //synchronized_printf("High battery voltage condition BATHI detected, ");
         error = true;
     }
     if (flags & BATLOW_MASK){
-        synchronized_printf("Low battery voltage condition BATLOW detected, ");
+        //synchronized_printf("Low battery voltage condition BATLOW detected, ");
         error = true;
     }
     if (flags & CHG_INH_MASK){
-        synchronized_printf("Temperature is < T1 Temp or > T4 Temp while charging is not active. CHG_INH detected, ");
+        //synchronized_printf("Temperature is < T1 Temp or > T4 Temp while charging is not active. CHG_INH detected, ");
         error = true;
     }
     if (flags & FC_MASK){
-        synchronized_printf("Charge termination reached and FC Set Percent = -1. Or SOC > FC Percent is not -1. FC detected, ");
+        //synchronized_printf("Charge termination reached and FC Set Percent = -1. Or SOC > FC Percent is not -1. FC detected, ");
         error = true;
     }
     if (flags & CHG_SUS_MASK){
-        synchronized_printf("Temp < T1 Temp or > T5 Temp while charging active. CHG_SUS detected, ");
+        //synchronized_printf("Temp < T1 Temp or > T5 Temp while charging active. CHG_SUS detected, ");
         error = true;
     }
     if (flags & IMAX_MASK){
-        synchronized_printf("Imax value has changed enough to interrupt. IMAX detected, ");
+        //synchronized_printf("Imax value has changed enough to interrupt. IMAX detected, ");
         error = true;
     }
     if (flags & CHG_MASK){
-        synchronized_printf("Fast charging allowed. CHG detected, ");
+        //synchronized_printf("Fast charging allowed. CHG detected, ");
         error = true;
     }
     if (flags & SOC1_MASK){
-        synchronized_printf("SOC1 reached.");
+        //synchronized_printf("SOC1 reached.");
         error = true;
     }
     if (flags & SOCF_MASK){  
-        synchronized_printf("SOCF Set Percent reached. SOCF detected, ");
+        //synchronized_printf("SOCF Set Percent reached. SOCF detected, ");
         error = true;
     }
     if (flags & DSG_MASK){
-        synchronized_printf("Discharging detected. DSG detected, ");
+        //synchronized_printf("Discharging detected. DSG detected, ");
         error = true;
     }
     if (!error){
-        synchronized_printf("No SystemStat errors detected");
+        //synchronized_printf("No SystemStat errors detected");
     }
-    synchronized_printf("\n");
+    //synchronized_printf("\n");
 }
 
 void bq27742_g1_init() {
-    synchronized_printf("bq27742_g1 init started\n");
+    //synchronized_printf("bq27742_g1 init started\n");
     bq27742_g1_clear_shutdown();
-    synchronized_printf("bq27742_g1 init finished\n");
+    //synchronized_printf("bq27742_g1 init finished\n");
     // uint8_t buf[2];
 
     // ToDo Implement Key Daya Flash Parameters somehow.
@@ -202,17 +202,17 @@ static void bq27742_g1_control(uint16_t subcommand_code){
 
 static void bq27742_g1_set_shutdown(){
     bq27742_g1_control(0x0013); 
-    synchronized_printf("Shutting Down bq27742_g1\n");
+    //synchronized_printf("Shutting Down bq27742_g1\n");
 }
 
 static void bq27742_g1_clear_shutdown(){
     bq27742_g1_control(0x0014); 
-    synchronized_printf("Clearing Shutdown on bq27742_g1\n");
+    //synchronized_printf("Clearing Shutdown on bq27742_g1\n");
 }
 
 void bq27742_g1_fw_version_check(){
     bq27742_g1_control(0x0002); // Read FW Version
-    synchronized_printf("FW Version: 0x%02x%02x\n", return_buf[1], return_buf[0]);
+    //synchronized_printf("FW Version: 0x%02x%02x\n", return_buf[1], return_buf[0]);
 }
 
 void bq27742_g1_shutdown(){

@@ -34,13 +34,13 @@ void ncp3901_on_wireless_charger_interrupt(uint gpio, uint32_t event_mask)
 }
 
 static int32_t ncp3901_on_wireless_charger_attached(int32_t test){
-    synchronized_printf("Wireless power available\n");
+    //synchronized_printf("Wireless power available\n");
     // send to Android to inform that wireless power available.
     return 0;
 }
 
 static int32_t ncp3901_on_wireless_charger_detached(int32_t test){
-    synchronized_printf("Wireless power unavailable\n");
+    //synchronized_printf("Wireless power unavailable\n");
     // send to Android to inform that wireless power unavailable.
     return 0;
 }
@@ -81,58 +81,58 @@ void ncp3901_adc0()
     // 12-bit conversion, assume max value == ADC_VREF == 3.3 V
     uint16_t result = adc_read();
     // Save this value, add to a buffer, or merge with some moving avg.
-    // synchronized_printf("Raw value: 0x%03x, voltage: %f V\n", result, result * conversion_factor);
+    // //synchronized_printf("Raw value: 0x%03x, voltage: %f V\n", result, result * conversion_factor);
 }
 
 void ncp3901_shutdown(){
 }
 
 void test_ncp3901_interrupt(){
-    synchronized_printf("test_ncp3901_interrupt: starting test of wireless connection...\n");
+    //synchronized_printf("test_ncp3901_interrupt: starting test of wireless connection...\n");
     test_ncp3901_started = true;
-    synchronized_printf("test_ncp3901_interrupt: prior to driving low GPIO%d. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
+    //synchronized_printf("test_ncp3901_interrupt: prior to driving low GPIO%d. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
     gpio_set_dir(_gpio_wireless_charger, GPIO_OUT);
     if (gpio_get(_gpio_wireless_charger) != 0){
-	synchronized_printf("test_ncp3901_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
+	//synchronized_printf("test_ncp3901_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
 	assert(false);
     }
-    synchronized_printf("test_ncp3901_interrupt: after driving low GPIO%d. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
+    //synchronized_printf("test_ncp3901_interrupt: after driving low GPIO%d. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
     uint32_t i = 0;
     while (!test_ncp3901_completed){
         sleep_ms(10);
 	tight_loop_contents();
 	i++;
 	if (i > 1000){
-	    synchronized_printf("test_ncp3901_interrupt wireless connect timed out\n");
+	    //synchronized_printf("test_ncp3901_interrupt wireless connect timed out\n");
 	    assert(false);
 	}
     }
     test_ncp3901_started = false;
     test_ncp3901_completed = false;
-    synchronized_printf("test_ncp3901_interrupt_wireless_connect: PASSED after %" PRIu32 " milliseconds.\n", i*10);
+    //synchronized_printf("test_ncp3901_interrupt_wireless_connect: PASSED after %" PRIu32 " milliseconds.\n", i*10);
 
     // This should trigger the opposite interrupt EGDE_RISE
-    synchronized_printf("test_ncp3901_interrupt: starting test of wireless disconnection...\n");
+    //synchronized_printf("test_ncp3901_interrupt: starting test of wireless disconnection...\n");
     test_ncp3901_started = true;
-    synchronized_printf("test_ncp3901_interrupt: prior to pulling up GPIO%d. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
+    //synchronized_printf("test_ncp3901_interrupt: prior to pulling up GPIO%d. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
     gpio_set_dir(_gpio_wireless_charger, GPIO_IN);
     gpio_pull_up(_gpio_wireless_charger);
     if (gpio_get(_gpio_wireless_charger) != 1){
-	synchronized_printf("test_ncp3901_interrupt: GPIO%d was pulled up. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
+	//synchronized_printf("test_ncp3901_interrupt: GPIO%d was pulled up. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
 	assert(false);
     }
-    synchronized_printf("test_ncp3901_interrupt: after pulling up GPIO%d. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
+    //synchronized_printf("test_ncp3901_interrupt: after pulling up GPIO%d. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
     i = 0;
     while (!test_ncp3901_completed){
         sleep_ms(10);
 	tight_loop_contents();
 	i++;
 	if (i > 1000){
-	    synchronized_printf("test_ncp3901_interrupt wireless disconnect timed out\n");
+	    //synchronized_printf("test_ncp3901_interrupt wireless disconnect timed out\n");
 	    assert(false);
 	}
     }
-    synchronized_printf("test_ncp3901_interrupt_wireless_disconnect: PASSED after %" PRIu32 " milliseconds.\n", i*10);
+    //synchronized_printf("test_ncp3901_interrupt_wireless_disconnect: PASSED after %" PRIu32 " milliseconds.\n", i*10);
 }
 
 static int32_t ncp3901_test_response(){

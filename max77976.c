@@ -41,7 +41,7 @@ void max77976_on_battery_charger_interrupt(uint gpio, uint32_t event_mask){
     if (event_mask & interrupt_mask){
         gpio_acknowledge_irq(_gpio_interrupt, interrupt_mask);	
 	call_queue_try_add(&max77976_parse_interrupt_vals, 0);
-	synchronized_printf("MAX77976 added max77976_parse_interrupt_vals to call_queue.\n");
+	//synchronized_printf("MAX77976 added max77976_parse_interrupt_vals to call_queue.\n");
         if (test_max77976_started){
             call_queue_try_add(&max77976_test_response, 1);
         }
@@ -60,23 +60,23 @@ static int32_t max77976_parse_interrupt_vals(){
     uint8_t BYP_I = 1 << 0;
 
     if (buf[0] & AICL_I){
-	synchronized_printf("MAX77976: AICL_I interrupt detected.\n");
+	//synchronized_printf("MAX77976: AICL_I interrupt detected.\n");
         if (buf[2] & AICL_I){
-	    synchronized_printf("MAX77976: AICL mode.\n");
+	    //synchronized_printf("MAX77976: AICL mode.\n");
 	}else {
-	    synchronized_printf("MAX77976: AICL mode not detected.\n");
+	    //synchronized_printf("MAX77976: AICL mode not detected.\n");
         }
     }
     if (buf[0] & CHGIN_I){
-	synchronized_printf("MAX77976: CHGIN_I interrupt detected.\n");
+	//synchronized_printf("MAX77976: CHGIN_I interrupt detected.\n");
         if (buf[2] & CHGIN_I){
-	    synchronized_printf("MAX77976: CHGIN input is valid.\n");
+	    //synchronized_printf("MAX77976: CHGIN input is valid.\n");
             // Set Charge mode to default mode to Charge Buck while charging
             //buf[0] = MAX77976_REG_CHG_CNFG_00_ADDR;
             //buf[1] = MAX77976_REG_CHG_CNFG_00_MODE_CHARGE_BUCK;
             //i2c_write_error_handling(i2c1, MAX77976_ADDR, buf, 2, false);
 	}else {
-	    synchronized_printf("MAX77976: CHGIN input is not valid.\n");
+	    //synchronized_printf("MAX77976: CHGIN input is not valid.\n");
             // Set mode to Battery-boot (flash) while no charger present
             //buf[0] = MAX77976_REG_CHG_CNFG_00_ADDR;
             //buf[1] = MAX77976_REG_CHG_CNFG_00_MODE_BATTERY_BOOST_FLASH;
@@ -84,43 +84,43 @@ static int32_t max77976_parse_interrupt_vals(){
         }
     }
     if (buf[0] & INLIM_I){
-	synchronized_printf("MAX77976: INLIM_I interrupt detected.\n");
+	//synchronized_printf("MAX77976: INLIM_I interrupt detected.\n");
         if (buf[2] & INLIM_I){
-	    synchronized_printf("MAX77976: The CHGIN input current has been reaching the current limit for at least 30ms.\n");
+	    //synchronized_printf("MAX77976: The CHGIN input current has been reaching the current limit for at least 30ms.\n");
         }else {
-	    synchronized_printf("MAX77976: The CHGIN input current has not reached the current limit.\n");
+	    //synchronized_printf("MAX77976: The CHGIN input current has not reached the current limit.\n");
 	}
     }
     if (buf[0] & CHG_I){
-	synchronized_printf("MAX77976: CHG_I interrupt detected.\n");
+	//synchronized_printf("MAX77976: CHG_I interrupt detected.\n");
         if (buf[2] & CHG_I){
-	    synchronized_printf("MAX77976: The charger has suspended charging or TREG = 1.\n");
+	    //synchronized_printf("MAX77976: The charger has suspended charging or TREG = 1.\n");
         }else {
-	    synchronized_printf("MAX77976: The charger is okay or the charger is off.\n");
+	    //synchronized_printf("MAX77976: The charger is okay or the charger is off.\n");
 	}
     }
     if (buf[0] & BAT_I){
-	synchronized_printf("MAX77976: BAT_I interrupt detected.\n");
+	//synchronized_printf("MAX77976: BAT_I interrupt detected.\n");
         if (buf[2] & BAT_I){
-	    synchronized_printf("MAX77976: The battery has an issue or the charger has been suspended.\n");
+	    //synchronized_printf("MAX77976: The battery has an issue or the charger has been suspended.\n");
         }else {
-	    synchronized_printf("MAX77976: The battery is okay.\n");
+	    //synchronized_printf("MAX77976: The battery is okay.\n");
 	}
     }
     if (buf[0] & DISQBAT_I){
-	synchronized_printf("MAX77976: DISQBAT_I interrupt detected.\n");
+	//synchronized_printf("MAX77976: DISQBAT_I interrupt detected.\n");
         if (buf[2] & DISQBAT_I){
-	    synchronized_printf("MAX77976: DISQBAT is high and QBATT is disabled.\n");
+	    //synchronized_printf("MAX77976: DISQBAT is high and QBATT is disabled.\n");
         }else {
-	    synchronized_printf("MAX77976: DISQBAT is low and QBATT is not disabled.\n");
+	    //synchronized_printf("MAX77976: DISQBAT is low and QBATT is not disabled.\n");
 	}
     }
     if (buf[0] & BYP_I){
-	synchronized_printf("MAX77976: BYP_I interrupt detected.\n");
+	//synchronized_printf("MAX77976: BYP_I interrupt detected.\n");
         if (buf[2] & BYP_I){
-	    synchronized_printf("MAX77976: Something powered by the bypass node has hit current limit.\n");
+	    //synchronized_printf("MAX77976: Something powered by the bypass node has hit current limit.\n");
         }else {
-	    synchronized_printf("MAX77976: The bypass node is okay.\n");
+	    //synchronized_printf("MAX77976: The bypass node is okay.\n");
 	}
     }
     if (buf[0] == 0){
@@ -134,14 +134,14 @@ static void max77976_get_interrupt_vals(uint8_t* buf_ptr) {
     uint8_t addr = MAX77976_REG_CHG_INT; // 0x04 Register
     i2c_write_error_handling(i2c1, MAX77976_ADDR, &addr, 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, buf_ptr, 3, false);
-    synchronized_printf("MAX77976 interrupts vals: 0x10: 0x%02x, 0x11: 0x%02x, 0x12: 0x%02x\n", buf_ptr[0], buf_ptr[1], buf_ptr[2]);
+    //synchronized_printf("MAX77976 interrupts vals: 0x10: 0x%02x, 0x11: 0x%02x, 0x12: 0x%02x\n", buf_ptr[0], buf_ptr[1], buf_ptr[2]);
 }
 
 
 int max77976_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     _gpio_interrupt = gpio_interrupt;
 
-    synchronized_printf("max77958 init started\n");
+    //synchronized_printf("max77958 init started\n");
     call_queue_ptr = cq;
     return_queue_ptr = rq;
 
@@ -217,8 +217,8 @@ void max77976_log_current_limit(){
 
     uint8_t CHG_CC = return_buf[0] & 0x7F;
 
-    synchronized_printf("CHGIN_ILIM: 0x%02x\n", CHGIN_ILIM);
-    synchronized_printf("CHG_CC: 0x%02x\n", CHG_CC);
+    //synchronized_printf("CHGIN_ILIM: 0x%02x\n", CHGIN_ILIM);
+    //synchronized_printf("CHG_CC: 0x%02x\n", CHG_CC);
 }
 
 void max77976_toggle_led(){
@@ -251,22 +251,22 @@ void max77976_get_chg_details(){
     i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
     uint8_t CHG_DETAILS_00 = return_buf[0];
     uint8_t CHGIN_DTLS = (CHG_DETAILS_00 & 0x60) >> 5;
-    synchronized_printf("CHG_DETAILS_00: 0x%02x\n CHGIN_DTLS: 0x%02x\n", CHG_DETAILS_00, CHGIN_DTLS);
-    synchronized_printf("CHG_DETAILS_00_CHGIN_DTLS: ");
+    //synchronized_printf("CHG_DETAILS_00: 0x%02x\n CHGIN_DTLS: 0x%02x\n", CHG_DETAILS_00, CHGIN_DTLS);
+    //synchronized_printf("CHG_DETAILS_00_CHGIN_DTLS: ");
     switch (CHGIN_DTLS){
         case 0b00:
-	    synchronized_printf("VBUS is invalid. VCHGIN rising: VCHGIN < VCHGIN_UVLO. VCHGIN falling: VCHGIN < VCHGIN_REG (AICL)");
+	    //synchronized_printf("VBUS is invalid. VCHGIN rising: VCHGIN < VCHGIN_UVLO. VCHGIN falling: VCHGIN < VCHGIN_REG (AICL)");
 	    break;
         case 0b01:
-	    synchronized_printf("VBUS is invalid. VCHGIN < VBATT + VCHGIN2SYS and VCHGIN > VCHGIN_UVLO");
+	    //synchronized_printf("VBUS is invalid. VCHGIN < VBATT + VCHGIN2SYS and VCHGIN > VCHGIN_UVLO");
 	    break;
         case 0b10:
-	    synchronized_printf("VBUS is invalid. VCHGIN > VCHGIN_OVLO");
+	    //synchronized_printf("VBUS is invalid. VCHGIN > VCHGIN_OVLO");
 	    break;
         case 0b11:
-	    synchronized_printf("VBUS is valid. VCHGIN > VCHGIN_UVLO and VCHGIN > VBATT + VCHGIN2SYS and VCHGIN < VCHGIN_OVLO");
+	    //synchronized_printf("VBUS is valid. VCHGIN > VCHGIN_UVLO and VCHGIN > VBATT + VCHGIN2SYS and VCHGIN < VCHGIN_OVLO");
 	    break;
-    }synchronized_printf("\n"); 
+    }//synchronized_printf("\n"); 
     
     i2c_write_error_handling(i2c1, MAX77976_ADDR, &send_buf[1], 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
@@ -274,125 +274,127 @@ void max77976_get_chg_details(){
     uint8_t TREG = (CHG_DETAILS_01 & (1 << 7) ) >> 7;
     uint8_t BAT_DTLS = (CHG_DETAILS_01 & 0x70) >> 4;
     uint8_t CHG_DTLS = (CHG_DETAILS_01 & 0xF);
-    synchronized_printf("CHG_DETAILS_01: 0x%02x\n TREG: 0x%02x\n BAT_DTLS: 0x%02x\n CHG_DTLS: 0x%02x\n", CHG_DETAILS_01, TREG, BAT_DTLS, CHG_DTLS);
-    synchronized_printf("CHG_DETAILS_01_TREG: ");
+    //synchronized_printf("CHG_DETAILS_01: 0x%02x\n TREG: 0x%02x\n BAT_DTLS: 0x%02x\n CHG_DTLS: 0x%02x\n", CHG_DETAILS_01, TREG, BAT_DTLS, CHG_DTLS);
+    //synchronized_printf("CHG_DETAILS_01_TREG: ");
     switch (TREG){
         case 0b0:
-	    synchronized_printf("The junction temperature is less than the threshold set by REGTEMP and the full charge current limit is available");
+	    //synchronized_printf("The junction temperature is less than the threshold set by REGTEMP and the full charge current limit is available");
 	    break;
 	case 0b1:
-	    synchronized_printf("The junction temperature is greater than the threshold set by REGTEMP and the charge current limit may be folding back to reduce power dissipation.");
-    }synchronized_printf("\n"); 
+	    //synchronized_printf("The junction temperature is greater than the threshold set by REGTEMP and the charge current limit may be folding back to reduce power dissipation.");
+	    break;
+    }
+    //synchronized_printf("\n"); 
 
-    synchronized_printf("CHG_DETAILS_01_BAT_DTLS: ");
+    //synchronized_printf("CHG_DETAILS_01_BAT_DTLS: ");
     switch (BAT_DTLS){
         case 0b000:
-	    synchronized_printf("Battery Removal");
+	    //synchronized_printf("Battery Removal");
 	    break;
         case 0b001:
-	    synchronized_printf("Battery Prequalification Voltage");
+	    //synchronized_printf("Battery Prequalification Voltage");
 	    break;
         case 0b010:
-	    synchronized_printf("Battery Timer Fault");
+	    //synchronized_printf("Battery Timer Fault");
 	    break;
         case 0b011:
-	    synchronized_printf("Battery Regular Voltage");
+	    //synchronized_printf("Battery Regular Voltage");
 	    break;
         case 0b100:
-	    synchronized_printf("Battery Low Voltage");
+	    //synchronized_printf("Battery Low Voltage");
 	    break;
         case 0b101:
-	    synchronized_printf("Battery Overvoltage");
+	    //synchronized_printf("Battery Overvoltage");
 	    break;
         case 0b110:
-	    synchronized_printf("Reserved");
+	    //synchronized_printf("Reserved");
 	    break;
         case 0b111:
-	    synchronized_printf("Battery Only");
+	    //synchronized_printf("Battery Only");
 	    break;
-    }synchronized_printf("\n"); 
+    }//synchronized_printf("\n"); 
     
-    synchronized_printf("CHG_DETAILS_01_CHG_DTLS: ");
+    //synchronized_printf("CHG_DETAILS_01_CHG_DTLS: ");
     switch (CHG_DTLS){
         case 0x00:
-	    synchronized_printf("Charger is in dead-battery prequalification or low-battery prequalification mode.");
+	    //synchronized_printf("Charger is in dead-battery prequalification or low-battery prequalification mode.");
 	    break;
         case 0x01:
-	    synchronized_printf("Charger is in fast-charge constant current mode.");
+	    //synchronized_printf("Charger is in fast-charge constant current mode.");
 	    break;
         case 0x02:
-	    synchronized_printf("Charger is in fast-charge constant voltage mode.");
+	    //synchronized_printf("Charger is in fast-charge constant voltage mode.");
 	    break;
         case 0x03:
-	    synchronized_printf("Charger is in top-off mode.");
+	    //synchronized_printf("Charger is in top-off mode.");
 	    break;
         case 0x04:
-	    synchronized_printf("Charger is in done mode.");
+	    //synchronized_printf("Charger is in done mode.");
 	    break;
         case 0x05:
-	    synchronized_printf("Reserved");
+	    //synchronized_printf("Reserved");
 	    break;
         case 0x06:
-	    synchronized_printf("Charger is in timer-fault mode.");
+	    //synchronized_printf("Charger is in timer-fault mode.");
 	    break;
         case 0x07:
-	    synchronized_printf("Charger is suspended because QBATT is disabled");
+	    //synchronized_printf("Charger is suspended because QBATT is disabled");
 	    break;
         case 0x08:
-	    synchronized_printf("Charger is off, charger input invalid and/or charger is disabled.");
+	    //synchronized_printf("Charger is off, charger input invalid and/or charger is disabled.");
 	    break;
         case 0x09:
-	    synchronized_printf("Reserved");
+	    //synchronized_printf("Reserved");
 	    break;
         case 0x0A:
-	    synchronized_printf("Charger is off and the junction temperature is > TSHDN.");
+	    //synchronized_printf("Charger is off and the junction temperature is > TSHDN.");
 	    break;
         case 0x0B:
-	    synchronized_printf("Charger is off because the watchdog timer expired");
+	    //synchronized_printf("Charger is off because the watchdog timer expired");
 	    break;
         case 0x0C:
-	    synchronized_printf("Charger is suspended or charge current or voltage is reduced based on JEITA control.");
+	    //synchronized_printf("Charger is suspended or charge current or voltage is reduced based on JEITA control.");
 	    break;
         case 0x0D:
-	    synchronized_printf("Charger is suspended because battery removal is detected on THM pin.");
+	    //synchronized_printf("Charger is suspended because battery removal is detected on THM pin.");
 	    break;
         case 0x0E:
-	    synchronized_printf("Charger is suspended because SUSPEND pin is high.");
+	    //synchronized_printf("Charger is suspended because SUSPEND pin is high.");
 	    break;
         case 0x0F:
-	    synchronized_printf("Reserved");
+	    //synchronized_printf("Reserved");
 	    break;
-    }synchronized_printf("\n"); 
+    }//synchronized_printf("\n"); 
     
     i2c_write_error_handling(i2c1, MAX77976_ADDR, &send_buf[2], 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
     uint8_t CHG_DETAILS_02 = return_buf[0];
     uint8_t THM_DTLS = (CHG_DETAILS_02 & 0x70) >> 4;
     uint8_t BYP_DTLS = (CHG_DETAILS_02 & 0x0F);
-    synchronized_printf("CHG_DETAILS_02_BYP_DTLS: ");
+    //synchronized_printf("CHG_DETAILS_02_BYP_DTLS: ");
     switch (BYP_DTLS){
         case 0x00:
-	    synchronized_printf("The bypass node is okay.");
+	    //synchronized_printf("The bypass node is okay.");
 	    break;
         case 0x01:
-	    synchronized_printf("OTG_ILIM when CHG_CNFG_00.MODE=0xA or 0xE or 0xF");
+	    //synchronized_printf("OTG_ILIM when CHG_CNFG_00.MODE=0xA or 0xE or 0xF");
 	    break;
         case 0x02:
-	    synchronized_printf("BSTILIM");
+	    //synchronized_printf("BSTILIM");
 	    break;
         case 0x04:
-	    synchronized_printf("BCKNegILIM");
+	    //synchronized_printf("BCKNegILIM");
 	    break;
         case 0x08:
-	    synchronized_printf("BST_SWON_DONE");
+	    //synchronized_printf("BST_SWON_DONE");
 	    break;
-    }synchronized_printf("\n"); 
+    }//synchronized_printf("\n"); 
 
     i2c_write_error_handling(i2c1, MAX77976_ADDR, &send_buf[3], 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
     uint8_t CHG_CNFG_00 = return_buf[0];
     uint8_t _MODE = (CHG_CNFG_00 & 0x0F);
-    synchronized_printf("CHG_CNFG_00: 0x%x\n", _MODE);
+    //synchronized_printf("CHG_CNFG_00: 0x%x\n", _MODE);
 
 }
 
@@ -427,7 +429,7 @@ static void max77976_set_interrupt_masks(){
 }
 
 void test_max77976_get_id(){
-    synchronized_printf("test_max77976_get_id started...\n"); 
+    //synchronized_printf("test_max77976_get_id started...\n"); 
     max77976_set_interrupt_masks_all_masked();
     // Check if responding as i2c slave before trying to write to it
     uint8_t rxdata;
@@ -435,15 +437,15 @@ void test_max77976_get_id(){
     i2c_write_error_handling(i2c1, MAX77976_ADDR, 0x0, 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, &rxdata, 1, false);
     if (rxdata != 0x76){
-	synchronized_printf("MAX77976 not responding. Exiting.\n");
+	//synchronized_printf("MAX77976 not responding. Exiting.\n");
 	assert(false);
     }
     max77976_set_interrupt_masks();
-    synchronized_printf("test_max77976_get_id PASSED. Read CHIP_ID %x.\n", rxdata);
+    //synchronized_printf("test_max77976_get_id PASSED. Read CHIP_ID %x.\n", rxdata);
 }
 
 void test_max77976_get_FSW(){
-    synchronized_printf("test_max77976_get_FSW started...\n"); 
+    //synchronized_printf("test_max77976_get_FSW started...\n"); 
     max77976_set_interrupt_masks_all_masked();
     uint8_t rxdata;
 
@@ -451,11 +453,11 @@ void test_max77976_get_FSW(){
     i2c_write_error_handling(i2c1, MAX77976_ADDR, &reg, 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, &rxdata, 1, false);
     if (rxdata != 0x0){
-	synchronized_printf("MAX77976 FSW Not 0x0. Exiting.\n");
+	//synchronized_printf("MAX77976 FSW Not 0x0. Exiting.\n");
 	assert(false);
     }
     max77976_set_interrupt_masks();
-    synchronized_printf("test_max77976_get_FSW PASSED. Read register 0x1E to be %x.\n", rxdata);
+    //synchronized_printf("test_max77976_get_FSW PASSED. Read register 0x1E to be %x.\n", rxdata);
 }
 
 static int32_t max77976_test_response(){
@@ -464,23 +466,23 @@ static int32_t max77976_test_response(){
 }
 
 void test_max77976_interrupt(){
-    synchronized_printf("test_max77976_interrupt starting...\n");
+    //synchronized_printf("test_max77976_interrupt starting...\n");
     max77976_set_interrupt_masks_all_masked();
     test_max77976_started = true;
-    synchronized_printf("test_max77976_interrupt: prior to driving low GPIO%d. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
+    //synchronized_printf("test_max77976_interrupt: prior to driving low GPIO%d. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
     gpio_set_dir(_gpio_interrupt, GPIO_OUT);
     if (gpio_get(_gpio_interrupt) != 0){
-	synchronized_printf("test_max77976_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
+	//synchronized_printf("test_max77976_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
 	assert(false);
     }
-    synchronized_printf("test_max77976_interrupt: after driving low GPIO%d. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
+    //synchronized_printf("test_max77976_interrupt: after driving low GPIO%d. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
     uint32_t i = 0;
     while (!test_max77976_completed){
         sleep_ms(10);
 	tight_loop_contents();
 	i++;
 	if (i > 1000){
-	    synchronized_printf("test_max77976_interrupt timed out\n");
+	    //synchronized_printf("test_max77976_interrupt timed out\n");
 	    assert(false);
 	}
     }
@@ -490,5 +492,5 @@ void test_max77976_interrupt(){
     test_max77976_completed = false;
     max77976_set_interrupt_masks();
 
-    synchronized_printf("test_max77976_interrupt: Passed after %" PRIu32 " milliseconds.\n", i*10);
+    //synchronized_printf("test_max77976_interrupt: Passed after %" PRIu32 " milliseconds.\n", i*10);
 }
