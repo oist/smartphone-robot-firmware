@@ -47,6 +47,7 @@ void process_motor_level(uint8_t *buffer);
 uint8_t response[RESPONSE_BUFFER_LENGTH];
 static IncomingPacketFromAndroid incoming_packet_from_android;
 void get_encoder_count(uint8_t *response);
+void get_state(uint8_t *response);
 
 volatile CEXCEPTION_T e;
 
@@ -154,43 +155,26 @@ void handle_packet(IncomingPacketFromAndroid *packet){
     // clear the response buffer
     memset(response, 0, RESPONSE_BUFFER_LENGTH);
     response[0] = START_MARKER;
-    // Start with ACK response and only change to NACK if default case reached
-    response[1] = ACK;
-    uint8_t buffer_length = 3; // default to include START, ACK, and END markers
+    response[1] = packet->packet_type;
     switch (packet->packet_type){
-    	case DO_NOTHING:
+    	case GET_LOG:
 	        // TODO
 	        break;
-	case GET_CHARGE_DETAILS:
-		// TODO
-		break;
-	case GET_LOG:
-		// TODO
-		break;
-	case VARIOUS:
-		// TODO
-		break;
-	case GET_ENCODER_COUNT:
-		// TODO
-		get_encoder_count(response);
-		break;
-	case RESET_ENCODER_COUNT:
-		// TODO
-		break;
 	case SET_MOTOR_LEVEL:
-		// TODO make this into a function
 	        process_motor_level(packet->data);
 		break;
 	case SET_MOTOR_BRAKE:
 		// TODO
 		break;
-	case GET_USB_VOLTAGE:
+	case RESET_STATE:
 		// TODO
 		break;
 	default:
 		response[1] = NACK;
 		break;
     }
+    // Add STATE to response
+    get_state(response);
     response[RESPONSE_BUFFER_LENGTH - 1] = END_MARKER;
     lock_printf_synchronization();
     //sleep_ms(100);
@@ -200,10 +184,22 @@ void handle_packet(IncomingPacketFromAndroid *packet){
     unlock_printf_synchronization();
 }
 
+void get_state(uint8_t *response){
+    // ChargeSideUSB: Mux MAX77976 and NCP3901 Data: Charger-side USB Voltage, and Wireless Coil State
+    //uint16_t acdcValue = ncp3901_adc0();
+    //memcpy(&response[2], &acdcValue, sizeof(uint16_t));
+    // BatteryDetails: BQ27742-G1 Data: Battery Voltage, Current, and State of Charge
+
+    // PhoneSideUSB: MAX77958 Phone-side USB Controller
+    
+    // MotorDetails: DRV8830DRCR Data: Includes MOTOR_FAULT, ENCODER_COUNTS, MOTOR_LEVELS, MOTOR_BRAKE
+    //TODO this should not update response with static int values like this
+    get_encoder_count(response);
+}
+
 // Takes the response and add the quad encoder counts to it
 void get_encoder_count(uint8_t *response){
     
-    response[1] = GET_ENCODER_COUNT;
     uint32_t left, right;
     left = quad_encoder_get_count(MOTOR_LEFT);
     right = quad_encoder_get_count(MOTOR_RIGHT);

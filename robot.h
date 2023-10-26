@@ -66,15 +66,10 @@ void results_queue_try_add(void *func, int32_t arg);
 
 #define RESPONSE_BUFFER_LENGTH _u(64)
 
-#define DO_NOTHING 0x00
-#define GET_CHARGE_DETAILS 0x01
-#define GET_LOG 0x02
-#define VARIOUS 0x03
-#define GET_ENCODER_COUNT 0x04
-#define RESET_ENCODER_COUNT 0x05
-#define SET_MOTOR_LEVEL 0x06
-#define SET_MOTOR_BRAKE 0x07
-#define GET_USB_VOLTAGE 0x08
+#define GET_LOG 0x00
+#define SET_MOTOR_LEVEL 0x01
+#define SET_MOTOR_BRAKE 0x02
+#define RESET_STATE 0x03
 
 #define ON_WIRELESS_ATTACHED 0x00
 #define ON_WIRELESS_DETACHED 0x01
