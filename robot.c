@@ -46,6 +46,7 @@ void send_block(uint8_t *buffer, uint8_t buffer_length);
 void process_motor_level(uint8_t *buffer);
 uint8_t response[RESPONSE_BUFFER_LENGTH];
 static IncomingPacketFromAndroid incoming_packet_from_android;
+void get_encoder_count(uint8_t *response);
 
 volatile CEXCEPTION_T e;
 
@@ -171,6 +172,7 @@ void handle_packet(IncomingPacketFromAndroid *packet){
 		break;
 	case GET_ENCODER_COUNT:
 		// TODO
+		get_encoder_count(response);
 		break;
 	case RESET_ENCODER_COUNT:
 		// TODO
@@ -200,17 +202,19 @@ void handle_packet(IncomingPacketFromAndroid *packet){
 
 // Takes the response and add the quad encoder counts to it
 void get_encoder_count(uint8_t *response){
-	uint32_t left, right;
-	left = quad_encoder_get_count(MOTOR_LEFT);
-	right = quad_encoder_get_count(MOTOR_RIGHT);
-	
-	if (sizeof(uint32_t) == 4){
-		memcpy(&left, &response[1], sizeof(uint32_t));
-		memcpy(&right, &response[5], sizeof(uint32_t));
-	}else{
-		//synchronized_printf("uint32_t is not 4 bytes\n");
-		assert (false);
-	}
+    
+    response[1] = GET_ENCODER_COUNT;
+    uint32_t left, right;
+    left = quad_encoder_get_count(MOTOR_LEFT);
+    right = quad_encoder_get_count(MOTOR_RIGHT);
+    
+    if (sizeof(uint32_t) == 4){
+    	memcpy(&response[2], &left, sizeof(uint32_t));
+    	memcpy(&response[6], &right, sizeof(uint32_t));
+    }else{
+    	//synchronized_printf("uint32_t is not 4 bytes\n");
+    	assert (false);
+    }
 }
 
 void process_motor_level(uint8_t *data){
