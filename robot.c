@@ -226,23 +226,6 @@ void process_motor_level(uint8_t *data){
     set_voltage(MOTOR_RIGHT, right);
 }
 
-
-void send_block(uint8_t *buffer, uint8_t buffer_length){
-    ////synchronized_printf("Testing");
-    // check whether mResponse is large enough to hold all of response and the start/stop marks
-    if (buffer_length > RESPONSE_BUFFER_LENGTH - 2){
-	//synchronized_printf("buffer is too large to be sent");
-	assert (false);
-    }
-    else{
-	for (int i = 0; i < buffer_length; i++){
-	    response[i+1] = buffer[i];
-	}
-	// print the response to the serial port including the start and end markers (+2)
-
-    }
-}
-
 int main(){
     bool shutdown = false;
     on_start();
