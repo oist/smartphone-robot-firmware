@@ -71,7 +71,7 @@ void ncp3901_init(uint gpio_wireless_charger, uint gpio_otg)
     adc_gpio_init(26);
 }
 
-void ncp3901_adc0()
+uint16_t ncp3901_adc0()
 {
     // Make sure GPIO is high-impedance, no pullups etc
     adc_gpio_init(26);
@@ -80,6 +80,7 @@ void ncp3901_adc0()
 
     // 12-bit conversion, assume max value == ADC_VREF == 3.3 V
     uint16_t result = adc_read();
+    return result;
     // Save this value, add to a buffer, or merge with some moving avg.
     // //synchronized_printf("Raw value: 0x%03x, voltage: %f V\n", result, result * conversion_factor);
 }
