@@ -2,35 +2,7 @@
 #define ROBOT_
 
 #include "hardware/i2c.h"
-
-typedef int32_t (*entry_func)(int32_t); 
-typedef struct
-{
-    entry_func func;
-    int32_t data;
-} queue_entry_t;
-
-#define ANDROID_BUFFER_LENGTH _u(8)
-typedef struct 
-{
-    uint8_t packet_type;
-    uint8_t data[ANDROID_BUFFER_LENGTH];
-} IncomingPacketFromAndroid;
-
-void on_start();
-void i2c_start();
-void bq27742_g1_init();
-void max77642_init();
-void max77857_init();
-void sn74ahc125rgyr_init();
-void quad_encoders_init();
-void blink_led(uint8_t blinkCnt, int onTime, int offTime);
-void sample_adc_inputs();
-void init_queues();
-void i2c_read_error_handling(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t len, bool nostop);
-void i2c_write_error_handling(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src, size_t len, bool nostop);
-void call_queue_try_add(entry_func func, int32_t arg);
-void results_queue_try_add(void *func, int32_t arg);
+#include "serial_comm_manager.h"
 
 #define CONVERSION_FACTOR _u(3).3f / (1 << 12)
 #define GPIO_WIRELESS_AVAILABLE _u(4) // GPIO4
@@ -64,21 +36,28 @@ void results_queue_try_add(void *func, int32_t arg);
 #define ENCODER_2_CHANNEL_A _u(14)
 #define ENCODER_2_CHANNEL_B _u(15)
 
-#define RESPONSE_BUFFER_LENGTH _u(64)
+typedef int32_t (*entry_func)(int32_t); 
+typedef struct
+{
+    entry_func func;
+    int32_t data;
+} queue_entry_t;
 
-#define GET_LOG 0x00
-#define SET_MOTOR_LEVEL 0x01
-#define SET_MOTOR_BRAKE 0x02
-#define RESET_STATE 0x03
-
-#define ON_WIRELESS_ATTACHED 0x00
-#define ON_WIRELESS_DETACHED 0x01
-#define ON_MOTOR_FAULT 0x02
-#define ON_USB_ERROR 0x03
-
-#define NACK 0xFC
-#define ACK 0xFD
-#define START_MARKER 0xFE
-#define END_MARKER 0xFF
+void on_start();
+void i2c_start();
+void bq27742_g1_init();
+void max77642_init();
+void max77857_init();
+void sn74ahc125rgyr_init();
+void quad_encoders_init();
+void blink_led(uint8_t blinkCnt, int onTime, int offTime);
+void sample_adc_inputs();
+void init_queues();
+void i2c_read_error_handling(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t len, bool nostop);
+void i2c_write_error_handling(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src, size_t len, bool nostop);
+void call_queue_try_add(entry_func func, int32_t arg);
+void results_queue_try_add(void *func, int32_t arg);
+void process_motor_levels(RP2040_STATE *state);
+void get_state(RP2040_STATE* state);
 
 #endif

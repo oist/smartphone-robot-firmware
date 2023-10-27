@@ -21,6 +21,7 @@
 #include "hardware/uart.h"
 #include <string.h>
 #include "custom_printf.h"
+#include "serial_comm_manager.h"
 
 static queue_t call_queue;
 static queue_t results_queue;
@@ -41,13 +42,7 @@ int32_t call_queue_pop();
 static void signal_stop_core1();
 static void robot_interrupt_handler(uint gpio, uint32_t event_mask);
 void robot_unit_tests();
-void handle_packet(IncomingPacketFromAndroid *packet);
-void send_block(uint8_t *buffer, uint8_t buffer_length);
-void process_motor_level(uint8_t *buffer);
-uint8_t response[RESPONSE_BUFFER_LENGTH];
-static IncomingPacketFromAndroid incoming_packet_from_android;
-void get_encoder_count(uint8_t *response);
-void get_state(uint8_t *response);
+void get_encoder_counts(RP2040_STATE* rp2040_state);
 
 volatile CEXCEPTION_T e;
 
@@ -90,101 +85,7 @@ void results_queue_pop(){
     }
 }
 
-// reads data from the UART and stores it in buffer. If no data is available, returns immediately.
-// if new data is available, reads it until the buffer is full or both start and stop markers detected
-// calls handle_block to process the data if both markers are detected
-void get_block(IncomingPacketFromAndroid *packet) {
-    // initialize as -1 as a way of detecting the absence of each marker in the buffer
-    static int8_t start_idx = -1;
-    static int8_t end_idx = -1;
-    uint16_t buffer_index= 0;
-    uint8_t i = 0;
-    uint8_t MAX_SERIAL_GET_COUNT = 100;
-    
-    int c = getchar_timeout_us(100);
-    // Only process data after finding the START_MARKER
-    if (c != PICO_ERROR_TIMEOUT && c == START_MARKER){
-        start_idx = buffer_index;
-	// After finding the start marker get the rest of the packet or until MAX_SERIAL_GET_COUNT
-	// to prevent an infinite loop
-        while (buffer_index < sizeof(IncomingPacketFromAndroid) || i == MAX_SERIAL_GET_COUNT) {
-            c = getchar_timeout_us(100);
-    
-    	    if (c != PICO_ERROR_TIMEOUT){
-    	        if (buffer_index == 0){
-    	    	    // First byte after start marker is the command
-    	    	    packet->packet_type = (c & 0xFF);
-    	    	    buffer_index++;
-    	        }else{
-    	    	    packet->data[buffer_index - 1] = (c & 0xFF);
-    	    	    buffer_index++;
-    	        }
-    	    }else {
-    	        assert(false);
-    	    }
-    	    i++;
-        }
-	
-	c = getchar_timeout_us(100);
-
-        if (c != PICO_ERROR_TIMEOUT && c == END_MARKER){
-            // Calculate the length of the packet
-            uint16_t packet_length = end_idx - start_idx;
-            if (packet_length >= sizeof(IncomingPacketFromAndroid)) {
-                // Call the handle_block function with the packet data
-                handle_packet(packet);
-                // Reset the values of start and end idx to detect the next block
-                start_idx = -1;
-                end_idx = -1;
-                buffer_index = 0;
-	        // Reset the packet
-	        memset(packet, 0, sizeof(IncomingPacketFromAndroid));
-            } else {
-                //synchronized_printf("Received incomplete packet.\n");
-		assert(false);
-            }
-        }else{
-	    //synchronized_printf("Received packet with no end marker.\n");
-	    assert(false);
-	}
-
-    }
-}
-
-void handle_packet(IncomingPacketFromAndroid *packet){
-    // clear the response buffer
-    memset(response, 0, RESPONSE_BUFFER_LENGTH);
-    response[0] = START_MARKER;
-    response[1] = packet->packet_type;
-    switch (packet->packet_type){
-    	case GET_LOG:
-	        // TODO
-	        break;
-	case SET_MOTOR_LEVEL:
-	        process_motor_level(packet->data);
-		break;
-	case SET_MOTOR_BRAKE:
-		// TODO
-		break;
-	case RESET_STATE:
-		// TODO
-		break;
-	default:
-		response[1] = NACK;
-		break;
-    }
-    // Add STATE to response
-    get_state(response);
-    response[RESPONSE_BUFFER_LENGTH - 1] = END_MARKER;
-    lock_printf_synchronization();
-    //sleep_ms(100);
-    for (int i = 0; i < RESPONSE_BUFFER_LENGTH; i++){
-        putchar(response[i]);
-    }
-    unlock_printf_synchronization();
-}
-
-void get_state(uint8_t *response){
+void get_state(RP2040_STATE* state){
     // ChargeSideUSB: Mux MAX77976 and NCP3901 Data: Charger-side USB Voltage, and Wireless Coil State
     //uint16_t acdcValue = ncp3901_adc0();
     //memcpy(&response[2], &acdcValue, sizeof(uint16_t));
@@ -194,36 +95,23 @@ void get_state(uint8_t *response){
     
     // MotorDetails: DRV8830DRCR Data: Includes MOTOR_FAULT, ENCODER_COUNTS, MOTOR_LEVELS, MOTOR_BRAKE
     //TODO this should not update response with static int values like this
-    get_encoder_count(response);
+    get_encoder_counts(state);
 }
 
 // Takes the response and add the quad encoder counts to it
-void get_encoder_count(uint8_t *response){
+void get_encoder_counts(RP2040_STATE* state){
     
     uint32_t left, right;
     left = quad_encoder_get_count(MOTOR_LEFT);
     right = quad_encoder_get_count(MOTOR_RIGHT);
-    
-    if (sizeof(uint32_t) == 4){
-    	memcpy(&response[2], &left, sizeof(uint32_t));
-    	memcpy(&response[6], &right, sizeof(uint32_t));
-    }else{
-    	//synchronized_printf("uint32_t is not 4 bytes\n");
-    	assert (false);
-    }
+   
+    state->MotorsState.EncoderCounts.left = left;
+    state->MotorsState.EncoderCounts.right = right;
 }
 
-void process_motor_level(uint8_t *data){
-    float left, right;
-    if (sizeof(float) == 4){
-        memcpy(&left, &data[0], sizeof(float));
-        memcpy(&right, &data[4], sizeof(float));
-    }else{
-        //synchronized_printf("float is not 4 bytes\n");
-        assert (false);
-    }
-    set_voltage(MOTOR_LEFT, left);
-    set_voltage(MOTOR_RIGHT, right);
+void process_motor_levels(RP2040_STATE* state){
+    set_voltage(MOTOR_LEFT, state->MotorsState.MotorLevels.left);
+    set_voltage(MOTOR_RIGHT, state->MotorsState.MotorLevels.right);
 }
 
 int main(){
@@ -245,7 +133,7 @@ int main(){
 	//quad_encoder_update();
 	//max77976_log_current_limit();
 	//max77976_toggle_led();
-        get_block(&incoming_packet_from_android);
+        get_block();
 	if (shutdown){
 	    on_shutdown();
 	    break;
@@ -303,6 +191,7 @@ void on_start(){
     set_voltage(MOTOR_RIGHT, 0);
 
     robot_unit_tests();
+    serial_comm_manager_init();
     //synchronized_printf("on_start complete\n");
     //while(!stdio_usb_connected()){
     //    sleep_ms(100);
