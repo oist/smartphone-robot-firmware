@@ -43,6 +43,7 @@ static void signal_stop_core1();
 static void robot_interrupt_handler(uint gpio, uint32_t event_mask);
 void robot_unit_tests();
 void get_encoder_counts(RP2040_STATE* rp2040_state);
+void get_motor_faults(RP2040_STATE* state);
 
 volatile CEXCEPTION_T e;
 
@@ -96,6 +97,7 @@ void get_state(RP2040_STATE* state){
     // MotorDetails: DRV8830DRCR Data: Includes MOTOR_FAULT, ENCODER_COUNTS, MOTOR_LEVELS, MOTOR_BRAKE
     //TODO this should not update response with static int values like this
     get_encoder_counts(state);
+    get_motor_faults(state);
 }
 
 // Takes the response and add the quad encoder counts to it
@@ -112,6 +114,12 @@ void get_encoder_counts(RP2040_STATE* state){
 void process_motor_levels(RP2040_STATE* state){
     set_voltage(MOTOR_LEFT, state->MotorsState.MotorLevels.left);
     set_voltage(MOTOR_RIGHT, state->MotorsState.MotorLevels.right);
+}
+
+void get_motor_faults(RP2040_STATE* state){
+    uint8_t* motor_faults = drv8830_get_faults();
+    state->MotorsState.MotorFaults.left = motor_faults[0]; 
+    state->MotorsState.MotorFaults.right = motor_faults[1]; 
 }
 
 int main(){

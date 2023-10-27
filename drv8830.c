@@ -11,6 +11,7 @@
 static i2c_inst_t *i2c = i2c0;
 static uint8_t send_buf[2] = {0};
 static uint8_t return_buf[2] = {0}; // Will read full buffer from registers 0x52 to 0x71
+static uint8_t fault_values[2] = {0};
 				    
 int32_t drv8830_fault_handler(int32_t gpio);
 static int32_t drv8830_test_response();
@@ -130,6 +131,20 @@ void set_voltage(Motor motor, float voltage) {
     uint8_t buffer[] = { DRV8830_REG_CONTROL, (uint8_t)control_value };
     i2c_write_blocking(i2c, i2c_address, buffer, sizeof(buffer), false);
 }
+
+uint8_t* drv8830_get_faults(){
+    uint8_t addr[2] = {MOTOR_LEFT_ADDRESS, MOTOR_RIGHT_ADDRESS};
+    uint8_t buf[2] = {0};
+    buf[0] = DRV8830_REG_FAULT;
+    for (int i = 0; i < 2; i++){
+        // Set the fault register for reading. 
+        i2c_write_error_handling(i2c, addr[i], buf, 1, true);
+        // Read the fault register
+        i2c_read_error_handling(i2c, addr[i], &fault_values[i], 1, false);
+    }
+    return fault_values;
+}
+
 
 static void drv8830_clear_faults(){
     uint8_t addr[2] = {MOTOR_LEFT_ADDRESS, MOTOR_RIGHT_ADDRESS};
