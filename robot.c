@@ -112,8 +112,8 @@ void get_encoder_counts(RP2040_STATE* state){
 }
 
 void process_motor_levels(RP2040_STATE* state){
-    set_voltage(MOTOR_LEFT, state->MotorsState.MotorLevels.left);
-    set_voltage(MOTOR_RIGHT, state->MotorsState.MotorLevels.right);
+    set_motor_control(MOTOR_LEFT, state->MotorsState.MotorLevels.left);
+    set_motor_control(MOTOR_RIGHT, state->MotorsState.MotorLevels.right);
 }
 
 void get_motor_faults(RP2040_STATE* state){
@@ -133,11 +133,7 @@ int main(){
 	//bq27742_g1_poll();
 	//max77976_get_chg_details();
 	//quad_encoder_update();
-        //set_voltage(MOTOR_LEFT, 5.0);
-        //set_voltage(MOTOR_RIGHT, 5.0);
 	//sleep_ms(100);
-	//set_voltage(MOTOR_LEFT, -5.0);
-	//set_voltage(MOTOR_RIGHT, -5.0);
 	//quad_encoder_update();
 	//max77976_log_current_limit();
 	//max77976_toggle_led();
@@ -185,19 +181,18 @@ void on_start(){
     encoder_init(&call_queue);
     //synchronized_printf("encoders initialize. Waiting 1 second\n");
     sleep_ms(1000);
-    //synchronized_printf("done waiting, turning on motors.\n");
+    //synchronized_printf("done waiting, Running unit tests.\n");
     set_voltage(MOTOR_LEFT, 2.5);
     set_voltage(MOTOR_RIGHT, 2.5);
     int i = 0;
     while (i < 500){
-	quad_encoder_update();
-	i++;
-	tight_loop_contents();
+       quad_encoder_update();
+       i++;
+       tight_loop_contents();
     }
     //synchronized_printf("done counting, turning off motors\n");
     set_voltage(MOTOR_LEFT, 0);
     set_voltage(MOTOR_RIGHT, 0);
-
     robot_unit_tests();
     serial_comm_manager_init();
     //synchronized_printf("on_start complete\n");

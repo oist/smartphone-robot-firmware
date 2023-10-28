@@ -21,7 +21,7 @@
 #define START_MARKER 0xFE
 #define END_MARKER 0xFF
 
-#define ANDROID_BUFFER_LENGTH_IN _u(8)
+#define ANDROID_BUFFER_LENGTH_IN _u(2)
 #define ANDROID_BUFFER_LENGTH_OUT _u(61) // +3 for start, command, and end marks for a 64 byte packet
 
 typedef struct 
@@ -46,8 +46,8 @@ typedef struct
     {
         struct
         {
-            float left;
-            float right;
+            uint8_t left;
+            uint8_t right;
             bool left_brake;
             bool right_brake;
         } MotorLevels;

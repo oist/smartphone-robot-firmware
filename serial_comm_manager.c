@@ -90,14 +90,8 @@ void handle_packet(IncomingPacketFromAndroid *packet){
 	        // TODO
 	        break;
 	case SET_MOTOR_LEVEL:
-            if (sizeof(float) == 4){
-                memcpy(&rp2040_state.MotorsState.MotorLevels.left, &packet->data[0], sizeof(float));
-		memcpy(&rp2040_state.MotorsState.MotorLevels.right, &packet->data[4], sizeof(float));
-            }else{
-                //synchronized_printf("float is not 4 bytes\n");
-                assert (false);
-            }
-
+            memcpy(&rp2040_state.MotorsState.MotorLevels.left, &packet->data[0], sizeof(uint8_t));
+	    memcpy(&rp2040_state.MotorsState.MotorLevels.right, &packet->data[1], sizeof(uint8_t));
 	    process_motor_levels(&rp2040_state);
             // Add STATE to response
             get_state(&rp2040_state); 

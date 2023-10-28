@@ -87,6 +87,20 @@ void drv8830_init(uint gpio_fault1, uint gpio_fault2) {
  * @param motor The motor to set the voltage of.
  * @param voltage The voltage to set the motor to. This should be between -5.06V and 5.06V.
  */
+void set_motor_control(Motor motor, uint8_t control_value) {
+
+    // Determine the appropriate I2C address based on the motor
+    uint8_t i2c_address;
+    if (motor == MOTOR_LEFT) {
+        i2c_address = MOTOR_LEFT_ADDRESS;
+    } else {
+        i2c_address = MOTOR_RIGHT_ADDRESS;
+    }
+
+    uint8_t buffer[] = { DRV8830_REG_CONTROL, control_value};
+    i2c_write_blocking(i2c, i2c_address, buffer, sizeof(buffer), false);
+}
+
 void set_voltage(Motor motor, float voltage) {
     // Exclude or truncate voltages between -0.48V and 0.48V to 0V
     if (voltage >= -0.48 && voltage <= 0.48) {
