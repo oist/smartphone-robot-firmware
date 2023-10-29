@@ -65,7 +65,13 @@ typedef struct
     } MotorsState;
 
     struct
-    {} BatteryDetails;
+    {
+	uint16_t voltage;
+	uint8_t safety_status;
+	uint16_t temperature;
+	uint8_t state_of_health;
+	uint16_t flags;
+    } BatteryDetails;
     
     struct
     {} ChargeSideUSB;

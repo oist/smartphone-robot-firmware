@@ -9,14 +9,14 @@
 
 static uint8_t send_buf[4];
 static uint8_t return_buf[4];
-static uint32_t voltage = 0;
+static uint16_t voltage = 0;
 static uint32_t temperature = 0;
 static uint32_t soh = 0;
 static void bq27742_g1_clear_shutdown();
 
-void bq27742_g1_get_voltage(){
+uint16_t bq27742_g1_get_voltage(){
     memset(return_buf, 0, sizeof return_buf);
-    memset(&voltage, 0, sizeof(uint32_t));
+    memset(&voltage, 0, sizeof(voltage));
 
     // Test reading the voltage
     memset(send_buf, 0, sizeof send_buf);
@@ -29,7 +29,7 @@ void bq27742_g1_get_voltage(){
     //synchronized_printf("Voltage: %d\n", (int) voltage);
 }
 
-void bq27742_g1_get_safety_stats(){
+uint8_t bq27742_g1_get_safety_stats(){
     memset(send_buf, 0, sizeof send_buf);
     memset(return_buf, 0, sizeof return_buf);
     send_buf[0] = 0x1A;
@@ -67,10 +67,10 @@ void bq27742_g1_get_safety_stats(){
     if (!error){
         //synchronized_printf("No error detected in battery protection\n");
     }
-    
+  return low_byte;  
 }
 
-void bq27742_g1_get_temp(){
+uint16_t bq27742_g1_get_temp(){
     memset(return_buf, 0, sizeof return_buf);
     memset(&temperature, 0, sizeof(uint32_t));
 
@@ -81,12 +81,13 @@ void bq27742_g1_get_temp(){
     i2c_write_error_handling(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
     i2c_read_error_handling(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
 
-    uint32_t temperature_k = ((return_buf[1] << 8) | return_buf[0]) / 10;
+    uint16_t temperature_k = ((return_buf[1] << 8) | return_buf[0]) / 10;
     temperature = temperature_k - 273;
     //synchronized_printf("Temperature: %d\n", (int)temperature);
+    return temperature; 
 }
 
-void bq27742_g1_get_soh(){
+uint8_t bq27742_g1_get_soh(){
     memset(return_buf, 0, sizeof return_buf);
     memset(&soh, 0, sizeof(uint32_t));
     memset(send_buf, 0, sizeof send_buf);
@@ -96,11 +97,13 @@ void bq27742_g1_get_soh(){
     i2c_read_error_handling(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
 
     //synchronized_printf("SOH: 0x2e=%02x, 0x2f=%02x\n", return_buf[0], return_buf[1]);
-    float soh = (float)return_buf[0] / 100;
+    //float soh = (float)return_buf[0] / 100;
     //synchronized_printf("SOH: %02f\n", soh);
+    // Note in the user guide Section 4.1.24 the range of values is only from 0x00 to 0x64
+    return return_buf[0];
 }
 
-void bq27742_g1_get_flags(){
+uint16_t bq27742_g1_get_flags(){
     memset(send_buf, 0, sizeof send_buf);
     memset(return_buf, 0, sizeof return_buf);
     send_buf[0] = 0x0A;
@@ -156,6 +159,7 @@ void bq27742_g1_get_flags(){
         //synchronized_printf("No SystemStat errors detected");
     }
     //synchronized_printf("\n");
+    return flags;
 }
 
 void bq27742_g1_init() {

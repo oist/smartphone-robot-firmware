@@ -1,6 +1,8 @@
 #ifndef BQ27742_G1_
 #define BQ27742_G1_
 
+#include "pico/types.h"
+
 // -----------------------------------------------------------------------------
 // Device Slave Addresses
 // -----------------------------------------------------------------------------
@@ -36,11 +38,11 @@
 
 
 void bq27742_g1_init();
-void bq27742_g1_get_voltage();
-void bq27742_g1_get_safety_stats();
-void bq27742_g1_get_temp();
-void bq27742_g1_get_soh();
-void bq27742_g1_get_flags();
+uint16_t bq27742_g1_get_voltage();
+uint8_t bq27742_g1_get_safety_stats();
+uint16_t bq27742_g1_get_temp();
+uint8_t bq27742_g1_get_soh();
+uint16_t bq27742_g1_get_flags();
 void bq27742_g1_shutdown();
 void bq27742_g1_fw_version_check();
 
