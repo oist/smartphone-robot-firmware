@@ -48,16 +48,14 @@ typedef struct
         {
             uint8_t left;
             uint8_t right;
-            bool left_brake;
-            bool right_brake;
-        } MotorLevels;
+        } ControlValues;
 
         struct
         {
             // See drv8830 datasheet Table 8.
             uint8_t left;
             uint8_t right;
-        } MotorFaults;
+        } Faults;
         
         struct
         {

@@ -112,14 +112,14 @@ void get_encoder_counts(RP2040_STATE* state){
 }
 
 void process_motor_levels(RP2040_STATE* state){
-    set_motor_control(MOTOR_LEFT, state->MotorsState.MotorLevels.left);
-    set_motor_control(MOTOR_RIGHT, state->MotorsState.MotorLevels.right);
+    set_motor_control(MOTOR_LEFT, state->MotorsState.ControlValues.left);
+    set_motor_control(MOTOR_RIGHT, state->MotorsState.ControlValues.right);
 }
 
 void get_motor_faults(RP2040_STATE* state){
     uint8_t* motor_faults = drv8830_get_faults();
-    state->MotorsState.MotorFaults.left = motor_faults[0]; 
-    state->MotorsState.MotorFaults.right = motor_faults[1]; 
+    state->MotorsState.Faults.left = motor_faults[0]; 
+    state->MotorsState.Faults.right = motor_faults[1]; 
 }
 
 int main(){

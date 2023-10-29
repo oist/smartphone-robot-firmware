@@ -90,8 +90,9 @@ void handle_packet(IncomingPacketFromAndroid *packet){
 	        // TODO
 	        break;
 	case SET_MOTOR_LEVEL:
-            memcpy(&rp2040_state.MotorsState.MotorLevels.left, &packet->data[0], sizeof(uint8_t));
-	    memcpy(&rp2040_state.MotorsState.MotorLevels.right, &packet->data[1], sizeof(uint8_t));
+	    // Copy the motor levels from the packet to the rp2040_state
+            memcpy(&rp2040_state.MotorsState.ControlValues.left, &packet->data[0], sizeof(uint8_t));
+	    memcpy(&rp2040_state.MotorsState.ControlValues.right, &packet->data[1], sizeof(uint8_t));
 	    process_motor_levels(&rp2040_state);
             // Add STATE to response
             get_state(&rp2040_state); 
