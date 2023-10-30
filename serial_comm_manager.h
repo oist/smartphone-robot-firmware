@@ -40,6 +40,7 @@ typedef struct
     uint8_t end_marker;
 } OutgoingPacketToAndroid;
 
+#pragma pack(1) // Set packing alignment to 1 byte
 typedef struct
 {
     struct
@@ -80,6 +81,7 @@ typedef struct
     {} PhoneSideUSB;
 
 } RP2040_STATE;
+#pragma pack() // Reset packing alignment to default
 
 void get_block();
 void serial_comm_manager_init();
