@@ -14,6 +14,7 @@ static int8_t _gpio_wireless_charger;
 static int8_t _gpio_otg;
 static bool test_ncp3901_started = false;
 static bool test_ncp3901_completed = false;
+static bool wireless_charger_attached = false;
 
 // on wireless power available
 void ncp3901_on_wireless_charger_interrupt(uint gpio, uint32_t event_mask)
@@ -36,13 +37,19 @@ void ncp3901_on_wireless_charger_interrupt(uint gpio, uint32_t event_mask)
 static int32_t ncp3901_on_wireless_charger_attached(int32_t test){
     //synchronized_printf("Wireless power available\n");
     // send to Android to inform that wireless power available.
+    wireless_charger_attached = true;
     return 0;
 }
 
 static int32_t ncp3901_on_wireless_charger_detached(int32_t test){
     //synchronized_printf("Wireless power unavailable\n");
     // send to Android to inform that wireless power unavailable.
+    wireless_charger_attached = false;
     return 0;
+}
+
+bool ncp3901_wireless_charger_attached(){
+    return wireless_charger_attached;
 }
 
 // Power mux initialization
