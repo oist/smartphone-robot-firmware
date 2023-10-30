@@ -4,17 +4,9 @@
 #include "hardware/platform_defs.h"
 #include "pico/types.h"
 
-#define RESPONSE_BUFFER_LENGTH _u(64)
-
 #define GET_LOG 0x00
 #define SET_MOTOR_LEVEL 0x01
-#define SET_MOTOR_BRAKE 0x02
 #define RESET_STATE 0x03
-
-#define ON_WIRELESS_ATTACHED 0x00
-#define ON_WIRELESS_DETACHED 0x01
-#define ON_MOTOR_FAULT 0x02
-#define ON_USB_ERROR 0x03
 
 #define NACK 0xFC
 #define ACK 0xFD
