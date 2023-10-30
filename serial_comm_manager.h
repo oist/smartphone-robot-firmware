@@ -78,6 +78,7 @@ typedef struct
     {
 	uint32_t max77976_chg_details;
         uint8_t wireless_charger_attached;	
+	uint16_t usb_charger_voltage;
     } ChargeSideUSB;
     
     struct

@@ -106,6 +106,7 @@ void get_charger_state(RP2040_STATE* state){
     state->ChargeSideUSB.max77976_chg_details = max77976_get_chg_details();
     // Note the implied conversion from bool to uint8_t for the purpose of sending over the serial port via byte array
     state->ChargeSideUSB.wireless_charger_attached = ncp3901_wireless_charger_attached();
+    state->ChargeSideUSB.usb_charger_voltage = ncp3901_adc0();
 }
 
 // Takes the response and add the quad encoder counts to it
