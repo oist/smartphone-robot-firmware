@@ -75,7 +75,10 @@ typedef struct
     } BatteryDetails;
     
     struct
-    {} ChargeSideUSB;
+    {
+	uint32_t max77976_chg_details;
+	
+    } ChargeSideUSB;
     
     struct
     {} PhoneSideUSB;

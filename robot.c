@@ -43,6 +43,7 @@ static void robot_interrupt_handler(uint gpio, uint32_t event_mask);
 void robot_unit_tests();
 void get_encoder_counts(RP2040_STATE* rp2040_state);
 void get_motor_faults(RP2040_STATE* state);
+void get_charger_state(RP2040_STATE* state);
 
 volatile CEXCEPTION_T e;
 
@@ -98,6 +99,11 @@ void get_state(RP2040_STATE* state){
     get_encoder_counts(state);
     get_motor_faults(state);
     get_battery_state(state);
+    get_charger_state(state);
+}
+
+void get_charger_state(RP2040_STATE* state){
+    state->ChargeSideUSB.max77976_chg_details = max77976_get_chg_details();
 }
 
 // Takes the response and add the quad encoder counts to it

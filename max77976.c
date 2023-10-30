@@ -239,7 +239,7 @@ void max77976_toggle_led(){
     }
 }
 
-void max77976_get_chg_details(){
+uint32_t max77976_get_chg_details(){
     memset(send_buf, 0, sizeof send_buf);
     memset(return_buf, 0, sizeof return_buf);
     send_buf[0] = 0x13; //CHG_DETAILS_00
@@ -396,6 +396,10 @@ void max77976_get_chg_details(){
     uint8_t _MODE = (CHG_CNFG_00 & 0x0F);
     //synchronized_printf("CHG_CNFG_00: 0x%x\n", _MODE);
 
+    // convert and store the 4 bytes from the send_buf into a new uint32_t var
+    uint32_t CHG_CNFG = (send_buf[4] << 24) | (send_buf[5] << 16) | (send_buf[6] << 8) | (send_buf[7]);
+
+    return CHG_CNFG;
 }
 
 void max77976_shutdown(){

@@ -81,7 +81,7 @@
 
 
 int max77976_init(uint gpio_interrupt, queue_t* cq, queue_t* rq);
-void max77976_get_chg_details();
+uint32_t max77976_get_chg_details();
 void max77976_toggle_led();
 void max77976_log_current_limit();
 void max77976_shutdown();
