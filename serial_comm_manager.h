@@ -81,8 +81,6 @@ typedef struct
 	uint16_t usb_charger_voltage;
     } ChargeSideUSB;
     
-    struct
-    {} PhoneSideUSB;
 
 } RP2040_STATE;
 #pragma pack() // Reset packing alignment to default
