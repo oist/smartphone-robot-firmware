@@ -27,7 +27,6 @@ static queue_t call_queue;
 static queue_t results_queue;
 static bool core1_shutdown_requested = false;
 
-void bq27742_g1_poll();
 void blink_led(uint8_t blinkCnt, int onTime, int offTime);
 void i2c_start();
 void i2c_stop();
@@ -98,6 +97,7 @@ void get_state(RP2040_STATE* state){
     //TODO this should not update response with static int values like this
     get_encoder_counts(state);
     get_motor_faults(state);
+    get_battery_state(state);
 }
 
 // Takes the response and add the quad encoder counts to it
@@ -130,7 +130,7 @@ int main(){
     {
 	//results_queue_pop();
         //sample_adc_inputs();
-	//bq27742_g1_poll();
+	//get_battery_state();
 	//max77976_get_chg_details();
 	//quad_encoder_update();
 	//sleep_ms(100);
@@ -289,12 +289,12 @@ void i2c_stop(){
 void adc_shutdown(){
 }
 
-void bq27742_g1_poll(){
-    bq27742_g1_get_voltage();
-    bq27742_g1_get_temp();
-    bq27742_g1_get_soh();
-    bq27742_g1_get_flags();
-    bq27742_g1_get_safety_stats();
+void get_battery_state(RP2040_STATE* state){
+    state->BatteryDetails.voltage = bq27742_g1_get_voltage();
+    state->BatteryDetails.safety_status = bq27742_g1_get_safety_stats();
+    state->BatteryDetails.temperature = bq27742_g1_get_temp();
+    state->BatteryDetails.state_of_health = bq27742_g1_get_soh();
+    state->BatteryDetails.flags = bq27742_g1_get_flags();
 }
 
 void blink_led(uint8_t blinkCnt, int onTime, int offTime){
