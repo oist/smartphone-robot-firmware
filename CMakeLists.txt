@@ -8,6 +8,10 @@ set(CMAKE_BUILD_TYPE "Debug")
 set(CMAKE_C_FLAGS_DEBUG "-O0 -g3 -Wall -Wno-unused-function -Wno-unused-variable")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall -Wno-unused-function -Wno-unused-variable")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(PICO_STDIO_USB_DEFAULT_CRLF 0)
+set(PICO_STDIO_DEFAULT_CRLF 0)
+set(PICO_STDIO_ENABLE_CRLF_SUPPORT 0)
+set(PICO_UART_ENABLE_CRLF_SUPPORT 0)
 
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)

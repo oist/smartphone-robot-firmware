@@ -20,12 +20,13 @@
 #include "drv8830.h"
 #include "hardware/uart.h"
 #include <string.h>
-#include "custom_printf.h"
+#include "rp2040_log.h"
 #include "serial_comm_manager.h"
 
 static queue_t call_queue;
 static queue_t results_queue;
 static bool core1_shutdown_requested = false;
+static RP2040_STATE rp2040_state;
 
 void blink_led(uint8_t blinkCnt, int onTime, int offTime);
 void i2c_start();
@@ -163,8 +164,10 @@ int main(){
 }
 
 void on_start(){
-    //synchronized_printf("on_start\n");
+    rp2040_log_init();
+    rp2040_log("on_start\n");
     stdio_init_all();
+    stdio_set_translate_crlf(&stdio_usb, false);
     gpio_set_irq_callback(&robot_interrupt_handler);
     irq_set_enabled(IO_IRQ_BANK0, true);
     init_queues();
@@ -203,7 +206,7 @@ void on_start(){
     set_voltage(MOTOR_LEFT, 0);
     set_voltage(MOTOR_RIGHT, 0);
     robot_unit_tests();
-    serial_comm_manager_init();
+    serial_comm_manager_init(&rp2040_state);
     //synchronized_printf("on_start complete\n");
     //while(!stdio_usb_connected()){
     //    sleep_ms(100);

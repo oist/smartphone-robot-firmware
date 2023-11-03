@@ -3,6 +3,7 @@
 
 #include "hardware/platform_defs.h"
 #include "pico/types.h"
+#include "rp2040_log.h"
 
 #define GET_LOG 0x00
 #define SET_MOTOR_LEVEL 0x01
@@ -15,22 +16,6 @@
 
 #define ANDROID_BUFFER_LENGTH_IN _u(2)
 #define ANDROID_BUFFER_LENGTH_OUT _u(61) // +3 for start, command, and end marks for a 64 byte packet
-
-typedef struct 
-{
-    uint8_t start_marker;
-    uint8_t packet_type;
-    uint8_t data[ANDROID_BUFFER_LENGTH_IN];
-    uint8_t end_marker;
-} IncomingPacketFromAndroid;
-
-typedef struct 
-{
-    uint8_t start_marker;
-    uint8_t packet_type;
-    uint8_t data[ANDROID_BUFFER_LENGTH_OUT];
-    uint8_t end_marker;
-} OutgoingPacketToAndroid;
 
 #pragma pack(1) // Set packing alignment to 1 byte
 typedef struct
@@ -75,9 +60,35 @@ typedef struct
     
 
 } RP2040_STATE;
+
+typedef struct 
+{
+    uint8_t start_marker;
+    uint8_t packet_type;
+    uint8_t data[ANDROID_BUFFER_LENGTH_IN];
+    uint8_t end_marker;
+} IncomingPacketFromAndroid;
+
+typedef struct 
+{
+    uint8_t start_marker;
+    uint8_t packet_type;
+    uint16_t data_size;
+    RP2040_STATE data;
+    uint8_t end_marker;
+} OutgoingPacketToAndroid;
+
+typedef struct 
+{
+    uint8_t start_marker;
+    uint8_t packet_type;
+    uint16_t data_size;
+    char* data;
+    uint8_t end_marker;
+} OutgoingLogPacketToAndroid;
 #pragma pack() // Reset packing alignment to default
 
 void get_block();
-void serial_comm_manager_init();
+void serial_comm_manager_init(RP2040_STATE* state);
 
 #endif

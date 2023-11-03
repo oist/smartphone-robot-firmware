@@ -83,7 +83,10 @@ uint16_t bq27742_g1_get_temp(){
     i2c_read_error_handling(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
 
     // temperature in 0.1 deg Kelvin, so convert to deg C
-    temperature = (((return_buf[1] << 8) | return_buf[0]) - 2731.5) / 10;
+    float temperature_ = (float)((return_buf[1] << 8) | return_buf[0]);
+    temperature_ = (temperature_ - 2731.5);
+    temperature_ = temperature_ / 10.0;
+    temperature = (uint16_t)temperature;
     //synchronized_printf("Temperature: %d\n", (int)temperature);
     return temperature; 
 }

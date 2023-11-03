@@ -3,19 +3,24 @@
 #include "pico/stdio.h"
 #include <string.h>
 #include "robot.h"
-#include "custom_printf.h"
+#include "rp2040_log.h"
 
 static IncomingPacketFromAndroid incoming_packet_from_android;
 static OutgoingPacketToAndroid outgoing_packet_to_android;
-static RP2040_STATE rp2040_state;
+static OutgoingLogPacketToAndroid outgoing_log_packet_to_android;
 void handle_packet(IncomingPacketFromAndroid *packet);
+static RP2040_STATE rp2040_state_;
 
-void serial_comm_manager_init(){
+void serial_comm_manager_init(RP2040_STATE* rp2040_state){
+    rp2040_state_ = *rp2040_state;
     incoming_packet_from_android.start_marker = START_MARKER;
     incoming_packet_from_android.end_marker = END_MARKER;
     outgoing_packet_to_android.start_marker = START_MARKER;
     outgoing_packet_to_android.end_marker = END_MARKER;
-    
+    outgoing_packet_to_android.data_size = sizeof(rp2040_state_);
+    outgoing_log_packet_to_android.start_marker = START_MARKER;
+    outgoing_log_packet_to_android.packet_type = GET_LOG;
+    outgoing_log_packet_to_android.end_marker = END_MARKER;
 }
 // reads data from the UART and stores it in buffer. If no data is available, returns immediately.
 // if new data is available, reads it until the buffer is full or both start and stop markers detected
@@ -80,23 +85,38 @@ void get_block() {
 }
 
 void handle_packet(IncomingPacketFromAndroid *packet){
-// clear the outgoing packet
-    outgoing_packet_to_android.packet_type = 0;
-    memset(outgoing_packet_to_android.data, 0, sizeof(outgoing_packet_to_android.data));
     // Assign the same packet type to the outgoing packet for verification on Android end
-    outgoing_packet_to_android.packet_type = packet->packet_type;
     switch (packet->packet_type){
     	case GET_LOG:
-	        // TODO
-	        break;
+	    outgoing_log_packet_to_android.packet_type = packet->packet_type;
+	    outgoing_log_packet_to_android.data_size = rp2040_get_byte_count();
+
+	    putchar(outgoing_log_packet_to_android.start_marker);
+	    putchar(outgoing_log_packet_to_android.packet_type);
+	    // put uint16_t data_size via putchar
+	    putchar(outgoing_log_packet_to_android.data_size & 0xFF);
+	    putchar((outgoing_log_packet_to_android.data_size >> 8) & 0xFF);
+
+	    rp2040_log_flush();
+	    putchar(outgoing_log_packet_to_android.end_marker);
+	    break;
 	case SET_MOTOR_LEVEL:
-	    // Copy the motor levels from the packet to the rp2040_state
-            memcpy(&rp2040_state.MotorsState.ControlValues.left, &packet->data[0], sizeof(uint8_t));
-	    memcpy(&rp2040_state.MotorsState.ControlValues.right, &packet->data[1], sizeof(uint8_t));
-	    process_motor_levels(&rp2040_state);
+            outgoing_packet_to_android.packet_type = packet->packet_type;
+	    // Clear the state
+            memset(&rp2040_state_, 0, sizeof(rp2040_state_));
+	    // Copy the motor levels from the packet to the rp2040_state_
+            memcpy(&rp2040_state_.MotorsState.ControlValues.left, &packet->data[0], sizeof(uint8_t));
+	    memcpy(&rp2040_state_.MotorsState.ControlValues.right, &packet->data[1], sizeof(uint8_t));
+	    process_motor_levels(&rp2040_state_);
             // Add STATE to response
-            get_state(&rp2040_state); 
-            memcpy(&outgoing_packet_to_android.data[0], &rp2040_state, sizeof(RP2040_STATE));
+            get_state(&rp2040_state_); 
+	    outgoing_packet_to_android.data = rp2040_state_;
+
+	    // Print the outgoing packet chars
+            uint8_t* bytes = (uint8_t*)&outgoing_packet_to_android;
+            for (int i = 0; i < sizeof(outgoing_packet_to_android); i++){
+                putchar(bytes[i]);
+            }
 	    break;
 	case RESET_STATE:
 		// TODO
@@ -105,10 +125,4 @@ void handle_packet(IncomingPacketFromAndroid *packet){
 		outgoing_packet_to_android.packet_type = NACK;
 		break;
     }
-    uint8_t* bytes = (uint8_t*)&outgoing_packet_to_android;
-    lock_printf_synchronization();
-    for (int i = 0; i < sizeof(OutgoingPacketToAndroid); i++){
-        putchar(bytes[i]);
-    }
-    unlock_printf_synchronization();
 }
