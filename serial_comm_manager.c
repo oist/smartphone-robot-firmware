@@ -73,11 +73,11 @@ void get_block() {
                 buffer_index = 0;
 	        // Reset the packet
 	        memset(&incoming_packet_from_android, 0, sizeof(IncomingPacketFromAndroid)); } else {
-                //synchronized_printf("Received incomplete packet.\n");
+                rp2040_log("Received incomplete packet.\n");
 		assert(false);
             }
         }else{
-	    //synchronized_printf("Received packet with no end marker.\n");
+	    rp2040_log("Received packet with no end marker.\n");
 	    assert(false);
 	}
 
@@ -89,15 +89,20 @@ void handle_packet(IncomingPacketFromAndroid *packet){
     switch (packet->packet_type){
     	case GET_LOG:
 	    outgoing_log_packet_to_android.packet_type = packet->packet_type;
-	    outgoing_log_packet_to_android.data_size = rp2040_get_byte_count();
 
 	    putchar(outgoing_log_packet_to_android.start_marker);
 	    putchar(outgoing_log_packet_to_android.packet_type);
+
+	    rp2040_log_acquire_lock();
+	    outgoing_log_packet_to_android.data_size = rp2040_get_byte_count();
+
 	    // put uint16_t data_size via putchar
 	    putchar(outgoing_log_packet_to_android.data_size & 0xFF);
 	    putchar((outgoing_log_packet_to_android.data_size >> 8) & 0xFF);
 
 	    rp2040_log_flush();
+	    rp2040_log_release_lock();
+
 	    putchar(outgoing_log_packet_to_android.end_marker);
 	    break;
 	case SET_MOTOR_LEVEL:

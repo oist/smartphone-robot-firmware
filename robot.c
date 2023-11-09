@@ -66,7 +66,7 @@ void core1_entry() {
 int32_t call_queue_pop(){
     queue_entry_t entry;
     queue_remove_blocking(&call_queue, &entry);
-    //synchronized_printf("call_queue entry removed. call_queue has %d entries remaining to handle\n", queue_get_level(&call_queue));
+    rp2040_log("call_queue entry removed. call_queue has %d entries remaining to handle\n", queue_get_level(&call_queue));
     int32_t result = entry.func(entry.data);
     return result;
 }
@@ -83,7 +83,7 @@ void results_queue_pop(){
         //queue_try_remove(&results_queue, &entry);
         queue_remove_blocking(&results_queue, &entry);
         // TODO implement what to do with results_queue entries.
-        //synchronized_printf("results_queue has %d entries remaining to handle\n", queue_get_level(&results_queue));
+        rp2040_log("results_queue has %d entries remaining to handle\n", queue_get_level(&results_queue));
     }
 }
 
@@ -174,7 +174,7 @@ void on_start(){
     multicore_launch_core1(core1_entry);
     // Waiting to make sure I can catch it within minicom
     sleep_ms(3000);
-    //synchronized_printf("done waiting\n");
+    rp2040_log("done waiting\n");
     i2c_start();
     adc_init();
     wrm483265_10f5_12v_g_init(WIRELESS_CHG_EN);
@@ -183,7 +183,7 @@ void on_start(){
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO);
     max77958_init(MAX77958_INTB, &call_queue, &results_queue);
     sleep_ms(1000);
-    //synchronized_printf("done waiting 2\n");
+    rp2040_log("done waiting 2\n");
     bq27742_g1_init();
     bq27742_g1_fw_version_check();
     // Be sure to do this last
@@ -191,9 +191,9 @@ void on_start(){
     drv8830_init(DRV8830_FAULT1, DRV8830_FAULT2);
     sleep_ms(1000);
     encoder_init(&call_queue);
-    //synchronized_printf("encoders initialize. Waiting 1 second\n");
+    rp2040_log("encoders initialize. Waiting 1 second\n");
     sleep_ms(1000);
-    //synchronized_printf("done waiting, Running unit tests.\n");
+    rp2040_log("done waiting, Running unit tests.\n");
     set_voltage(MOTOR_LEFT, 2.5);
     set_voltage(MOTOR_RIGHT, 2.5);
     int i = 0;
@@ -202,20 +202,20 @@ void on_start(){
        i++;
        tight_loop_contents();
     }
-    //synchronized_printf("done counting, turning off motors\n");
+    rp2040_log("done counting, turning off motors\n");
     set_voltage(MOTOR_LEFT, 0);
     set_voltage(MOTOR_RIGHT, 0);
     robot_unit_tests();
     serial_comm_manager_init(&rp2040_state);
-    //synchronized_printf("on_start complete\n");
+    rp2040_log("on_start complete\n");
     //while(!stdio_usb_connected()){
     //    sleep_ms(100);
     //}
-    ////synchronized_printf("USB connected\n"); 
+    //rp2040_log("USB connected\n"); 
 }
 
 void robot_unit_tests(){
-    //synchronized_printf("----------Running robot unit tests-----------\n");
+    rp2040_log("----------Running robot unit tests-----------\n");
     test_max77958_get_id();
     test_max77958_get_customer_config_id();
     test_max77958_interrupt();
@@ -225,11 +225,11 @@ void robot_unit_tests(){
     test_ncp3901_interrupt();
     test_drv8830_get_faults();
     test_drv8830_interrupt();
-    //synchronized_printf("-----------robot unit tests complete-----------\n");
+    rp2040_log("-----------robot unit tests complete-----------\n");
 }
 
 void on_shutdown(){
-    //synchronized_printf("Shutting down\n");
+    rp2040_log("Shutting down\n");
     max77958_shutdown(MAX77958_INTB);
     //sn74ahc125rgyr_shutdown(SN74AHC125RGYR_GPIO);
     //max77976_shutdown();
@@ -255,7 +255,7 @@ void free_queues(){
 	results_queue_pop();
     }
     while (!queue_is_empty(&call_queue)){
-    	//synchronized_printf("free_queues: call_queue not empty\n");
+    	rp2040_log("free_queues: call_queue not empty\n");
     	sleep_ms(500);
     }
     queue_free(&call_queue);
@@ -265,7 +265,7 @@ void free_queues(){
 static void signal_stop_core1(){
     queue_entry_t stop_entry = {stop_core1, 0};
     if(!queue_try_add(&call_queue, &stop_entry)){
-	//synchronized_printf("call_queue is full");
+	rp2040_log("call_queue is full");
         assert(false);
     }
 }
@@ -320,7 +320,7 @@ void blink_led(uint8_t blinkCnt, int onTime, int offTime){
     uint8_t i = 0;
     while (i < blinkCnt)
     {
-        //synchronized_printf("Hello blink\n");
+        rp2040_log("Hello blink\n");
         gpio_put(LED_PIN, 1);
         sleep_ms(onTime);
         gpio_put(LED_PIN, 0);
@@ -374,18 +374,18 @@ static void robot_interrupt_handler(uint gpio, uint32_t event_mask){
 
 void results_queue_try_add(void *func, int32_t arg){
     queue_entry_t entry = {func, arg};
-    ////synchronized_printf("call_queue currently has %i entries\n", queue_get_level(&call_queue));
+    //rp2040_log("call_queue currently has %i entries\n", queue_get_level(&call_queue));
     if(!queue_try_add(&results_queue, &entry)){
-        //synchronized_printf("results_queue is full");
+        rp2040_log("results_queue is full");
     	assert(false);
     }
 }
 
 void call_queue_try_add(entry_func func, int32_t arg){
     queue_entry_t entry = {func, arg};
-    ////synchronized_printf("call_queue currently has %i entries\n", queue_get_level(&call_queue));
+    //rp2040_log("call_queue currently has %i entries\n", queue_get_level(&call_queue));
     if(!queue_try_add(&call_queue, &entry)){
-        //synchronized_printf("call_queue is full");
+        rp2040_log("call_queue is full");
     	assert(false);
     }
 }
@@ -403,7 +403,7 @@ void i2c_write_error_handling(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src,
 	    }
 	} 
     Catch(e){
-	    //synchronized_printf("Error during i2c_write. Returned value of %i %i \n", result, e);
+	    rp2040_log("Error during i2c_write. Returned value of %i %i \n", result, e);
 	    assert(false);
 	}
 }
@@ -417,7 +417,7 @@ void i2c_read_error_handling(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t
 	    }
 	} 
     Catch(e){
-	    //synchronized_printf("Error during i2c_read. Returned value of %i %i \n", result, e);
+	    rp2040_log("Error during i2c_read. Returned value of %i %i \n", result, e);
 	    assert(false);
 	}
 }

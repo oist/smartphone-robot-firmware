@@ -50,6 +50,6 @@ void quad_encoder_update(){
 	encoders[encoder].count_current = quadrature_encoder_get_count(pio, encoder);
 	encoders[encoder].count_delta = encoders[encoder].count_current - encoders[encoder].count_previous;
 	encoders[encoder].count_previous = encoders[encoder].count_current;
-        //synchronized_printf("Encoder %d: %" PRId32 ", delta: %" PRId32 "\n", encoder, encoders[encoder].count_current, encoders[encoder].count_delta);
+        rp2040_log("Encoder %d: %" PRId32 ", delta: %" PRId32 "\n", encoder, encoders[encoder].count_current, encoders[encoder].count_delta);
     }
 }
