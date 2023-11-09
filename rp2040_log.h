@@ -3,7 +3,7 @@
 
 #include "pico/types.h"
 
-#define LOG_BUFFER_LINE_COUNT 3
+#define LOG_BUFFER_LINE_COUNT 1028
 #define LOG_BUFFER_CHAR_LIMIT 128
 
 // Circular buffer structure
