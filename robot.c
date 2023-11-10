@@ -135,7 +135,7 @@ void get_charger_state(RP2040_STATE* state){
     state->ChargeSideUSB.usb_charger_voltage = ncp3901_adc0();
 }
 
-void process_motor_levels(RP2040_STATE* state){
+void set_motor_levels(RP2040_STATE* state){
     set_motor_control(MOTOR_LEFT, state->MotorsState.ControlValues.left);
     set_motor_control(MOTOR_RIGHT, state->MotorsState.ControlValues.right);
 }

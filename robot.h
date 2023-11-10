@@ -57,7 +57,7 @@ void i2c_read_error_handling(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t
 void i2c_write_error_handling(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src, size_t len, bool nostop);
 void call_queue_try_add(entry_func func, int32_t arg);
 void results_queue_try_add(void *func, int32_t arg);
-void process_motor_levels(RP2040_STATE *state);
+void set_motor_levels(RP2040_STATE *state);
 void get_state(RP2040_STATE* state);
 void get_battery_state(RP2040_STATE* state);
 

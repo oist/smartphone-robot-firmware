@@ -112,7 +112,7 @@ void handle_packet(IncomingPacketFromAndroid *packet){
 	    // Copy the motor levels from the packet to the rp2040_state_
             memcpy(&rp2040_state_.MotorsState.ControlValues.left, &packet->data[0], sizeof(uint8_t));
 	    memcpy(&rp2040_state_.MotorsState.ControlValues.right, &packet->data[1], sizeof(uint8_t));
-	    process_motor_levels(&rp2040_state_);
+	    set_motor_levels(&rp2040_state_);
             // Add STATE to response
             get_state(&rp2040_state_); 
 	    outgoing_packet_to_android.data = rp2040_state_;
