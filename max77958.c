@@ -146,14 +146,14 @@ static int32_t parse_interrupt_vals(){
     uint8_t* CC_INT = &return_buf[1]; 
     uint8_t* PD_INT = &return_buf[2]; 
     // Check if the APCmdResI interrupt is on (AP command response pending)
-    uint APCmdResI_mask = 1 << 7;
-    uint PSRDYI_mask = 1 << 6;
-    uint PDMsgI = 1 << 7;
-    uint CCStat = 1 << 0;
-    uint ChgType = 1 << 1;
-    uint CCVcnStatI = 1 << 1;
-    uint CCIStatI = 1 << 2;
-    uint CCPinStatI = 1 << 3;
+    uint8_t APCmdResI_mask = 1 << 7;
+    uint8_t PSRDYI_mask = 1 << 6;
+    uint8_t PDMsgI = 1 << 7;
+    uint8_t CCStat = 1 << 0;
+    uint8_t ChgType = 1 << 1;
+    uint8_t CCVcnStatI = 1 << 1;
+    uint8_t CCIStatI = 1 << 2;
+    uint8_t CCPinStatI = 1 << 3;
     if (*UIC_INT & APCmdResI_mask){
 	on_opcode_cmd_response();
 	return_val |= 1 << 0;
