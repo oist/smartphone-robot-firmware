@@ -14,6 +14,18 @@
 
 static uint8_t send_buf[33] = {0};
 static uint8_t return_buf[33] = {0}; // Will read full buffer from registers 0x52 to 0x71
+static queue_t* call_queue_ptr;
+static queue_t* return_queue_ptr;
+static bool opcode_cmd_finished = false;
+static bool power_swap_enabled = true;
+bool opcodes_finished = false;
+static queue_t opcode_queue;
+static uint8_t _gpio_interrupt;
+static uint8_t interrupt_mask = GPIO_IRQ_EDGE_FALL;
+static bool test_max77958_interrupt_bool = false;
+static bool test_max77958_started = false;
+static bool test_max77958_completed = false;
+
 static int32_t parse_interrupt_vals();
 static void on_interrupt();
 static void get_interrupt_vals();
@@ -22,17 +34,11 @@ static void set_interrupt_masks();
 static void opcode_read();
 static int opcode_write(uint8_t *send_buf);
 static int32_t max77958_test_response();
-static queue_t* call_queue_ptr;
-static queue_t* return_queue_ptr;
-static bool opcode_cmd_finished = false;
-static bool power_swap_enabled = true;
-static queue_t opcode_queue;
 static void power_swap_request();
 static int32_t set_snk_pdos();
 static int32_t pd_msg_response();
 static int32_t customer_config_write();
 static bool opcode_queue_pop();
-bool opcodes_finished = false;
 static void opcode_queue_add(int32_t (*opcode_func)(), int32_t opcode_data);
 static int32_t gpio_bool_to_int32(bool _GPIO4, bool _GPIO5);
 static int32_t gpio_set(int32_t gpio_val);
@@ -45,11 +51,6 @@ static void on_ccpinstat_change();
 static void vbus_turn_off();
 static void vbus_turn_on();
 static int32_t customer_config_read();
-static uint8_t _gpio_interrupt;
-static uint8_t interrupt_mask = GPIO_IRQ_EDGE_FALL;
-static bool test_max77958_interrupt_bool = false;
-static bool test_max77958_started = false;
-static bool test_max77958_completed = false;
 
 void max77958_on_interrupt(uint gpio, uint32_t event_mask){
     if (event_mask & interrupt_mask){
