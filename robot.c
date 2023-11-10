@@ -99,15 +99,8 @@ void get_state(RP2040_STATE* state){
     //TODO this should not update response with static int values like this
     get_encoder_counts(state);
     get_motor_faults(state);
-    get_battery_state(state);
     get_charger_state(state);
-}
-
-void get_charger_state(RP2040_STATE* state){
-    state->ChargeSideUSB.max77976_chg_details = max77976_get_chg_details();
-    // Note the implied conversion from bool to uint8_t for the purpose of sending over the serial port via byte array
-    state->ChargeSideUSB.wireless_charger_attached = ncp3901_wireless_charger_attached();
-    state->ChargeSideUSB.usb_charger_voltage = ncp3901_adc0();
+    get_battery_state(state);
 }
 
 // Takes the response and add the quad encoder counts to it
@@ -121,15 +114,30 @@ void get_encoder_counts(RP2040_STATE* state){
     state->MotorsState.EncoderCounts.right = right;
 }
 
-void process_motor_levels(RP2040_STATE* state){
-    set_motor_control(MOTOR_LEFT, state->MotorsState.ControlValues.left);
-    set_motor_control(MOTOR_RIGHT, state->MotorsState.ControlValues.right);
-}
-
 void get_motor_faults(RP2040_STATE* state){
     uint8_t* motor_faults = drv8830_get_faults();
     state->MotorsState.Faults.left = motor_faults[0]; 
     state->MotorsState.Faults.right = motor_faults[1]; 
+}
+
+void get_battery_state(RP2040_STATE* state){
+    state->BatteryDetails.voltage = bq27742_g1_get_voltage();
+    state->BatteryDetails.safety_status = bq27742_g1_get_safety_stats();
+    state->BatteryDetails.temperature = bq27742_g1_get_temp();
+    state->BatteryDetails.state_of_health = bq27742_g1_get_soh();
+    state->BatteryDetails.flags = bq27742_g1_get_flags();
+}
+
+void get_charger_state(RP2040_STATE* state){
+    state->ChargeSideUSB.max77976_chg_details = max77976_get_chg_details();
+    // Note the implied conversion from bool to uint8_t for the purpose of sending over the serial port via byte array
+    state->ChargeSideUSB.wireless_charger_attached = ncp3901_wireless_charger_attached();
+    state->ChargeSideUSB.usb_charger_voltage = ncp3901_adc0();
+}
+
+void process_motor_levels(RP2040_STATE* state){
+    set_motor_control(MOTOR_LEFT, state->MotorsState.ControlValues.left);
+    set_motor_control(MOTOR_RIGHT, state->MotorsState.ControlValues.right);
 }
 
 int main(){
@@ -172,9 +180,6 @@ void on_start(){
     irq_set_enabled(IO_IRQ_BANK0, true);
     init_queues();
     multicore_launch_core1(core1_entry);
-    // Waiting to make sure I can catch it within minicom
-    sleep_ms(3000);
-    rp2040_log("done waiting\n");
     i2c_start();
     adc_init();
     wrm483265_10f5_12v_g_init(WIRELESS_CHG_EN);
@@ -299,14 +304,6 @@ void i2c_stop(){
 }
 
 void adc_shutdown(){
-}
-
-void get_battery_state(RP2040_STATE* state){
-    state->BatteryDetails.voltage = bq27742_g1_get_voltage();
-    state->BatteryDetails.safety_status = bq27742_g1_get_safety_stats();
-    state->BatteryDetails.temperature = bq27742_g1_get_temp();
-    state->BatteryDetails.state_of_health = bq27742_g1_get_soh();
-    state->BatteryDetails.flags = bq27742_g1_get_flags();
 }
 
 void blink_led(uint8_t blinkCnt, int onTime, int offTime){
