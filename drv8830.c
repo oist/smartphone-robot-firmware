@@ -21,6 +21,7 @@ static int8_t _gpio_fault2;
 static bool test_drv8830_started = false;
 static bool test_drv8830_completed = false;
 const uint32_t drv8830_irq_mask = GPIO_IRQ_EDGE_FALL;
+static void drv8830_clear_faults();
 
 void drv8830_on_interrupt(uint gpio, uint32_t event_mask){
     //rp2040_log("DRV8830 interrupt\n");
@@ -156,6 +157,7 @@ uint8_t* drv8830_get_faults(){
         // Read the fault register
         i2c_read_error_handling(i2c, addr[i], &fault_values[i], 1, false);
     }
+    drv8830_clear_faults();
     return fault_values;
 }
 
@@ -168,6 +170,7 @@ static void drv8830_clear_faults(){
     uint8_t fault_value = 1;
     for (int i = 0; i < 2; i++){
         // Clear the faults
+        buf[1] = (1 << 7); // clear bit on D7
         i2c_write_error_handling(i2c, addr[i], buf, 2, false);
         // Set the fault register for reading. 
         i2c_write_error_handling(i2c, addr[i], buf, 1, true);

@@ -143,6 +143,7 @@ void set_motor_levels(RP2040_STATE* state){
 int main(){
     bool shutdown = false;
     on_start();
+    sleep_ms(1000);
     //int i = 0;
     while (true)
     {
