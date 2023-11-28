@@ -8,7 +8,8 @@
 #define GPIO_WIRELESS_AVAILABLE _u(4) // GPIO4
 #define GPIO_OTG _u(5) // GPIO5
 #define BATTERY_CHARGER_INTERRUPT_PIN _u(6) // GPIO6
-#define SN74AHC125RGYR_GPIO _u(16) // GPIO16
+#define SN74AHC125RGYR_GPIO1 _u(8) // GPIO8 The buffer in the DRV8830 sheet
+#define SN74AHC125RGYR_GPIO2 _u(22) // GPIO22 The buffer in the rp2040 sheet
 #define MAX77958_INTB _u(7) // GPIO7
 
 #define DRV8830_FAULT1 _u(10) // GPIO10

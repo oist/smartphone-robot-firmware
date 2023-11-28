@@ -186,14 +186,16 @@ void on_start(){
     STWLC38JRM_init(WIRELESS_CHG_EN);
     ncp3901_init(GPIO_WIRELESS_AVAILABLE, GPIO_OTG);
     max77976_init(BATTERY_CHARGER_INTERRUPT_PIN, &call_queue, &results_queue);
-    sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO);
+    sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO1);
+    sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO2);
     max77958_init(MAX77958_INTB, &call_queue, &results_queue);
     sleep_ms(1000);
     rp2040_log("done waiting 2\n");
     bq27742_g1_init();
     bq27742_g1_fw_version_check();
     // Be sure to do this last
-    sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO);
+    sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO1);
+    sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO2);
     drv8830_init(DRV8830_FAULT1, DRV8830_FAULT2);
     sleep_ms(1000);
     encoder_init(&call_queue);
