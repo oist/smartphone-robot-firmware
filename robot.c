@@ -7,7 +7,7 @@
 #include "hardware/adc.h"
 #include "max77976.h"
 #include "max77857.h"
-#include "wrm483265_10f5_12v_g.h"
+#include "STWLC38JRM.h"
 #include "ncp3901.h"
 #include "sn74ahc125rgyr.h"
 #include "max77958.h"
@@ -183,7 +183,7 @@ void on_start(){
     multicore_launch_core1(core1_entry);
     i2c_start();
     adc_init();
-    wrm483265_10f5_12v_g_init(WIRELESS_CHG_EN);
+    STWLC38JRM_init(WIRELESS_CHG_EN);
     ncp3901_init(GPIO_WIRELESS_AVAILABLE, GPIO_OTG);
     max77976_init(BATTERY_CHARGER_INTERRUPT_PIN, &call_queue, &results_queue);
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO);
