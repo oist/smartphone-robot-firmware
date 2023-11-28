@@ -69,7 +69,7 @@ pico_enable_stdio_uart(robot 0)
 pico_enable_stdio_usb(robot 1)
 
 # Add the standard library to the build
-target_link_libraries(robot pico_stdlib pico_multicore)
+target_link_libraries(robot pico_stdlib pico_multicore hardware_pwm)
 
 message("target_include_directories to include : ${CMAKE_SOURCE_DIR}/include/max77958\n")
 message("target_include_directories to include : ${CMAKE_CURRENT_LIST_DIR}\n")

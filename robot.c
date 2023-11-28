@@ -22,6 +22,7 @@
 #include <string.h>
 #include "rp2040_log.h"
 #include "serial_comm_manager.h"
+#include "hardware/pwm.h"
 
 static queue_t call_queue;
 static queue_t results_queue;
@@ -45,6 +46,7 @@ void robot_unit_tests();
 void get_encoder_counts(RP2040_STATE* rp2040_state);
 void get_motor_faults(RP2040_STATE* state);
 void get_charger_state(RP2040_STATE* state);
+void turn_on_leds();
 
 volatile CEXCEPTION_T e;
 
@@ -183,6 +185,7 @@ void on_start(){
     multicore_launch_core1(core1_entry);
     i2c_start();
     adc_init();
+    turn_on_leds();
     STWLC38JRM_init(WIRELESS_CHG_EN);
     ncp3901_init(GPIO_WIRELESS_AVAILABLE, GPIO_OTG);
     max77976_init(BATTERY_CHARGER_INTERRUPT_PIN, &call_queue, &results_queue);
@@ -309,25 +312,11 @@ void i2c_stop(){
 void adc_shutdown(){
 }
 
-void blink_led(uint8_t blinkCnt, int onTime, int offTime){
-#ifndef PICO_DEFAULT_LED_PIN
-#warning blink example requires a board with a regular LED
-#else
-    const uint8_t LED_PIN = PICO_DEFAULT_LED_PIN;
-    gpio_init(LED_PIN);
-    gpio_set_dir(LED_PIN, GPIO_OUT);
-
-    uint8_t i = 0;
-    while (i < blinkCnt)
-    {
-        rp2040_log("Hello blink\n");
-        gpio_put(LED_PIN, 1);
-        sleep_ms(onTime);
-        gpio_put(LED_PIN, 0);
-        sleep_ms(offTime);
-        i++;
-    }
-#endif
+void turn_on_leds(){
+    // Set GPIO to PWM with frequency 1kHz and 50% duty cycle
+    gpio_set_function(LED_EN_PIN, GPIO_FUNC_PWM);
+    // level between 0 and 255 inclusive
+    pwm_set_gpio_level(LED_EN_PIN, 128);
 }
 
 //---------------------------------------------------------------------

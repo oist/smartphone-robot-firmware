@@ -37,6 +37,8 @@
 #define ENCODER_2_CHANNEL_A _u(14)
 #define ENCODER_2_CHANNEL_B _u(15)
 
+#define LED_EN_PIN _u(21) // GPIO21
+
 typedef int32_t (*entry_func)(int32_t); 
 typedef struct
 {
