@@ -186,6 +186,7 @@ void on_start(){
     adc_init();
     turn_on_leds();
     STWLC38JRM_init(WIRELESS_CHG_EN);
+    STWLC38_get_ept_reasons(); // Note I am only adding this here so I can access it from gdb later
     ncp3901_init(GPIO_WIRELESS_AVAILABLE, GPIO_OTG);
     max77976_init(BATTERY_CHARGER_INTERRUPT_PIN, &call_queue, &results_queue);
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO1);
