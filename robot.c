@@ -29,7 +29,6 @@ static queue_t results_queue;
 static bool core1_shutdown_requested = false;
 static RP2040_STATE rp2040_state;
 
-void blink_led(uint8_t blinkCnt, int onTime, int offTime);
 void i2c_start();
 void i2c_stop();
 void adc_init();
@@ -316,7 +315,7 @@ void turn_on_leds(){
     // Set GPIO to PWM with frequency 1kHz and 50% duty cycle
     gpio_set_function(LED_EN_PIN, GPIO_FUNC_PWM);
     // level between 0 and 255 inclusive
-    pwm_set_gpio_level(LED_EN_PIN, 128);
+    pwm_set_gpio_level(LED_EN_PIN, 255);
 }
 
 //---------------------------------------------------------------------
