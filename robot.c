@@ -46,6 +46,7 @@ void get_encoder_counts(RP2040_STATE* rp2040_state);
 void get_motor_faults(RP2040_STATE* state);
 void get_charger_state(RP2040_STATE* state);
 void turn_on_leds();
+uint8_t* i2c_scan(i2c_inst_t *i2c);
 
 volatile CEXCEPTION_T e;
 
@@ -186,6 +187,8 @@ void on_start(){
     adc_init();
     turn_on_leds();
     STWLC38JRM_init(WIRELESS_CHG_EN);
+    i2c_scan(i2c0);
+    i2c_scan(i2c1);
     STWLC38_get_ept_reasons(); // Note I am only adding this here so I can access it from gdb later
     ncp3901_init(GPIO_WIRELESS_AVAILABLE, GPIO_OTG);
     max77976_init(BATTERY_CHARGER_INTERRUPT_PIN, &call_queue, &results_queue);
@@ -307,6 +310,23 @@ void i2c_stop(){
     gpio_set_function(I2C_SCL1, GPIO_FUNC_SIO);
     i2c_deinit(i2c0);
     i2c_deinit(i2c1);
+}
+
+uint8_t* i2c_scan(i2c_inst_t *i2c) {
+    uint8_t MAX_DEVICES = 128;
+    uint8_t* found_addresses = malloc(MAX_DEVICES);
+    uint8_t count = 0;
+    uint8_t rxdata;
+
+    for (uint8_t address = 0x08; address < 0x78; ++address) {
+        sleep_ms(10); // give some time between transactions
+        if (i2c_read_blocking(i2c, address, &rxdata, 1, false) > 0) {
+		found_addresses[count++] = address;
+	}
+    }
+
+    found_addresses[count] = 0; // Null-terminate the array
+    return found_addresses;
 }
 
 void adc_shutdown(){
