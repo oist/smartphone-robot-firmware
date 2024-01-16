@@ -187,9 +187,6 @@ void on_start(){
     adc_init();
     turn_on_leds();
     STWLC38JRM_init(WIRELESS_CHG_EN);
-    i2c_scan(i2c0);
-    i2c_scan(i2c1);
-    STWLC38_get_ept_reasons(); // Note I am only adding this here so I can access it from gdb later
     ncp3901_init(GPIO_WIRELESS_AVAILABLE, GPIO_OTG);
     max77976_init(BATTERY_CHARGER_INTERRUPT_PIN, &call_queue, &results_queue);
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO1);
@@ -221,6 +218,9 @@ void on_start(){
     set_voltage(MOTOR_RIGHT, 0);
     robot_unit_tests();
     serial_comm_manager_init(&rp2040_state);
+    i2c_scan(i2c0);
+    i2c_scan(i2c1);
+    //STWLC38_get_ept_reasons(); // Note I am only adding this here so I can access it from gdb later
     rp2040_log("on_start complete\n");
     //while(!stdio_usb_connected()){
     //    sleep_ms(100);
