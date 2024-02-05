@@ -13,6 +13,9 @@ void max77958_shutdown(uint gpio_interrupt);
 void max77958_on_interrupt(uint gpio, uint32_t event_mask);
 void test_max77958_get_id();
 void test_max77958_get_customer_config_id();
+void test_max77958_cc_ctrl1_read();
+void test_max77958_bc_ctrl1_read();
 void test_max77958_interrupt();
+void read_reg(uint8_t reg);
 
 #endif

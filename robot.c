@@ -221,6 +221,8 @@ void on_start(){
     i2c_scan(i2c0);
     i2c_scan(i2c1);
     //STWLC38_get_ept_reasons(); // Note I am only adding this here so I can access it from gdb later
+    read_reg(0x9);
+    read_reg(0xA);
     rp2040_log("on_start complete\n");
     //while(!stdio_usb_connected()){
     //    sleep_ms(100);
@@ -232,6 +234,8 @@ void robot_unit_tests(){
     rp2040_log("----------Running robot unit tests-----------\n");
     test_max77958_get_id();
     test_max77958_get_customer_config_id();
+    test_max77958_cc_ctrl1_read();    
+    test_max77958_bc_ctrl1_read();
     test_max77958_interrupt();
     test_max77976_get_id();
     test_max77976_get_FSW();

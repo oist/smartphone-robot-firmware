@@ -13,7 +13,8 @@
 #include "custom_printf.h"
 
 static uint8_t send_buf[33] = {0};
-static uint8_t return_buf[33] = {0}; // Will read full buffer from registers 0x52 to 0x71
+static uint8_t return_buf[33] = {0}; 
+static uint8_t op_code_return_buf[33] = {0}; // Will read full buffer from registers 0x52 to 0x71
 static queue_t* call_queue_ptr;
 static queue_t* return_queue_ptr;
 static bool opcode_cmd_finished = false;
@@ -51,6 +52,8 @@ static void on_ccpinstat_change();
 static void vbus_turn_off();
 static void vbus_turn_on();
 static int32_t customer_config_read();
+static int32_t bc_ctrl1_read();
+static int32_t cc_ctrl1_read();
 
 void max77958_on_interrupt(uint gpio, uint32_t event_mask){
     if (event_mask & interrupt_mask){
@@ -238,10 +241,19 @@ static void set_interrupt_masks_all_masked(){
 static void set_interrupt_masks(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = REG_UIC_INT_M; // 0x10 UIC_INT_M Register
-    send_buf[1] = 0b01111101; // UIC_INT_M 0x10 values
-    send_buf[2] = 0b11110000; // CC_INT_M 0x11 values
+    send_buf[1] = 0b00000100; // UIC_INT_M 0x10 values
+    send_buf[2] = 0b00000000; // CC_INT_M 0x11 values
     send_buf[3] = 0b00111111; // PD_INT_M 0x12 unmasking PSRDYI
     i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 4, false);
+}
+
+void read_reg(uint8_t reg){
+    memset(send_buf, 0, sizeof send_buf);
+    memset(return_buf, 0, sizeof return_buf);
+    send_buf[0] = reg; 
+    i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
+    i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 1, false);
+    rp2040_log("read_reg: 0x%02x: 0x%02x\n", reg, return_buf[0]);
 }
 
 static int opcode_write(uint8_t *buf){
@@ -269,8 +281,8 @@ static void opcode_read(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_READ_COMMAND;
     i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
-    i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 33, false);
-    rp2040_log("opcode_read: 0x%02x 0x%02x 0x%02x 0x%02x\n", return_buf[0], return_buf[1], return_buf[2], return_buf[3]);
+    i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, op_code_return_buf, 33, false);
+    rp2040_log("opcode_read: 0x%02x 0x%02x 0x%02x 0x%02x\n", op_code_return_buf[0], op_code_return_buf[1], op_code_return_buf[2], op_code_return_buf[3]);
     // Set breakpoint before clearing the registers via the following command. 
     // I'm commenting this out since I won't use the output in the code, but you can copy/paste this into gdb if you want to
     // inspect the results before clearing them
@@ -301,6 +313,56 @@ void test_max77958_get_id(){
     rp2040_log("test_max77958_get_id PASSED: DEVICE_REV = %x\n", return_buf[1]);
 }
 
+void test_max77958_cc_ctrl1_read(){
+    rp2040_log("test_max77958_cc_ctrl1_read started...\n");
+    opcode_queue_add(cc_ctrl1_read, 0);
+    opcode_queue_pop();
+    int i = 0;
+    while (!opcodes_finished){
+	sleep_ms(100);
+	i++;
+	if (i > 10){
+	    rp2040_log("Error: Timed out waiting for GPIO to finish\n");
+	    assert(false);
+	}
+    }
+    if (op_code_return_buf[0] != 0x0B){
+	rp2040_log("OPCODE should be 0x0B");
+	assert(false);
+    }
+    //if (op_code_return_buf[1] != 0b10000001){
+    //    rp2040_log("BC_CTRL1_CONFIG should be 0b10000001");	
+    //    assert(false);
+    //}
+
+    rp2040_log("test_max77958_bc_ctrl1_read PASSED: BC_CTRL1_CONFIG = %x\n", op_code_return_buf[1]); 
+}
+
+void test_max77958_bc_ctrl1_read(){
+    rp2040_log("test_max77958_bc_ctrl1_read started...\n");
+    opcode_queue_add(bc_ctrl1_read, 0);
+    opcode_queue_pop();
+    int i = 0;
+    while (!opcodes_finished){
+	sleep_ms(100);
+	i++;
+	if (i > 10){
+	    rp2040_log("Error: Timed out waiting for GPIO to finish\n");
+	    assert(false);
+	}
+    }
+    if (op_code_return_buf[0] != 0x01){
+	rp2040_log("OPCODE should be 0x01");
+	assert(false);
+    }
+    //if (op_code_return_buf[1] != 0b10000001){
+    //    rp2040_log("BC_CTRL1_CONFIG should be 0b10000001");	
+    //    assert(false);
+    //}
+
+    rp2040_log("test_max77958_bc_ctrl1_read PASSED: BC_CTRL1_CONFIG = %x\n", op_code_return_buf[1]); 
+}
+
 void test_max77958_get_customer_config_id(){
     rp2040_log("test_max77958_get_customer_config_id started...\n");
     opcode_queue_add(customer_config_read, 0);
@@ -314,32 +376,32 @@ void test_max77958_get_customer_config_id(){
 	    assert(false);
 	}
     }
-    if (return_buf[0] != 0x55){
+    if (op_code_return_buf[0] != 0x55){
 	rp2040_log("OPCODE should be 0x55");
 	assert(false);
     }
-    if ((return_buf[2] | (return_buf[3] << 8)) != 0x0B6A){
+    if ((op_code_return_buf[2] | (op_code_return_buf[3] << 8)) != 0x0B6A){
         rp2040_log("CUSTOMER_CONFIG_ID should be 0x0B6A");	
 	assert(false);
     }
-    if ((return_buf[4] | (return_buf[5] << 8)) != 0x6860){
+    if ((op_code_return_buf[4] | (op_code_return_buf[5] << 8)) != 0x6860){
 	rp2040_log("CUSTOMER_CONFIG_REV should be 0x6860");
 	assert(false);
     }
-    rp2040_log("test_max77958_get_customer_config_id: 0x51=0x%02x\n", return_buf[0]);
-    rp2040_log("test_max77958_get_customer_config_id: 0x52=0x%02x\n", return_buf[1]);
-    rp2040_log("test_max77958_get_customer_config_id: 0x53=0x%02x\n", return_buf[2]);
-    rp2040_log("test_max77958_get_customer_config_id: 0x54=0x%02x\n", return_buf[3]);
-    rp2040_log("test_max77958_get_customer_config_id: 0x55=0x%02x\n", return_buf[4]);
-    rp2040_log("test_max77958_get_customer_config_id: 0x56=0x%02x\n", return_buf[5]);
-    rp2040_log("test_max77958_get_customer_config_id: 0x57=0x%02x\n", return_buf[6]);
-    rp2040_log("test_max77958_get_customer_config_id: 0x58=0x%02x\n", return_buf[7]);
-    rp2040_log("test_max77958_get_customer_config_id: 0x59=0x%02x\n", return_buf[8]);
-    rp2040_log("test_max77958_get_customer_config_id: 0x5A=0x%02x\n", return_buf[9]);
-    rp2040_log("test_max77958_get_customer_config_id: 0x5B=0x%02x\n", return_buf[10]);
+    rp2040_log("test_max77958_get_customer_config_id: 0x51=0x%02x\n", op_code_return_buf[0]);
+    rp2040_log("test_max77958_get_customer_config_id: 0x52=0x%02x\n", op_code_return_buf[1]);
+    rp2040_log("test_max77958_get_customer_config_id: 0x53=0x%02x\n", op_code_return_buf[2]);
+    rp2040_log("test_max77958_get_customer_config_id: 0x54=0x%02x\n", op_code_return_buf[3]);
+    rp2040_log("test_max77958_get_customer_config_id: 0x55=0x%02x\n", op_code_return_buf[4]);
+    rp2040_log("test_max77958_get_customer_config_id: 0x56=0x%02x\n", op_code_return_buf[5]);
+    rp2040_log("test_max77958_get_customer_config_id: 0x57=0x%02x\n", op_code_return_buf[6]);
+    rp2040_log("test_max77958_get_customer_config_id: 0x58=0x%02x\n", op_code_return_buf[7]);
+    rp2040_log("test_max77958_get_customer_config_id: 0x59=0x%02x\n", op_code_return_buf[8]);
+    rp2040_log("test_max77958_get_customer_config_id: 0x5A=0x%02x\n", op_code_return_buf[9]);
+    rp2040_log("test_max77958_get_customer_config_id: 0x5B=0x%02x\n", op_code_return_buf[10]);
 
-    rp2040_log("test_max77958_get_customer_config_id PASSED: CUSTOMER_CONFIG_ID = 0x%04x\n", (return_buf[2] | (return_buf[3] << 8)));
-    rp2040_log("test_max77958_get_customer_config_id PASSED: CUSTOMER_CONFIG_REV = 0x%04x\n", (return_buf[4] | (return_buf[5] << 8)));
+    rp2040_log("test_max77958_get_customer_config_id PASSED: CUSTOMER_CONFIG_ID = 0x%04x\n", (op_code_return_buf[2] | (op_code_return_buf[3] << 8)));
+    rp2040_log("test_max77958_get_customer_config_id PASSED: CUSTOMER_CONFIG_REV = 0x%04x\n", (op_code_return_buf[4] | (op_code_return_buf[5] << 8)));
 }
 
 void test_max77958_interrupt(){
@@ -407,7 +469,7 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     // Set GPIO5 and GPIO4 to LOW
     opcode_queue_add(gpio_set, gpio_bool_to_int32(false, false));
     // Set GPIO5 to HIGH and GPIO4 to LOW
-    opcode_queue_add(gpio_set, gpio_bool_to_int32(true, false));
+    opcode_queue_add(gpio_set, gpio_bool_to_int32(false, true));
 
     opcode_queue_pop();
     rp2040_log("max77958 init finished\n");
@@ -446,11 +508,27 @@ static int32_t customer_config_read(){
     return 0;
 }
 
+static int32_t bc_ctrl1_read(){
+    memset(send_buf, 0, sizeof send_buf);
+    send_buf[0] = OPCODE_WRITE;
+    send_buf[1] = 0x01; // BC CTRL1 Config Read 
+    opcode_write(send_buf);
+    return 0;
+}
+
+static int32_t cc_ctrl1_read(){
+    memset(send_buf, 0, sizeof send_buf);
+    send_buf[0] = OPCODE_WRITE;
+    send_buf[1] = 0x0B; // CC CTRL1 Config Read 
+    opcode_write(send_buf);
+    return 0;
+}
+
 static int32_t customer_config_write(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = 0x56; // Customer Configuration Write 
-    send_buf[2] = 0b01101000; // All defaults values other than adding CC Try SNK Mode 
+    send_buf[2] = 0b01100000; // All defaults values except TypeC_State is SRC 
     send_buf[3] = 0x6A; // default VID
     send_buf[4] = 0x0B; // default VID
     send_buf[5] = 0x60; // default PID
