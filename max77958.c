@@ -463,13 +463,13 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     get_interrupt_vals();
 
     // Add all opcode commands in order to a queue. These will be called sequentially from core1 via the call_queue
-    opcode_queue_add(customer_config_write, 0);
-    //opcode_queue_add(set_snk_pdos, 0);
-    //opcode_queue_add(set_src_pdos, 0);
     // Set GPIO5 and GPIO4 to LOW
     opcode_queue_add(gpio_set, gpio_bool_to_int32(false, false));
     // Set GPIO5 to HIGH and GPIO4 to LOW
     opcode_queue_add(gpio_set, gpio_bool_to_int32(false, true));
+    opcode_queue_add(customer_config_write, 0);
+    //opcode_queue_add(set_snk_pdos, 0);
+    //opcode_queue_add(set_src_pdos, 0);
 
     opcode_queue_pop();
     rp2040_log("max77958 init finished\n");
