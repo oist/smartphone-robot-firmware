@@ -528,7 +528,7 @@ static int32_t customer_config_write(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = 0x56; // Customer Configuration Write 
-    send_buf[2] = 0b01100000; // All defaults values except TypeC_State is SRC 
+    send_buf[2] = 0b00100000; // All defaults values except TypeC_State is SRC 
     send_buf[3] = 0x6A; // default VID
     send_buf[4] = 0x0B; // default VID
     send_buf[5] = 0x60; // default PID
