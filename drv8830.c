@@ -176,7 +176,8 @@ static void drv8830_clear_faults(){
         i2c_write_error_handling(i2c, addr[i], buf, 1, true);
         // Read the fault register
         i2c_read_error_handling(i2c, addr[i], &fault_value, 1, false);
-        if (fault_value != 0){
+	// If the first bit is not 0, then the fault has not been cleared.
+        if ((fault_value & 1) != 0){
             rp2040_log("Motor %d cannot clear faults. Exiting.\n", i);
             assert(false);
         }
