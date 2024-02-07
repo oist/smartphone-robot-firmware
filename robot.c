@@ -223,6 +223,7 @@ void on_start(){
     //STWLC38_get_ept_reasons(); // Note I am only adding this here so I can access it from gdb later
     read_reg(0x9);
     read_reg(0xA);
+    read_reg(0xD);
     rp2040_log("on_start complete\n");
     //while(!stdio_usb_connected()){
     //    sleep_ms(100);
