@@ -21,13 +21,13 @@ void ncp3901_on_wireless_charger_interrupt(uint gpio, uint32_t event_mask)
 {
     if (event_mask & GPIO_IRQ_EDGE_RISE){
         gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_RISE);
-        call_queue_try_add(&ncp3901_on_wireless_charger_attached, 0);
+        call_queue_try_add(&ncp3901_on_wireless_charger_detached, 0);
         if (test_ncp3901_started){
             call_queue_try_add(&ncp3901_test_response, 1);
         }
     } else if (event_mask & GPIO_IRQ_EDGE_FALL){
         gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_FALL);
-        call_queue_try_add(&ncp3901_on_wireless_charger_detached, 0);
+        call_queue_try_add(&ncp3901_on_wireless_charger_attached, 0);
         if (test_ncp3901_started){
             call_queue_try_add(&ncp3901_test_response, 1);
         }
