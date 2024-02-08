@@ -80,8 +80,6 @@ void ncp3901_init(uint gpio_wireless_charger, uint gpio_otg)
 
 uint16_t ncp3901_adc0()
 {
-    // Make sure GPIO is high-impedance, no pullups etc
-    adc_gpio_init(26);
     // Select ADC input 0 (GPIO26)
     adc_select_input(0);
 
