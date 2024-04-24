@@ -7,7 +7,8 @@
 
 #define GET_LOG 0x00
 #define SET_MOTOR_LEVEL 0x01
-#define RESET_STATE 0x03
+#define RESET_STATE 0x02
+#define GET_STATE 0x03
 
 #define NACK 0xFC
 #define ACK 0xFD

@@ -85,6 +85,7 @@ void get_block() {
 }
 
 void handle_packet(IncomingPacketFromAndroid *packet){
+    uint8_t* bytes;
     // Assign the same packet type to the outgoing packet for verification on Android end
     switch (packet->packet_type){
     	case GET_LOG:
@@ -114,11 +115,25 @@ void handle_packet(IncomingPacketFromAndroid *packet){
 	    memcpy(&rp2040_state_.MotorsState.ControlValues.right, &packet->data[1], sizeof(uint8_t));
 	    set_motor_levels(&rp2040_state_);
             // Add STATE to response
-            get_state(&rp2040_state_); 
+            get_state(&rp2040_state_);
 	    outgoing_packet_to_android.data = rp2040_state_;
 
 	    // Print the outgoing packet chars
-            uint8_t* bytes = (uint8_t*)&outgoing_packet_to_android;
+            bytes = (uint8_t*)&outgoing_packet_to_android;
+            for (int i = 0; i < sizeof(outgoing_packet_to_android); i++){
+                putchar(bytes[i]);
+            }
+	    break;
+	case GET_STATE:
+            outgoing_packet_to_android.packet_type = packet->packet_type;
+	    // Clear the state
+            memset(&rp2040_state_, 0, sizeof(rp2040_state_));
+            // Add STATE to response
+            get_state(&rp2040_state_);
+	    outgoing_packet_to_android.data = rp2040_state_;
+
+	    // Print the outgoing packet chars
+            bytes = (uint8_t*)&outgoing_packet_to_android;
             for (int i = 0; i < sizeof(outgoing_packet_to_android); i++){
                 putchar(bytes[i]);
             }
