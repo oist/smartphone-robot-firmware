@@ -35,7 +35,7 @@ typedef struct
             uint8_t left;
             uint8_t right;
         } Faults;
-        
+
         struct
         {
             uint32_t left;
@@ -51,18 +51,19 @@ typedef struct
 	uint8_t state_of_health;
 	uint16_t flags;
     } BatteryDetails;
-    
+
     struct
     {
 	uint32_t max77976_chg_details;
-        uint8_t wireless_charger_attached;	
+        uint8_t wireless_charger_attached;
 	uint16_t usb_charger_voltage;
+	uint16_t wireless_charger_vrect;
     } ChargeSideUSB;
-    
+
 
 } RP2040_STATE;
 
-typedef struct 
+typedef struct
 {
     uint8_t start_marker;
     uint8_t packet_type;
@@ -70,7 +71,7 @@ typedef struct
     uint8_t end_marker;
 } IncomingPacketFromAndroid;
 
-typedef struct 
+typedef struct
 {
     uint8_t start_marker;
     uint8_t packet_type;
@@ -79,7 +80,7 @@ typedef struct
     uint8_t end_marker;
 } OutgoingPacketToAndroid;
 
-typedef struct 
+typedef struct
 {
     uint8_t start_marker;
     uint8_t packet_type;

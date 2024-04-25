@@ -96,7 +96,7 @@ void get_state(RP2040_STATE* state){
     // BatteryDetails: BQ27742-G1 Data: Battery Voltage, Current, and State of Charge
 
     // PhoneSideUSB: MAX77958 Phone-side USB Controller
-    
+
     // MotorDetails: DRV8830DRCR Data: Includes MOTOR_FAULT, ENCODER_COUNTS, MOTOR_LEVELS, MOTOR_BRAKE
     //TODO this should not update response with static int values like this
     get_encoder_counts(state);
@@ -107,19 +107,19 @@ void get_state(RP2040_STATE* state){
 
 // Takes the response and add the quad encoder counts to it
 void get_encoder_counts(RP2040_STATE* state){
-    
+
     uint32_t left, right;
     left = quad_encoder_get_count(MOTOR_LEFT);
     right = quad_encoder_get_count(MOTOR_RIGHT);
-   
+
     state->MotorsState.EncoderCounts.left = left;
     state->MotorsState.EncoderCounts.right = right;
 }
 
 void get_motor_faults(RP2040_STATE* state){
     uint8_t* motor_faults = drv8830_get_faults();
-    state->MotorsState.Faults.left = motor_faults[0]; 
-    state->MotorsState.Faults.right = motor_faults[1]; 
+    state->MotorsState.Faults.left = motor_faults[0];
+    state->MotorsState.Faults.right = motor_faults[1];
 }
 
 void get_battery_state(RP2040_STATE* state){
@@ -135,6 +135,7 @@ void get_charger_state(RP2040_STATE* state){
     // Note the implied conversion from bool to uint8_t for the purpose of sending over the serial port via byte array
     state->ChargeSideUSB.wireless_charger_attached = ncp3901_wireless_charger_attached();
     state->ChargeSideUSB.usb_charger_voltage = ncp3901_adc0();
+    state->ChargeSideUSB.wireless_charger_vrect = STWLC38JRM_adc1();
 }
 
 void set_motor_levels(RP2040_STATE* state){
@@ -186,7 +187,7 @@ void on_start(){
     i2c_start();
     adc_init();
     turn_on_leds();
-    STWLC38JRM_init(WIRELESS_CHG_EN);
+    STWLC38JRM_init(WIRELESS_CHG_EN, WIRELESS_CHG_VRECT);
     ncp3901_init(GPIO_WIRELESS_AVAILABLE, GPIO_OTG);
     max77976_init(BATTERY_CHARGER_INTERRUPT_PIN, &call_queue, &results_queue);
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO1);
@@ -228,14 +229,14 @@ void on_start(){
     //while(!stdio_usb_connected()){
     //    sleep_ms(100);
     //}
-    //rp2040_log("USB connected\n"); 
+    //rp2040_log("USB connected\n");
 }
 
 void robot_unit_tests(){
     rp2040_log("----------Running robot unit tests-----------\n");
     test_max77958_get_id();
     test_max77958_get_customer_config_id();
-    test_max77958_cc_ctrl1_read();    
+    test_max77958_cc_ctrl1_read();
     test_max77958_bc_ctrl1_read();
     test_max77958_interrupt();
     test_max77976_get_id();
@@ -357,6 +358,7 @@ void quad_encoders_init() {}
 //---------------------------------------------------------------------
 void sample_adc_inputs(){
     ncp3901_adc0();
+    STWLC38JRM_adc1();
 }
 
 void drv8830drcr_set_moto_lvl(){
@@ -415,7 +417,7 @@ void i2c_write_error_handling(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src,
 	    if (result < 0){
 		    Throw(result);
 	    }
-	} 
+	}
     Catch(e){
 	    rp2040_log("Error during i2c_write. Returned value of %i %i \n", result, e);
 	    assert(false);
@@ -429,7 +431,7 @@ void i2c_read_error_handling(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t
 	    if (result < 0){
 		    Throw(result);
 	    }
-	} 
+	}
     Catch(e){
 	    rp2040_log("Error during i2c_read. Returned value of %i %i \n", result, e);
 	    assert(false);

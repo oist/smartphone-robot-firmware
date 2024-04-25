@@ -27,6 +27,7 @@
 
 #define WIRELESS_CHG_EN _u(9) // WRM483265-10F5-12V-G (U1) enable pin via GPIO9
 #define WIRELESS_CHG_AVAILABLE _u(4)
+#define WIRELESS_CHG_VRECT _u(27)
 #define USB_VOLTAGE _u(26)
 #define CHARGER_INT _u(6)
 #define MODE _u(0x16) // CHG_CNFG_00
@@ -39,7 +40,7 @@
 
 #define LED_EN_PIN _u(21) // GPIO21
 
-typedef int32_t (*entry_func)(int32_t); 
+typedef int32_t (*entry_func)(int32_t);
 typedef struct
 {
     entry_func func;
