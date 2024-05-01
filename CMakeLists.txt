@@ -30,7 +30,7 @@ MACRO(INCLUDE_SUBMODULES)
         SET(dir_list ${dir_list} ${dir_path})
     ENDFOREACH()
     LIST(REMOVE_DUPLICATES dir_list)
-ENDMACRO() 
+ENDMACRO()
 
 INCLUDE_SUBMODULES()
 message("submodule_list after to dup removal: ${dir_list}\n")
@@ -40,7 +40,7 @@ if (PICO_SDK_VERSION_STRING VERSION_LESS "1.4.0")
   message(FATAL_ERROR "Raspberry Pi Pico SDK version 1.4.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
 endif()
 
-project(robot 
+project(robot
         VERSION 0.1
         LANGUAGES C CXX ASM)
 
@@ -53,13 +53,12 @@ file(GLOB SOURCES "*.c")
 message("SOURCES: ${SOURCES}")
 message("add_executable to include : ${CMAKE_SOURCE_DIR}/include/max77958/max77958_driver.h\n")
 # Add executable. Default name is the project name, version 0.1
-add_executable(robot 
+add_executable(robot
                robot.c
 	       ${SOURCES}
 	       ${CMAKE_SOURCE_DIR}/include/max77958/max77958_driver.h
-	       ${CMAKE_SOURCE_DIR}/include/unity/src
 	       )
-       
+
 pico_generate_pio_header(robot ${CMAKE_CURRENT_LIST_DIR}/quadrature_encoder.pio)
 
 pico_set_program_name(robot "robot")
@@ -81,8 +80,8 @@ target_include_directories(robot PRIVATE
 )
 
 # Add any user requested libraries
-target_link_libraries(robot 
-    hardware_adc 
+target_link_libraries(robot
+    hardware_adc
     hardware_i2c
     CException
     pico_stdlib
@@ -91,4 +90,3 @@ target_link_libraries(robot
     )
 
 pico_add_extra_outputs(robot)
-
