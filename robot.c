@@ -15,7 +15,7 @@
 #include "pico/util/queue.h"
 #include "pico/multicore.h"
 #include <assert.h>
-#include "CException.h"
+#include <CException.h>
 #include "quad_encoders.h"
 #include "drv8830.h"
 #include "hardware/uart.h"

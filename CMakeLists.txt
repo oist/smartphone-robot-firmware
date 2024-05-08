@@ -20,21 +20,32 @@ set(PICO_BOARD pico CACHE STRING "Board type")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
+include(ExternalProject)
 
-## Adding for Ycm debugging
-MACRO(INCLUDE_SUBMODULES)
-    FILE(GLOB_RECURSE new_list "${CMAKE_SOURCE_DIR}/include/*.h")
-    SET(dir_list "")
-    FOREACH(file_path ${new_list})
-        GET_FILENAME_COMPONENT(dir_path ${file_path} PATH)
-        SET(dir_list ${dir_list} ${dir_path})
-    ENDFOREACH()
-    LIST(REMOVE_DUPLICATES dir_list)
-ENDMACRO()
+ExternalProject_Add(
+    CException
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/CException
+    GIT_REPOSITORY https://github.com/ThrowTheSwitch/CException.git
+    GIT_TAG v1.3.4
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
 
-INCLUDE_SUBMODULES()
-message("submodule_list after to dup removal: ${dir_list}\n")
+ExternalProject_Add(
+    max77958_rp2040
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/max77958_rp2040
+    GIT_REPOSITORY https://github.com/topherbuckley/max77958_rp2040.git
+    GIT_TAG v0.0.1
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
 
+set(CException ${CMAKE_SOURCE_DIR}/external/CException/lib/CException.h
+    ${CMAKE_SOURCE_DIR}/external/CException/lib/CException.c)
 
 if (PICO_SDK_VERSION_STRING VERSION_LESS "1.4.0")
   message(FATAL_ERROR "Raspberry Pi Pico SDK version 1.4.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
@@ -47,16 +58,14 @@ project(robot
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-add_subdirectory(include)
 
 file(GLOB SOURCES "*.c")
 message("SOURCES: ${SOURCES}")
-message("add_executable to include : ${CMAKE_SOURCE_DIR}/include/max77958/max77958_driver.h\n")
 # Add executable. Default name is the project name, version 0.1
 add_executable(robot
                robot.c
 	       ${SOURCES}
-	       ${CMAKE_SOURCE_DIR}/include/max77958/max77958_driver.h
+	       ${CException}
 	       )
 
 pico_generate_pio_header(robot ${CMAKE_CURRENT_LIST_DIR}/quadrature_encoder.pio)
@@ -70,20 +79,20 @@ pico_enable_stdio_usb(robot 1)
 # Add the standard library to the build
 target_link_libraries(robot pico_stdlib pico_multicore hardware_pwm)
 
-message("target_include_directories to include : ${CMAKE_SOURCE_DIR}/include/max77958\n")
 message("target_include_directories to include : ${CMAKE_CURRENT_LIST_DIR}\n")
+message("CMAKE_SOURCE_DIR is set to: ${CMAKE_SOURCE_DIR}")
 # Add the standard include files to the build
 target_include_directories(robot PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}
   ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts or any other standard includes, if required
-  ${dir_list}
+  ${CMAKE_SOURCE_DIR}/external/CException/lib
+  ${CMAKE_SOURCE_DIR}/external/max77958_rp2040
 )
 
 # Add any user requested libraries
 target_link_libraries(robot
     hardware_adc
     hardware_i2c
-    CException
     pico_stdlib
     pico_multicore
     hardware_pio
