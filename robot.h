@@ -40,6 +40,9 @@
 
 #define LED_EN_PIN _u(21) // GPIO21
 
+#define MAX_RETRIES 3
+#define RETRY_DELAY 10
+
 typedef int32_t (*entry_func)(int32_t);
 typedef struct
 {

@@ -412,28 +412,44 @@ void quad_encoders_callback(){
 
 void i2c_write_error_handling(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src, size_t len, bool nostop){
     int result;
+    int retries = 0;
     Try{
+        do {
 	    result = i2c_write_timeout_us(i2c, addr, src, len, nostop, I2C_TIMEOUT);
-	    if (result < 0){
-		    Throw(result);
-	    }
-	}
+            if (result >= 0) {
+                return;
+            }
+            retries++;
+            if (retries < MAX_RETRIES) {
+                sleep_ms(RETRY_DELAY);
+            }
+        } while (retries < MAX_RETRIES);
+        Throw(result);
+    }
     Catch(e){
-	    rp2040_log("Error during i2c_write. Returned value of %i %i \n", result, e);
-	    assert(false);
-	}
+	rp2040_log("Error during i2c_write. Returned value of %i %i \n", result, e);
+	assert(false);
+    }
 }
 
 void i2c_read_error_handling(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t len, bool nostop){
     int result;
+    int retries = 0;
     Try{
-	    result = i2c_read_timeout_us(i2c, addr, dst, len, nostop, I2C_TIMEOUT);
-	    if (result < 0){
-		    Throw(result);
-	    }
-	}
+       do {
+           result = i2c_read_timeout_us(i2c, addr, dst, len, nostop, I2C_TIMEOUT);
+           if (result >= 0) {
+               return;
+           }
+           retries++;
+           if (retries < MAX_RETRIES) {
+	       sleep_ms(RETRY_DELAY);
+           }
+       } while (retries < MAX_RETRIES);
+       Throw(result);
+    }
     Catch(e){
-	    rp2040_log("Error during i2c_read. Returned value of %i %i \n", result, e);
-	    assert(false);
-	}
+	rp2040_log("Error during i2c_read. Returned value of %i %i \n", result, e);
+	assert(false);
+    }
 }
