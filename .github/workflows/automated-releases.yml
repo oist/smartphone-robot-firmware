@@ -2,10 +2,10 @@ name: Automated Releases
 on:
   push:
     tags:
-      - "v*.*.*"
+      - v*.*.*
   create:
     tags:
-      - "v*.*.*"
+      - v*.*.*
 
 permissions:
   contents: write
