@@ -3,6 +3,9 @@ on:
   push:
     tags:
       - "v*.*.*"
+  create:
+    tags:
+      - "v*.*.*"
 
 permissions:
   contents: write
