@@ -1,5 +1,3 @@
-#!/usr/bin/bash
-
 cd external
 rm -rf build
 mkdir build

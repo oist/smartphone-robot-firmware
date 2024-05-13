@@ -1,0 +1,28 @@
+name: Automated Releases
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-in-container:
+    runs-on: ubuntu-latest
+    container:
+      image: lukstep/raspberry-pi-pico-sdk:v0.0.2
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: build
+        run: ./b.sh
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./build/robot.elf
+            ./build/robot.uf2
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: True
