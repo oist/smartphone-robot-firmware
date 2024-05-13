@@ -20,29 +20,6 @@ set(PICO_BOARD pico CACHE STRING "Board type")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
-include(ExternalProject)
-
-ExternalProject_Add(
-    CException
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/CException
-    GIT_REPOSITORY https://github.com/ThrowTheSwitch/CException.git
-    GIT_TAG v1.3.4
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    )
-
-ExternalProject_Add(
-    max77958_rp2040
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/max77958_rp2040
-    GIT_REPOSITORY https://github.com/topherbuckley/max77958_rp2040.git
-    GIT_TAG v0.0.1
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    )
 
 set(CException ${CMAKE_SOURCE_DIR}/external/CException/lib/CException.h
     ${CMAKE_SOURCE_DIR}/external/CException/lib/CException.c)
@@ -65,7 +42,7 @@ message("SOURCES: ${SOURCES}")
 add_executable(robot
                robot.c
 	       ${SOURCES}
-	       ${CException}
+	       ${CMAKE_SOURCE_DIR}/external/CException/lib/CException.c
 	       )
 
 pico_generate_pio_header(robot ${CMAKE_CURRENT_LIST_DIR}/quadrature_encoder.pio)
