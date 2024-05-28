@@ -1,3 +1,5 @@
+#!/bin/sh
+
 cd external
 rm -rf build
 mkdir build
