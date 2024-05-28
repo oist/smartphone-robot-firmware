@@ -18,6 +18,26 @@ set(PICO_UART_ENABLE_CRLF_SUPPORT 0)
 
 set(PICO_BOARD pico CACHE STRING "Board type")
 
+include(ExternalProject)
+
+ExternalProject_Add(
+    CException
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/CException
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+
+ExternalProject_Add(
+    max77958_rp2040
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/max77958_rp2040
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
