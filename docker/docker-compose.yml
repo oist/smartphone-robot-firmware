@@ -4,9 +4,8 @@ services:
   smartphone-robot-build-env:
     build:
       context: .
-      args:
-        WORKDIR_PATH: /src
     image: topher217/smartphone-robot-firmware:latest
     container_name: smartphone-robot-firmware
     volumes:
-      - ./:/src
+      - ../:/project
+    working_dir: /project
