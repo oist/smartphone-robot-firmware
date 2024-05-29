@@ -11,7 +11,7 @@ jobs:
   build-in-container:
     runs-on: ubuntu-latest
     container:
-      image: lukstep/raspberry-pi-pico-sdk:v0.0.2
+      image: topher217/smartphone-robot-firmware:latest
     steps:
       - name: Check out code
         uses: actions/checkout@v4
