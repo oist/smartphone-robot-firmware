@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  smartphone-robot-build-env:
+    build:
+      context: .
+    image: topher217/smartphone-robot-firmware:latest
+    container_name: smartphone-robot-firmware
+    volumes:
+      - ../:/project
+    working_dir: /project

@@ -18,11 +18,38 @@ set(PICO_UART_ENABLE_CRLF_SUPPORT 0)
 
 set(PICO_BOARD pico CACHE STRING "Board type")
 
-# Pull in Raspberry Pi Pico SDK (must be before project)
-include(pico_sdk_import.cmake)
+# echo $EXTERNAL_LIBRARIES_DIR
+message("EXTERNAL_LIBRARIES_DIR: $ENV{EXTERNAL_LIBRARIES_DIR}")
 
-set(CException ${CMAKE_SOURCE_DIR}/external/CException/lib/CException.h
-    ${CMAKE_SOURCE_DIR}/external/CException/lib/CException.c)
+if($ENV{EXTERNAL_LIBRARIES_DIR} STREQUAL "")
+    message(FATAL_ERROR "EXTERNAL_LIBRARIES_DIR is not defined or empty. You need to use the docker container to establish this. See README")
+endif()
+
+include(ExternalProject)
+
+ExternalProject_Add(
+    CException
+    SOURCE_DIR $ENV{EXTERNAL_LIBRARIES_DIR}/CException
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+
+ExternalProject_Add(
+    max77958_rp2040
+    SOURCE_DIR $ENV{EXTERNAL_LIBRARIES_DIR}/max77958_rp2040
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+
+# Pull in Raspberry Pi Pico SDK (must be before project)
+include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+
+# set(CException ${CMAKE_SOURCE_DIR}/external/CException/lib/CException.h
+#    ${CMAKE_SOURCE_DIR}/external/CException/lib/CException.c)
 
 if (PICO_SDK_VERSION_STRING VERSION_LESS "1.4.0")
   message(FATAL_ERROR "Raspberry Pi Pico SDK version 1.4.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
@@ -36,16 +63,15 @@ project(robot
 pico_sdk_init()
 
 
-file(GLOB SOURCES "*.c")
+file(GLOB SOURCES "src/*.c")
 message("SOURCES: ${SOURCES}")
 # Add executable. Default name is the project name, version 0.1
 add_executable(robot
-               robot.c
 	       ${SOURCES}
-	       ${CMAKE_SOURCE_DIR}/external/CException/lib/CException.c
+	       $ENV{EXTERNAL_LIBRARIES_DIR}/CException/lib/CException.c
 	       )
 
-pico_generate_pio_header(robot ${CMAKE_CURRENT_LIST_DIR}/quadrature_encoder.pio)
+pico_generate_pio_header(robot ${CMAKE_CURRENT_LIST_DIR}/src/quadrature_encoder.pio)
 
 pico_set_program_name(robot "robot")
 pico_set_program_version(robot "0.1")
@@ -60,10 +86,10 @@ message("target_include_directories to include : ${CMAKE_CURRENT_LIST_DIR}\n")
 message("CMAKE_SOURCE_DIR is set to: ${CMAKE_SOURCE_DIR}")
 # Add the standard include files to the build
 target_include_directories(robot PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}
+  ${CMAKE_CURRENT_LIST_DIR}/include
   ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts or any other standard includes, if required
-  ${CMAKE_SOURCE_DIR}/external/CException/lib
-  ${CMAKE_SOURCE_DIR}/external/max77958_rp2040
+  $ENV{EXTERNAL_LIBRARIES_DIR}/CException/lib
+  $ENV{EXTERNAL_LIBRARIES_DIR}/max77958_rp2040
 )
 
 # Add any user requested libraries
