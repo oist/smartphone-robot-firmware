@@ -1,6 +1,6 @@
 name: Automated Releases
 on:
-  create:
+  push:
     tags:
       - v*.*.*
 
