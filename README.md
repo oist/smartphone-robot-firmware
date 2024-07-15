@@ -1,4 +1,9 @@
+This repo hosts the firmware used by the [rp2040](https://www.raspberrypi.com/documentation/microcontrollers/rp2040.html#software-development) powered [PCB](https://github.com/oist/smartphone-robot-cad/tree/pcb) for the OIST smartphone robot project.
+
+
 # Building firmware
+If interested you can setup the entire [C/C++ pico-sdk](https://github.com/raspberrypi/pico-sdk) on your computer to build the firmware. However, the easiest way to build the firmware is to use the provided docker image. The docker image is based on the official pico-sdk docker image and adds additional project dependencies.
+
 ```
 docker pull topher217/smartphone-robot-firmware:latest
 cd docker
