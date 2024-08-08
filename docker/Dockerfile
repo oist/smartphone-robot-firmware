@@ -20,7 +20,8 @@ RUN apt-get update && apt-get install -y \
 	pkg-config=0.29.2-1ubuntu3 \
 	texinfo=6.8-4build1 \
 	libusb-1.0-0-dev=2:1.0.25-1ubuntu2 \
-	libhidapi-dev=0.11.2-1
+	libhidapi-dev=0.11.2-1 \
+	gdb-multiarch=12.1-0ubuntu1~22.04.2
 
 # Set environment variable for external libraries directory
 ENV EXTERNAL_LIBRARIES_DIR=/opt/external
