@@ -20,7 +20,8 @@ RUN apt-get update && apt-get install -y \
 	pkg-config=0.29.2-1ubuntu3 \
 	texinfo=6.8-4build1 \
 	libusb-1.0-0-dev=2:1.0.25-1ubuntu2 \
-	libhidapi-dev=0.11.2-1
+	libhidapi-dev=0.11.2-1 \
+	gdb-multiarch=12.1-0ubuntu1~22.04.2
 
 # Set environment variable for external libraries directory
 ENV EXTERNAL_LIBRARIES_DIR=/opt/external
@@ -42,6 +43,9 @@ RUN git clone https://github.com/openocd-org/openocd.git $EXTERNAL_LIBRARIES_DIR
     ./configure && \
     make -j4 && \
     make install
+
+# add the project path to the gdbinit file so can automate gdb startup
+RUN echo "add-auto-load-safe-path /project/.gdbinit" >> /root/.gdbinit
 
 # Install Pico-SDK checking out version 1.5.1
 RUN git clone --branch master https://github.com/raspberrypi/pico-sdk.git $EXTERNAL_LIBRARIES_DIR/pico-sdk && \

@@ -7,3 +7,9 @@ services:
     volumes:
       - ../:/project
     working_dir: /project
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0:rwm
+      - /dev/bus/usb/003/009:/dev/bus/usb/003/009:rwm
+    ports:
+      - "4444:4444"
+      - "6666:6666"
