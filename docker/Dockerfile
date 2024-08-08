@@ -44,6 +44,9 @@ RUN git clone https://github.com/openocd-org/openocd.git $EXTERNAL_LIBRARIES_DIR
     make -j4 && \
     make install
 
+# add the project path to the gdbinit file so can automate gdb startup
+RUN echo "add-auto-load-safe-path /project/.gdbinit" >> /root/.gdbinit
+
 # Install Pico-SDK checking out version 1.5.1
 RUN git clone --branch master https://github.com/raspberrypi/pico-sdk.git $EXTERNAL_LIBRARIES_DIR/pico-sdk && \
     cd $EXTERNAL_LIBRARIES_DIR/pico-sdk && \
