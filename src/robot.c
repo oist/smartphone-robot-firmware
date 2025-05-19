@@ -339,10 +339,13 @@ void adc_shutdown(){
 }
 
 void turn_on_leds(){
-    // Set GPIO to PWM with frequency 1kHz and 50% duty cycle
     gpio_set_function(LED_EN_PIN, GPIO_FUNC_PWM);
-    // level between 0 and 255 inclusive
-    pwm_set_gpio_level(LED_EN_PIN, 255);
+
+    uint slice = pwm_gpio_to_slice_num(LED_EN_PIN);
+
+    pwm_set_wrap(slice, 255);                    // 8-bit PWM range (0–255)
+    pwm_set_gpio_level(LED_EN_PIN, 128);         // ~50% duty cycle
+    pwm_set_enabled(slice, true);
 }
 
 //---------------------------------------------------------------------
