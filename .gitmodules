@@ -1,0 +1,11 @@
+[submodule "include/CException"]
+	path = include/CException
+	url = git@github.com:topherbuckley/CException.git
+
+[submodule "include/max77958_rp2040"]
+	path = include/max77958_rp2040
+	url = git@github.com:topherbuckley/max77958_rp2040.git
+
+[submodule "include/unity"]
+	path = include/unity
+	url = git@github.com:ThrowTheSwitch/Unity.git
