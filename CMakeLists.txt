@@ -21,8 +21,11 @@ set(PICO_BOARD pico CACHE STRING "Board type")
 # echo $EXTERNAL_LIBRARIES_DIR
 message("EXTERNAL_LIBRARIES_DIR: $ENV{EXTERNAL_LIBRARIES_DIR}")
 
-if($ENV{EXTERNAL_LIBRARIES_DIR} STREQUAL "")
-    message(FATAL_ERROR "EXTERNAL_LIBRARIES_DIR is not defined or empty. You need to use the docker container to establish this. See README")
+if("$ENV{EXTERNAL_LIBRARIES_DIR}" STREQUAL "")
+    message(FATAL_ERROR "EXTERNAL_LIBRARIES_DIR is not defined or empty. \
+You need to either use the `run_container.sh build`, or \
+`export EXTERNAL_LIBRARIES_DIR=$PWD/include` from the root of the project. \
+See README")
 endif()
 
 include(ExternalProject)
