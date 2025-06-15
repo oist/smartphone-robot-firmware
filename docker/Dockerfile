@@ -1,27 +1,9 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04@sha256:04f510bf1f2528604dc2ff46b517dbdbb85c262d62eacc4aa4d3629783036096
 
 # Add metadata labels
 LABEL maintainer="topherbuckley@gmail.com"
 LABEL description="Smartphone Robot Firmware Build Environment"
-LABEL version="1.0"
-
-# Install Pico-SDK Toolchain
-RUN apt-get update && apt-get install -y \
-	gcc-arm-none-eabi=15:10.3-2021.07-4 \
-	libnewlib-arm-none-eabi=3.3.0-1.3 \
-	build-essential=12.9ubuntu3 \
-        libstdc++-arm-none-eabi-newlib=15:10.3-2021.07-4+17\
-        git=1:2.34.1-1ubuntu1.11 \
-        wget=1.21.2-2ubuntu1.1 \
-        tar=1.34+dfsg-1ubuntu0.1.22.04.2 \
-        python3=3.10.6-1~22.04 \
-        libssl-dev=3.0.2-0ubuntu1.17 \
-	libtool=2.4.6-15build2 \
-	pkg-config=0.29.2-1ubuntu3 \
-	texinfo=6.8-4build1 \
-	libusb-1.0-0-dev=2:1.0.25-1ubuntu2 \
-	libhidapi-dev=0.11.2-1 \
-	gdb-multiarch=12.1-0ubuntu1~22.04.2
+LABEL version="v1.0.1"
 
 # Set environment variable for external libraries directory
 ENV EXTERNAL_LIBRARIES_DIR=/opt/external
@@ -29,23 +11,28 @@ ENV EXTERNAL_LIBRARIES_DIR=/opt/external
 # Create a directory for external libraries
 RUN mkdir -p $EXTERNAL_LIBRARIES_DIR
 
-# Download and install CMake (only version 3.23 available on apt on ubuntu 22.04 and >3.24 needed for DOWNLOAD_EXTRACT_TIMESTAMP used in CMakelists.txt)
-RUN wget https://github.com/Kitware/CMake/releases/download/v3.30.2/cmake-3.30.2.tar.gz
-RUN tar -xzf cmake-3.30.2.tar.gz
-RUN rm cmake-3.30.2.tar.gz
-RUN cd cmake-3.30.2 && ./bootstrap && make -j4 && make install
-
-# Clone openocd and build from source checking out v0.12.0 (else cannot get >0.11.0)
-RUN git clone https://github.com/openocd-org/openocd.git $EXTERNAL_LIBRARIES_DIR/openocd && \
-    cd $EXTERNAL_LIBRARIES_DIR/openocd && \
-    git checkout 9ea7f3d64 && \
-    ./bootstrap && \
-    ./configure && \
-    make -j4 && \
-    make install
-
 # add the project path to the gdbinit file so can automate gdb startup
 RUN echo "add-auto-load-safe-path /project/.gdbinit" >> /root/.gdbinit
+
+# Install build tools and dependencies for CMake and OpenOCD
+RUN apt-get update && apt-get install -y \
+    build-essential=12.10ubuntu1 \
+    git=1:2.43.0-1ubuntu7.2 \
+    wget=1.21.4-1ubuntu4.1 \
+    libtool=2.4.7-7build1 \
+    pkg-config=1.8.1-2build1 \
+    texinfo=7.1-3build2 \
+    cmake=3.28.3-1build7 \
+    gcc-arm-none-eabi=15:13.2.rel1-2 \
+    libnewlib-arm-none-eabi=4.4.0.20231231-2 \
+    libstdc++-arm-none-eabi-newlib=15:13.2.rel1-2+26 \
+    tar=1.35+dfsg-3build1 \
+    python3=3.12.3-0ubuntu2 \
+    python3-pip=24.0+dfsg-1ubuntu1.1 \
+    libssl-dev=3.0.13-0ubuntu3.5 \
+    libusb-1.0-0-dev=2:1.0.27-1 \
+    libhidapi-dev=0.14.0-1build1 \
+    gdb-multiarch=15.0.50.20240403-0ubuntu1
 
 # Install Pico-SDK checking out version 1.5.1
 RUN git clone --branch master https://github.com/raspberrypi/pico-sdk.git $EXTERNAL_LIBRARIES_DIR/pico-sdk && \
@@ -53,6 +40,15 @@ RUN git clone --branch master https://github.com/raspberrypi/pico-sdk.git $EXTER
     git checkout 6a7db34 && \
     git submodule update --init
 ENV PICO_SDK_PATH=$EXTERNAL_LIBRARIES_DIR/pico-sdk
+
+# Clone openocd and build from source checking out v0.12.0 (else cannot get >0.11.0)
+RUN git clone --branch sdk-2.0.0 https://github.com/raspberrypi/openocd.git $EXTERNAL_LIBRARIES_DIR/openocd && \
+    cd $EXTERNAL_LIBRARIES_DIR/openocd && \
+    git checkout cf9c0b41c && \
+    ./bootstrap && \
+    ./configure && \
+    make -j4 && \
+    make install
 
 # Download and extract CException release
 RUN mkdir -p $EXTERNAL_LIBRARIES_DIR/CException
