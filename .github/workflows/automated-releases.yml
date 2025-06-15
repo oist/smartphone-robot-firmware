@@ -16,7 +16,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
       - name: build
-        run: ./b.sh
+        run: mkdir build && cd build && cmake .. && make -j4
       - name: Release
         uses: softprops/action-gh-release@v2
         with:

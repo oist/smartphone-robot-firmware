@@ -2,7 +2,7 @@ This repo hosts the firmware used by the [rp2040](https://www.raspberrypi.com/do
 
 # Building, Flashing, and Debugging Firmware
 
-If you're interested, you can set up the entire [C/C++ pico-sdk](https://github.com/raspberrypi/pico-sdk) on your computer to build the firmware. However, the easiest way to build, flash, or debug the firmware is by using the provided Docker image. The Docker image is based on the official pico-sdk Docker image and adds additional project dependencies.
+The recommended way to build, flash, and debug the firmware is by using the provided Docker image and Makefile. All dependencies are managed via Docker for a reproducible and easy workflow.
 
 ## Pulling the Docker Image
 First, pull the Docker image:
@@ -10,38 +10,59 @@ First, pull the Docker image:
 docker pull topher217/smartphone-robot-firmware:latest
 ```
 
-## Running the Scripts
-Use the provided `run_container.sh` script to build, flash, or debug the firmware.
+## Building the Firmware
+Build the firmware using the Makefile (from the `firmware` directory):
+```bash
+make firmware
+```
 
-1. **Building the Firmware**:
+## Flashing the Firmware
+Flash the firmware to the device:
+```bash
+make flash
+```
+
+## Debugging the Firmware
+Debugging is a two-step process:
+
+1. **Start OpenOCD in one terminal:**
     ```bash
-    ./run_container.sh build
+    make openocd
+    ```
+    This will start OpenOCD in a Docker container and show its output. Leave this terminal open.
+
+2. **Start GDB in a second terminal:**
+    ```bash
+    make debug
+    ```
+    This will connect GDB to the running OpenOCD server in the same container.
+
+- To stop OpenOCD, simply press `Ctrl+C` in the terminal where you ran `make openocd`.
+- If you ever need to forcibly clean up the debug container (e.g., after an unexpected exit), run:
+    ```bash
+    make docker-clean
     ```
 
-2. **Flashing the Firmware**:
-    ```bash
-    ./run_container.sh flash
-    ```
-
-3. **Debugging the Firmware**:
-    ```bash
-    ./run_container.sh debug
-    ```
-
-This script will automatically detect the Pico Probe device and pass it to the Docker container, running the specified script inside the container.
+## Interactive Shell
+To open an interactive shell in the Docker environment:
+```bash
+make shell
+```
 
 # Editing Firmware
 
-The firmware is located in the /src directory. You can edit the firmware by modifying the files in the /src directory. Header files are located in the /include directory.
+The firmware source is in the `src/` directory. Header files are in `include/`.
 
 After making changes, rebuild the firmware using:
-
-`./run_container.sh build`
+```bash
+make firmware
+```
 
 # Updating the Docker Image
 
-If you need to update or change the Docker image, you can do so by running the following command from the docker directory:
+If you need to update or change the Docker image, run the following command from the `docker` directory:
+```bash
+cd docker && docker build -t topher217/smartphone-robot-firmware:latest .
+```
 
-`docker compose up --build`
-
-All Docker files are located in the /docker directory.
+All Docker files are located in the `docker/` directory.
