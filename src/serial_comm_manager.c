@@ -22,6 +22,19 @@ void serial_comm_manager_init(RP2040_STATE* rp2040_state){
     outgoing_log_packet_to_android.packet_type = GET_LOG;
     outgoing_log_packet_to_android.end_marker = END_MARKER;
 }
+
+static void reset_packet_and_send_nack(int8_t *start_idx, int8_t *end_idx, uint16_t *buffer_index) {
+    *start_idx = -1;
+    *end_idx = -1;
+    *buffer_index = 0;
+    memset(&incoming_packet_from_android, 0, sizeof(IncomingPacketFromAndroid));
+    outgoing_packet_to_android.packet_type = NACK;
+    uint8_t* nack_bytes = (uint8_t*)&outgoing_packet_to_android;
+    for (int j = 0; j < sizeof(outgoing_packet_to_android); j++){
+        putchar(nack_bytes[j]);
+    }
+}
+
 // reads data from the UART and stores it in buffer. If no data is available, returns immediately.
 // if new data is available, reads it until the buffer is full or both start and stop markers detected
 // calls handle_block to process the data if both markers are detected
@@ -54,13 +67,13 @@ void get_block() {
     	    	    buffer_index++;
     	        }
     	    }else {
-    	        assert(false);
+    	        rp2040_log("Timeout while reading packet. Resetting state.\n");
+                reset_packet_and_send_nack(&start_idx, &end_idx, &buffer_index);
+                return;
 	    }
     	    i++;
         }
-	
 	c = getchar_timeout_us(100);
-
         if (c != PICO_ERROR_TIMEOUT && c == END_MARKER){
             // Calculate the length of the packet
             uint16_t packet_length = end_idx - start_idx;
@@ -71,15 +84,17 @@ void get_block() {
                 start_idx = -1;
                 end_idx = -1;
                 buffer_index = 0;
-	        // Reset the packet
-	        memset(&incoming_packet_from_android, 0, sizeof(IncomingPacketFromAndroid)); } else {
-                rp2040_log("Received incomplete packet.\n");
-		assert(false);
+                // Reset the packet
+                memset(&incoming_packet_from_android, 0, sizeof(IncomingPacketFromAndroid)); } else {
+                rp2040_log("Received incomplete packet. Resetting state.\n");
+                reset_packet_and_send_nack(&start_idx, &end_idx, &buffer_index);
+                return;
             }
         }else{
-	    rp2040_log("Received packet with no end marker.\n");
-	    assert(false);
-	}
+            rp2040_log("Received packet with no end marker. Resetting state.\n");
+            reset_packet_and_send_nack(&start_idx, &end_idx, &buffer_index);
+            return;
+        }
 
     }
 }
