@@ -1,6 +1,22 @@
 This repo hosts the firmware used by the [rp2040](https://www.raspberrypi.com/documentation/microcontrollers/rp2040.html#software-development) powered [PCB](https://github.com/oist/smartphone-robot-cad/tree/pcb) for the OIST smartphone robot project.
 
-# Building, Flashing, and Debugging Firmware
+# Updating firmware
+
+1. Download the most recent firmware release [robot.uf2](https://github.com/oist/smartphone-robot-firmware/releases/latest)
+2. Take a small screwdriver and flip the External/Phone USB switch toward External USB Side (See image below)
+3. Use the screwdriver to push and hold the BOOTSEL Button
+4. Attach a USB cable between the external USB port and your PC.
+5. Release the BOOTSEL Button. You should now see the board appear as an external USB device.
+6. Drag and drop robot.uf2 to this external USB device. The device will automatically restart and disconnect from your PC. The new firmware should now be running.
+7. Return the External/Phone USB switch to Phone USB Side.
+![robot bottom](media/robotBottom.png)
+![robot_back](media/robotBack.png)
+
+# Building, Flashing, and Debugging Firmware via Debugging Port
+
+![firmware wiring](media/firmwareWiring.png)
+
+The above wiring diagram assumes you have the debugprobe firmware running on your Raspberry Pi Pico. See [here](https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html#debugging-using-another-pico-series-device) for documenation on how to do this.
 
 The recommended way to build, flash, and debug the firmware is by using the provided Docker image and Makefile. All dependencies are managed via Docker for a reproducible and easy workflow.
 
