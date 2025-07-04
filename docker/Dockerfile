@@ -1,9 +1,12 @@
-FROM ubuntu:24.04@sha256:04f510bf1f2528604dc2ff46b517dbdbb85c262d62eacc4aa4d3629783036096
+# Set the base image hash via build-arg (default: amd64)
+ARG BASE_IMAGE_HASH=sha256:04f510bf1f2528604dc2ff46b517dbdbb85c262d62eacc4aa4d3629783036096
+FROM ubuntu:24.04@${BASE_IMAGE_HASH}
 
 # Add metadata labels
 LABEL maintainer="topherbuckley@gmail.com"
 LABEL description="Smartphone Robot Firmware Build Environment"
-LABEL version="v1.0.1"
+ARG VERSION=dev
+LABEL version="${VERSION}"
 
 # Set environment variable for external libraries directory
 ENV EXTERNAL_LIBRARIES_DIR=/opt/external
@@ -16,23 +19,23 @@ RUN echo "add-auto-load-safe-path /project/.gdbinit" >> /root/.gdbinit
 
 # Install build tools and dependencies for CMake and OpenOCD
 RUN apt-get update && apt-get install -y \
-    build-essential=12.10ubuntu1 \
-    git=1:2.43.0-1ubuntu7.2 \
-    wget=1.21.4-1ubuntu4.1 \
-    libtool=2.4.7-7build1 \
-    pkg-config=1.8.1-2build1 \
-    texinfo=7.1-3build2 \
-    cmake=3.28.3-1build7 \
-    gcc-arm-none-eabi=15:13.2.rel1-2 \
-    libnewlib-arm-none-eabi=4.4.0.20231231-2 \
-    libstdc++-arm-none-eabi-newlib=15:13.2.rel1-2+26 \
-    tar=1.35+dfsg-3build1 \
-    python3=3.12.3-0ubuntu2 \
-    python3-pip=24.0+dfsg-1ubuntu1.1 \
-    libssl-dev=3.0.13-0ubuntu3.5 \
-    libusb-1.0-0-dev=2:1.0.27-1 \
-    libhidapi-dev=0.14.0-1build1 \
-    gdb-multiarch=15.0.50.20240403-0ubuntu1
+    build-essential \
+    git \
+    wget \
+    libtool \
+    pkg-config \
+    texinfo \
+    cmake \
+    gcc-arm-none-eabi \
+    libnewlib-arm-none-eabi \
+    libstdc++-arm-none-eabi-newlib \
+    tar \
+    python3 \
+    python3-pip \
+    libssl-dev \
+    libusb-1.0-0-dev \
+    libhidapi-dev \
+    gdb-multiarch
 
 # Install Pico-SDK checking out version 1.5.1
 RUN git clone --branch master https://github.com/raspberrypi/pico-sdk.git $EXTERNAL_LIBRARIES_DIR/pico-sdk && \
