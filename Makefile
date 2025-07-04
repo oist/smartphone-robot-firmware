@@ -11,7 +11,7 @@ else
 endif
 DOCKER_RUN := docker run --rm -it \
     --device /dev/bus/usb:/dev/bus/usb \
-    -v $(PWD):/project \
+    -v $(shell pwd):/project \
     -w /project \
     $(DOCKER_IMAGE_TAG)
 DOCKER_EXEC := docker exec -it $(DOCKER_DEBUG_CONTAINER)
