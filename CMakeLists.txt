@@ -74,6 +74,13 @@ pico_generate_pio_header(robot ${CMAKE_CURRENT_LIST_DIR}/src/quadrature_encoder.
 pico_set_program_name(robot "robot")
 pico_set_program_version(robot "0.1")
 
+target_compile_definitions(robot PUBLIC
+    PICO_DEFAULT_UART=0
+    PICO_DEFAULT_UART_TX_PIN=16
+    PICO_DEFAULT_UART_RX_PIN=17
+    PICO_DEFAULT_UART_BAUD_RATE=2000000
+)
+
 pico_enable_stdio_uart(robot 0)
 pico_enable_stdio_usb(robot 1)
 
