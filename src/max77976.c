@@ -141,7 +141,7 @@ static void max77976_get_interrupt_vals(uint8_t* buf_ptr) {
 int max77976_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     _gpio_interrupt = gpio_interrupt;
 
-    rp2040_log("max77958 init started\n");
+    rp2040_log("max77976 init started\n");
     call_queue_ptr = cq;
     return_queue_ptr = rq;
 
