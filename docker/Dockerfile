@@ -50,7 +50,7 @@ RUN git clone --branch sdk-2.0.0 https://github.com/raspberrypi/openocd.git $EXT
     git checkout cf9c0b41c && \
     ./bootstrap && \
     ./configure && \
-    make -j4 && \
+    make -j $(nproc) && \
     make install
 
 # Download and extract CException release
