@@ -1,7 +1,7 @@
 # Variables
 DOCKER_IMAGE := topher217/smartphone-robot-firmware
 DOCKER_TAG := latest
-JOBS ?= 4
+JOBS ?= $(shell nproc)
 DOCKER_DEBUG_CONTAINER := smartphone-robot-debug
 ARCH ?= amd64
 ifeq ($(ARCH),amd64)
@@ -39,7 +39,7 @@ help:
 	@echo "  - USB debug probe access is provided via --device /dev/bus/usb:/dev/bus/usb."
 	@echo ""
 	@echo "Options:"
-	@echo "  JOBS=N                - Number of parallel build jobs (default: 4)"
+	@echo "  JOBS=N                - Number of parallel build jobs (default: The number of processor cores)"
 	@echo "  ARCH=amd64|arm64        - Specify architecture for all make targets (default: amd64)"
 	@echo "  Example: make flash DOCKER_USB_DEVICE=/dev/ttyACM0"
 
@@ -59,7 +59,7 @@ openocd:
 	docker rm -f $(DEBUG_CONTAINER) 2>/dev/null || true
 	docker run --name $(DEBUG_CONTAINER) \
 	    --device /dev/bus/usb:/dev/bus/usb \
-	    -v $(PWD):/project \
+	    -v $(shell pwd):/project \
 	    -w /project \
 	    $(DOCKER_IMAGE_TAG) \
 	    bash -c 'openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "adapter speed 5000"'

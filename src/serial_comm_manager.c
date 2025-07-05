@@ -2,6 +2,7 @@
 #include "serial_comm_manager.h"
 #include "pico/stdio.h"
 #include <string.h>
+#include <stdio.h>
 #include "robot.h"
 #include "rp2040_log.h"
 
