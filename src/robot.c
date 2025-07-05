@@ -25,6 +25,12 @@
 #include "serial_comm_manager.h"
 #include "hardware/pwm.h"
 
+#if LIB_PICO_STDIO_UART
+static stdio_driver_t *driver=&stdio_uart;
+#elif LIB_PICO_STDIO_USB
+static stdio_driver_t *driver=&stdio_usb;
+#endif
+
 static queue_t call_queue;
 static queue_t results_queue;
 static bool core1_shutdown_requested = false;
@@ -180,7 +186,7 @@ void on_start(){
     rp2040_log_init();
     rp2040_log("on_start\n");
     stdio_init_all();
-    stdio_set_translate_crlf(&stdio_usb, false);
+    stdio_set_translate_crlf(driver, false);
     gpio_set_irq_callback(&robot_interrupt_handler);
     irq_set_enabled(IO_IRQ_BANK0, true);
     init_queues();
