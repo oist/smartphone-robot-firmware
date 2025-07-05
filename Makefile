@@ -59,7 +59,7 @@ openocd:
 	docker rm -f $(DEBUG_CONTAINER) 2>/dev/null || true
 	docker run --name $(DEBUG_CONTAINER) \
 	    --device /dev/bus/usb:/dev/bus/usb \
-	    -v $(PWD):/project \
+	    -v $(shell pwd):/project \
 	    -w /project \
 	    $(DOCKER_IMAGE_TAG) \
 	    bash -c 'openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "adapter speed 5000"'
