@@ -18,11 +18,5 @@
   },
   "cmake.buildBeforeRun": true,
   "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
-  "files.associations": {
-    "*.c": "c",
-    "pico.h": "c",
-    "gpio.h": "c",
-    "stdio.h": "c",
-    "version.h": "c"
-  }
+  "C_Cpp.autoAddFileAssociations": false
 }
