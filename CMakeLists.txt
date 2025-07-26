@@ -2,6 +2,12 @@
 
 cmake_minimum_required(VERSION 3.13)
 
+# Logger interface
+set(LOGGER "USB" CACHE STRING "Logging interface")
+if(NOT (LOGGER STREQUAL "USB" OR LOGGER STREQUAL "UART"))
+  message(FATAL_ERROR "invalid logging interface: ${LOGGER}")
+endif()
+
 # Enable colored output
 set(CMAKE_COLOR_MAKEFILE ON)
 
@@ -82,7 +88,12 @@ target_compile_definitions(robot PUBLIC
 )
 
 pico_enable_stdio_uart(robot 0)
-pico_enable_stdio_usb(robot 1)
+pico_enable_stdio_usb(robot 0)
+if(LOGGER STREQUAL "UART")
+    pico_enable_stdio_uart(robot 1)
+elseif(LOGGER STREQUAL "USB")
+    pico_enable_stdio_usb(robot 1)
+endif()
 
 # Add the standard library to the build
 target_link_libraries(robot pico_stdlib pico_multicore hardware_pwm)

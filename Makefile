@@ -4,6 +4,7 @@ DOCKER_TAG := latest
 JOBS ?= $(shell nproc)
 DOCKER_DEBUG_CONTAINER := smartphone-robot-debug
 ARCH ?= amd64
+LOGGER ?= USB
 ifeq ($(ARCH),amd64)
   DOCKER_IMAGE_TAG := $(DOCKER_IMAGE):$(DOCKER_TAG)
 else
@@ -41,13 +42,14 @@ help:
 	@echo "Options:"
 	@echo "  JOBS=N                - Number of parallel build jobs (default: The number of processor cores)"
 	@echo "  ARCH=amd64|arm64        - Specify architecture for all make targets (default: amd64)"
+	@echo "  LOGGER=USB|UART         - Specify logger interface (default: USB)"
 	@echo "  Example: make flash DOCKER_USB_DEVICE=/dev/ttyACM0"
 
 # Build firmware
 .PHONY: firmware
 firmware:
 	@echo "Building firmware in Docker with $(JOBS) jobs..."
-	$(DOCKER_RUN) bash -c "rm -rf build && mkdir build && cd build && cmake .. && make -j$(JOBS)"
+	$(DOCKER_RUN) bash -c "rm -rf build && mkdir build && cd build && cmake .. -DLOGGER=$(LOGGER) && make -j$(JOBS)"
 
 # Name for the persistent debug container
 DEBUG_CONTAINER := smartphone-robot-debug
