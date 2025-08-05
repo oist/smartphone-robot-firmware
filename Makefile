@@ -1,7 +1,7 @@
 # Variables
 DOCKER_IMAGE := topher217/smartphone-robot-firmware
 DOCKER_TAG := latest
-JOBS ?= 4
+JOBS ?= $(shell nproc)
 DOCKER_DEBUG_CONTAINER := smartphone-robot-debug
 ARCH ?= amd64
 ifeq ($(ARCH),amd64)
@@ -25,7 +25,7 @@ all: help
 help:
 	@echo "Available targets (run from project root):"
 	@echo "  make firmware    - Build firmware (in Docker)"
-	@echo "  make openocd     - Start OpenOCD GDB server in Docker container (leave running in one terminal)" 
+	@echo "  make openocd     - Start OpenOCD GDB server in Docker container (leave running in one terminal)"
 	@echo "  make debug       - Start GDB in the same Docker container (run in a second terminal)"
 	@echo "  make docker-clean - Stop and remove the debug container if needed"
 	@echo "  make flash       - Flash firmware to device (in Docker)"
@@ -39,7 +39,7 @@ help:
 	@echo "  - USB debug probe access is provided via --device /dev/bus/usb:/dev/bus/usb."
 	@echo ""
 	@echo "Options:"
-	@echo "  JOBS=N                - Number of parallel build jobs (default: 4)"
+	@echo "  JOBS=N                - Number of parallel build jobs (default: The number of processor cores)"
 	@echo "  ARCH=amd64|arm64        - Specify architecture for all make targets (default: amd64)"
 	@echo "  Example: make flash DOCKER_USB_DEVICE=/dev/ttyACM0"
 
