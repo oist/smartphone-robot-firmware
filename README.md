@@ -10,6 +10,12 @@ This repo hosts the firmware used by the [rp2040](https://www.raspberrypi.com/do
 6. Drag and drop robot.uf2 to this external USB device. The device will automatically restart and disconnect from your PC. The new firmware should now be running.
 7. Return the External/Phone USB switch to Phone USB Side.
 ![robot bottom](media/robotBottom.png)
+## Toggle Switch Legend:
+|External Phone/USB Switch|MAX77958EWV USB Gate|State|
+|UP|UP|RP2040 D+/- lines disconnected from everything (i.e. nothing will work)|
+|DOWN|DOWN|RP2040 D+/- lines connected to external USB, phone-side USB lines connected to MAX77958, but not connected to RP2040|
+|UP|DOWN|RP2040 D+/- lines connected to phone-side USB|
+|DOWN|UP|RP2040 D+/- lines connected to external USB, phone-side USB lines bypass MAX77958 by shorting USB lines with MAX77958 DN1 and DP2 pins, not sure if this is harmful or even useful ever|
 ![robot_back](media/robotBack.png)
 
 # Building, Flashing, and Debugging Firmware via Debugging Port
