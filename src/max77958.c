@@ -527,19 +527,73 @@ static int32_t cc_ctrl1_read(){
 static int32_t customer_config_write(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_WRITE;
-    send_buf[1] = 0x56; // Customer Configuration Write 
-    send_buf[2] = 0b00100000; // All defaults values except TypeC_State is SRC 
+    send_buf[1] = 0x56; // Customer Configuration Write
+
+    // Create configuration with readable boolean values
+    max77958_customer_config_t config = {
+        .dbg_src_enable = false,
+        .dbg_snk_enable = false, 
+        .audio_acc_enable = false,
+        .trysnk_enable = false,
+        .typec_mode = TYPEC_MODE_SRC,
+        .mem_update_customer = false,  // Update RAM only
+        .moisture_enable = false
+    };
+
+    // Convert config to register value using helper function
+    send_buf[2] = max77958_build_customer_config_value(&config);
     send_buf[3] = 0x6A; // default VID
     send_buf[4] = 0x0B; // default VID
     send_buf[5] = 0x60; // default PID
     send_buf[6] = 0x68; // default PID
     send_buf[7] = 0x00; // RSVD
     send_buf[8] = 0x64; // default SRC_PDO_V
-    send_buf[9] = 0x00; // default SRC_PDO_V of 5.0V (0x64= 100, and 50mA*100). 
+    send_buf[9] = 0x00; // default SRC_PDO_V of 5.0V (0x64= 100, and 50mA*100).
     send_buf[10] = 0x32; // SRC_PDO_MaxI
     send_buf[11] = 0x00; // SRC_PDO_MaxI = 1.0A (0x64=100, and 100*10mA)
     opcode_write(send_buf);
     return 0;
+}
+
+// Helper function to convert config struct to register value
+uint8_t max77958_build_customer_config_value(const max77958_customer_config_t* config) {
+    uint8_t val = 0;
+    
+    if (!config->dbg_src_enable) val |= DBG_SRC_DISABLE;
+    else val |= DBG_SRC_ENABLE;
+    
+    if (!config->dbg_snk_enable) val |= DBG_SNK_DISABLE;
+    else val |= DBG_SNK_ENABLE;
+    
+    if (!config->audio_acc_enable) val |= AUDIO_ACC_DISABLE;
+    else val |= AUDIO_ACC_ENABLE;
+    
+    if (!config->trysnk_enable) val |= TRYSNK_DISABLE;
+    else val |= TRYSNK_ENABLE;
+    
+    // Handle TypeC mode enum
+    switch (config->typec_mode) {
+        case TYPEC_MODE_SRC:
+            val |= TYPEC_SRC;
+            break;
+        case TYPEC_MODE_SNK:
+            val |= TYPEC_SNK;
+            break;
+        case TYPEC_MODE_DRP:
+            val |= TYPEC_DRP;
+            break;
+        default:
+            val |= TYPEC_SRC; // Default to source mode
+            break;
+    }
+    
+    if (!config->mem_update_customer) val |= MEM_UPDATE_RAM;
+    else val |= MEM_UPDATE_CUSTOMER;
+    
+    if (!config->moisture_enable) val |= MOISTURE_DISABLE;
+    else val |= MOISTURE_ENABLE;
+    
+    return val;
 }
 
 // A function to make turning on/off GPIO4 and 5 more readable
