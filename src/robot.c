@@ -292,7 +292,7 @@ void free_queues(){
 static void signal_stop_core1(){
     queue_entry_t stop_entry = {stop_core1, 0};
     if(!queue_try_add(&call_queue, &stop_entry)){
-	rp2040_log("call_queue is full");
+	rp2040_log("ERROR: call_queue is full");
         assert(false);
     }
 }
@@ -402,8 +402,8 @@ void results_queue_try_add(void *func, int32_t arg){
     queue_entry_t entry = {func, arg};
     //rp2040_log("call_queue currently has %i entries\n", queue_get_level(&call_queue));
     if(!queue_try_add(&results_queue, &entry)){
-        rp2040_log("results_queue is full");
-    	assert(false);
+        rp2040_log("ERROR:results_queue is full");
+	assert(false);
     }
 }
 
@@ -411,8 +411,8 @@ void call_queue_try_add(entry_func func, int32_t arg){
     queue_entry_t entry = {func, arg};
     //rp2040_log("call_queue currently has %i entries\n", queue_get_level(&call_queue));
     if(!queue_try_add(&call_queue, &entry)){
-        rp2040_log("call_queue is full");
-    	assert(false);
+        rp2040_log("ERROR: call_queue is full");
+	assert(false);
     }
 }
 
@@ -437,7 +437,7 @@ void i2c_write_error_handling(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src,
         Throw(result);
     }
     Catch(e){
-	rp2040_log("Error during i2c_write. Returned value of %i %i \n", result, e);
+	rp2040_log("ERROR: During i2c_write. Returned value of %i %i \n", result, e);
 	assert(false);
     }
 }
@@ -459,7 +459,7 @@ void i2c_read_error_handling(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t
        Throw(result);
     }
     Catch(e){
-	rp2040_log("Error during i2c_read. Returned value of %i %i \n", result, e);
+	rp2040_log("ERROR: During i2c_read. Returned value of %i %i \n", result, e);
 	assert(false);
     }
 }

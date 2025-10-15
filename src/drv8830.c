@@ -178,7 +178,7 @@ static void drv8830_clear_faults(){
         i2c_read_error_handling(i2c, addr[i], &fault_value, 1, false);
 	// If the first bit is not 0, then the fault has not been cleared.
         if ((fault_value & 1) != 0){
-            rp2040_log("Motor %d cannot clear faults. Exiting.\n", i);
+            rp2040_log("ERROR: Motor %d cannot clear faults. Exiting.\n", i);
             assert(false);
         }
     }
@@ -197,7 +197,7 @@ void test_drv8830_interrupt(){
     rp2040_log("test_drv8830_interrupt: prior to driving low GPIO%d. Current Value:%d\n", _gpio_fault1, gpio_get(_gpio_fault1));
     gpio_set_dir(_gpio_fault1, GPIO_OUT);
     if (gpio_get(_gpio_fault1) != 0){
-	rp2040_log("test_drv8830_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_fault1, gpio_get(_gpio_fault1));
+	rp2040_log("ERROR: test_drv8830_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_fault1, gpio_get(_gpio_fault1));
 	assert(false);
     }
     rp2040_log("test_drv8830_interrupt: after driving low GPIO%d. Current Value:%d\n", _gpio_fault1, gpio_get(_gpio_fault1));
@@ -207,7 +207,7 @@ void test_drv8830_interrupt(){
 	tight_loop_contents();
 	i++;
 	if (i > 1000){
-	    rp2040_log("test_drv8830_interrupt timed out\n");
+	    rp2040_log("ERROR: test_drv8830_interrupt timed out\n");
 	    assert(false);
 	}
     }
@@ -223,7 +223,7 @@ void test_drv8830_interrupt(){
 	tight_loop_contents();
 	i++;
 	if (i > 1000){
-	    rp2040_log("test_drv8830_interrupt timed out\n");
+	    rp2040_log("ERROR: test_drv8830_interrupt timed out\n");
 	    assert(false);
 	}
     }
