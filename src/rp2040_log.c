@@ -27,6 +27,14 @@ void rp2040_log_release_lock() {
 void rp2040_log(const char* format, ...) {
     va_list args;
 
+    #ifdef LOGGER_UART
+    // For UART mode, log directly via printf (which goes to UART when LOGGER=UART)
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    return;
+    #endif
+
     va_start(args, format);
     // Calculate the number of characters required
     int len = vsnprintf(NULL, 0, format, args) + 1; //include the /n 

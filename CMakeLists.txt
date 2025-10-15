@@ -84,8 +84,12 @@ target_compile_definitions(robot PUBLIC
     PICO_DEFAULT_UART=0
     PICO_DEFAULT_UART_TX_PIN=16
     PICO_DEFAULT_UART_RX_PIN=17
-    PICO_DEFAULT_UART_BAUD_RATE=2000000
+    PICO_DEFAULT_UART_BAUD_RATE=115200
 )
+
+if(LOGGER STREQUAL "UART")
+    target_compile_definitions(robot PUBLIC LOGGER_UART=1)
+endif()
 
 pico_enable_stdio_uart(robot 0)
 pico_enable_stdio_usb(robot 0)
