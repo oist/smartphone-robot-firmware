@@ -216,7 +216,7 @@ void on_start(){
     set_voltage(MOTOR_LEFT, 2.5);
     set_voltage(MOTOR_RIGHT, 2.5);
     int i = 0;
-    while (i < 500){
+    while (i < 50){
        quad_encoder_update();
        i++;
        tight_loop_contents();
