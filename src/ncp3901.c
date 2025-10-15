@@ -99,7 +99,7 @@ void test_ncp3901_interrupt(){
     rp2040_log("test_ncp3901_interrupt: prior to driving low GPIO%d. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
     gpio_set_dir(_gpio_wireless_charger, GPIO_OUT);
     if (gpio_get(_gpio_wireless_charger) != 0){
-	rp2040_log("test_ncp3901_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
+	rp2040_log("ERROR: test_ncp3901_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
 	assert(false);
     }
     rp2040_log("test_ncp3901_interrupt: after driving low GPIO%d. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
@@ -109,7 +109,7 @@ void test_ncp3901_interrupt(){
 	tight_loop_contents();
 	i++;
 	if (i > 1000){
-	    rp2040_log("test_ncp3901_interrupt wireless connect timed out\n");
+	    rp2040_log("ERROR: test_ncp3901_interrupt wireless connect timed out\n");
 	    assert(false);
 	}
     }
@@ -124,7 +124,7 @@ void test_ncp3901_interrupt(){
     gpio_set_dir(_gpio_wireless_charger, GPIO_IN);
     gpio_pull_up(_gpio_wireless_charger);
     if (gpio_get(_gpio_wireless_charger) != 1){
-	rp2040_log("test_ncp3901_interrupt: GPIO%d was pulled up. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
+	rp2040_log("ERROR: test_ncp3901_interrupt: GPIO%d was pulled up. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
 	assert(false);
     }
     rp2040_log("test_ncp3901_interrupt: after pulling up GPIO%d. Current Value:%d\n", _gpio_wireless_charger, gpio_get(_gpio_wireless_charger));
@@ -134,7 +134,7 @@ void test_ncp3901_interrupt(){
 	tight_loop_contents();
 	i++;
 	if (i > 1000){
-	    rp2040_log("test_ncp3901_interrupt wireless disconnect timed out\n");
+	    rp2040_log("ERROR: test_ncp3901_interrupt wireless disconnect timed out\n");
 	    assert(false);
 	}
     }

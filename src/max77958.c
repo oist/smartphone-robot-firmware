@@ -136,7 +136,7 @@ static void opcode_queue_add(int32_t (opcode_func)(), int32_t opcode_data){
     opcodes_finished = false;
     queue_entry_t opcode_entry = {opcode_func, opcode_data};
     if(!queue_try_add(&opcode_queue, &opcode_entry)){
-	rp2040_log("opcode_queue is full");
+	rp2040_log("ERROR: opcode_queue is full");
 	assert(false);
     }
     rp2040_log("Added to opcode_queue. %d entries remaining\n", queue_get_level(&opcode_queue));
@@ -261,7 +261,7 @@ static int opcode_write(uint8_t *buf){
     // so you may send wrong data if you don't directly specify them for ALL registers. Note the defaults are NOT always 0x00, 
     // so you should send all values everytime. What a pain...
     if (buf[0] != 0x21){
-	rp2040_log("buffer should always start with the 0x21 register");
+	rp2040_log("ERROR: buffer should always start with the 0x21 register");
 	assert(false);
     }
 
@@ -302,11 +302,11 @@ void test_max77958_get_id(){
     i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
     i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 2, false);
     if (return_buf[0] != 0x58){
-	rp2040_log("DEVICE_ID should be 0x58");
+	rp2040_log("ERROR: DEVICE_ID should be 0x58");
 	assert(false);
     }
     if (return_buf[1] != 0x02){
-	rp2040_log("DEVICE_REV should be 0x02");
+	rp2040_log("ERROR: DEVICE_REV should be 0x02");
 	assert(false);
     }
     rp2040_log("test_max77958_get_id PASSED: DEVICE_ID = %x\n", return_buf[0]);
@@ -322,12 +322,12 @@ void test_max77958_cc_ctrl1_read(){
 	sleep_ms(100);
 	i++;
 	if (i > 10){
-	    rp2040_log("Error: Timed out waiting for GPIO to finish\n");
+	    rp2040_log("ERROR: Timed out waiting for GPIO to finish\n");
 	    assert(false);
 	}
     }
     if (op_code_return_buf[0] != 0x0B){
-	rp2040_log("OPCODE should be 0x0B");
+	rp2040_log("ERROR: OPCODE should be 0x0B");
 	assert(false);
     }
     //if (op_code_return_buf[1] != 0b10000001){
@@ -347,12 +347,12 @@ void test_max77958_bc_ctrl1_read(){
 	sleep_ms(100);
 	i++;
 	if (i > 10){
-	    rp2040_log("Error: Timed out waiting for GPIO to finish\n");
+	    rp2040_log("ERROR: Timed out waiting for GPIO to finish\n");
 	    assert(false);
 	}
     }
     if (op_code_return_buf[0] != 0x01){
-	rp2040_log("OPCODE should be 0x01");
+	rp2040_log("ERROR: OPCODE should be 0x01");
 	assert(false);
     }
     //if (op_code_return_buf[1] != 0b10000001){
@@ -372,20 +372,20 @@ void test_max77958_get_customer_config_id(){
 	sleep_ms(100);
 	i++;
 	if (i > 10){
-	    rp2040_log("Error: Timed out waiting for GPIO to finish\n");
+	    rp2040_log("ERROR: Timed out waiting for GPIO to finish\n");
 	    assert(false);
 	}
     }
     if (op_code_return_buf[0] != 0x55){
-	rp2040_log("OPCODE should be 0x55");
+	rp2040_log("ERROR: OPCODE should be 0x55");
 	assert(false);
     }
     if ((op_code_return_buf[2] | (op_code_return_buf[3] << 8)) != 0x0B6A){
-        rp2040_log("CUSTOMER_CONFIG_ID should be 0x0B6A");	
+        rp2040_log("ERROR: CUSTOMER_CONFIG_ID should be 0x0B6A");	
 	assert(false);
     }
     if ((op_code_return_buf[4] | (op_code_return_buf[5] << 8)) != 0x6860){
-	rp2040_log("CUSTOMER_CONFIG_REV should be 0x6860");
+	rp2040_log("ERROR: CUSTOMER_CONFIG_REV should be 0x6860");
 	assert(false);
     }
     rp2040_log("test_max77958_get_customer_config_id: 0x51=0x%02x\n", op_code_return_buf[0]);
@@ -412,7 +412,7 @@ void test_max77958_interrupt(){
     rp2040_log("test_max77958_interrupt: prior to driving low GPIO%d. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
     gpio_set_dir(_gpio_interrupt, GPIO_OUT);
     if (gpio_get(_gpio_interrupt) != 0){
-	rp2040_log("test_max77958_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
+	rp2040_log("ERROR: test_max77958_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
 	assert(false);
     }
     rp2040_log("test_max77958_interrupt: after driving low GPIO%d. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
@@ -422,7 +422,7 @@ void test_max77958_interrupt(){
 	tight_loop_contents();
 	i++;
 	if (i > 1000){
-	    rp2040_log("test_max77958_interrupt timed out\n");
+	    rp2040_log("ERROR: test_max77958_interrupt timed out\n");
 	    assert(false);
 	}
     }
@@ -489,7 +489,7 @@ static bool opcode_queue_pop(){
 	    rp2040_log("added opcode entry to call_queue\n");
 	    return true;
 	}else{
-	    rp2040_log("opcode_queue_pop: call_queue full\n");
+	    rp2040_log("ERROR: opcode_queue_pop: call_queue full\n");
 	    assert(false);
 	}
     }
@@ -754,7 +754,7 @@ void max77958_shutdown(uint gpio_interrupt){
 	sleep_ms(100);
 	i++;
 	if (i > 10){
-	    rp2040_log("Error: Timed out waiting for GPIO to finish\n");
+	    rp2040_log("ERROR: Timed out waiting for GPIO to finish\n");
 	    assert(false);
 	}
     }
