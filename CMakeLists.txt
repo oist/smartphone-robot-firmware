@@ -84,15 +84,14 @@ target_compile_definitions(robot PUBLIC
     PICO_DEFAULT_UART=0
     PICO_DEFAULT_UART_TX_PIN=16
     PICO_DEFAULT_UART_RX_PIN=17
-    PICO_DEFAULT_UART_BAUD_RATE=2000000
+    PICO_DEFAULT_UART_BAUD_RATE=115200
 )
 
 pico_enable_stdio_uart(robot 0)
-pico_enable_stdio_usb(robot 0)
+pico_enable_stdio_usb(robot 1)
+
 if(LOGGER STREQUAL "UART")
-    pico_enable_stdio_uart(robot 1)
-elseif(LOGGER STREQUAL "USB")
-    pico_enable_stdio_usb(robot 1)
+    target_compile_definitions(robot PUBLIC LOGGER_UART=1)
 endif()
 
 # Add the standard library to the build
@@ -110,6 +109,7 @@ target_include_directories(robot PRIVATE
 target_link_libraries(robot
     hardware_adc
     hardware_i2c
+    hardware_uart
     pico_stdlib
     pico_multicore
     hardware_pio
