@@ -91,13 +91,12 @@ if(LOGGER STREQUAL "UART")
     target_compile_definitions(robot PUBLIC LOGGER_UART=1)
 endif()
 
+# Always enable USB stdio for Android communication
 pico_enable_stdio_uart(robot 0)
-pico_enable_stdio_usb(robot 0)
-if(LOGGER STREQUAL "UART")
-    pico_enable_stdio_uart(robot 1)
-elseif(LOGGER STREQUAL "USB")
-    pico_enable_stdio_usb(robot 1)
-endif()
+pico_enable_stdio_usb(robot 1)
+
+# When LOGGER=UART, logging goes to dedicated UART hardware (not stdio)
+# When LOGGER=USB, logging goes through the buffered system and stdio
 
 # Add the standard library to the build
 target_link_libraries(robot pico_stdlib pico_multicore hardware_pwm)
@@ -114,6 +113,7 @@ target_include_directories(robot PRIVATE
 target_link_libraries(robot
     hardware_adc
     hardware_i2c
+    hardware_uart
     pico_stdlib
     pico_multicore
     hardware_pio

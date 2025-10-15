@@ -5,6 +5,12 @@
 #include <string.h>
 #include "rp2040_log.h"
 #include "pico/multicore.h"
+#include "hardware/uart.h"
+#include "hardware/gpio.h"
+
+#define LOG_UART uart0
+#define LOG_UART_TX_PIN 16
+#define LOG_UART_RX_PIN 17
 
 static CircularBufferLog log_buffer;
 auto_init_mutex(rp2040_log_buffer_mutex);
@@ -13,6 +19,13 @@ auto_init_mutex(rp2040_log_buffer_mutex);
 void rp2040_log_init() {
     log_buffer.head = 0; 
     log_buffer.tail = 0;
+    
+    #ifdef LOGGER_UART
+    // Initialize dedicated UART for logging (separate from stdio)
+    uart_init(LOG_UART, 115200);
+    gpio_set_function(LOG_UART_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(LOG_UART_RX_PIN, GPIO_FUNC_UART);
+    #endif
 }
 
 void rp2040_log_acquire_lock() {
@@ -28,10 +41,14 @@ void rp2040_log(const char* format, ...) {
     va_list args;
 
     #ifdef LOGGER_UART
-    // For UART mode, log directly via printf (which goes to UART when LOGGER=UART)
+    // For UART mode, log directly to UART hardware (not stdio)
+    char buffer[256];
     va_start(args, format);
-    vprintf(format, args);
+    vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
+    
+    // Send directly to UART0 on GPIO16/17
+    uart_puts(LOG_UART, buffer);
     return;
     #endif
 
