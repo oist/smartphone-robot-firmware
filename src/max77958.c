@@ -535,7 +535,7 @@ static int32_t customer_config_write(){
         .dbg_snk_enable = false, 
         .audio_acc_enable = false,
         .trysnk_enable = false,
-        .typec_mode = TYPEC_MODE_SRC,
+	.typec_mode = TYPEC_MODE_DRP,
         .mem_update_customer = false,  // Update RAM only
         .moisture_enable = false
     };
