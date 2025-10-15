@@ -87,16 +87,12 @@ target_compile_definitions(robot PUBLIC
     PICO_DEFAULT_UART_BAUD_RATE=115200
 )
 
-if(LOGGER STREQUAL "UART")
-    target_compile_definitions(robot PUBLIC LOGGER_UART=1)
-endif()
-
-# Always enable USB stdio for Android communication
 pico_enable_stdio_uart(robot 0)
 pico_enable_stdio_usb(robot 1)
 
-# When LOGGER=UART, logging goes to dedicated UART hardware (not stdio)
-# When LOGGER=USB, logging goes through the buffered system and stdio
+if(LOGGER STREQUAL "UART")
+    target_compile_definitions(robot PUBLIC LOGGER_UART=1)
+endif()
 
 # Add the standard library to the build
 target_link_libraries(robot pico_stdlib pico_multicore hardware_pwm)
