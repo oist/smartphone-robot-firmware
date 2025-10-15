@@ -8,9 +8,14 @@
 #include "hardware/uart.h"
 #include "hardware/gpio.h"
 
+// Use the UART definitions from CMakeLists.txt
+#if PICO_DEFAULT_UART == 0
 #define LOG_UART uart0
-#define LOG_UART_TX_PIN 16
-#define LOG_UART_RX_PIN 17
+#else
+#define LOG_UART uart1
+#endif
+#define LOG_UART_TX_PIN PICO_DEFAULT_UART_TX_PIN
+#define LOG_UART_RX_PIN PICO_DEFAULT_UART_RX_PIN
 
 static CircularBufferLog log_buffer;
 auto_init_mutex(rp2040_log_buffer_mutex);
