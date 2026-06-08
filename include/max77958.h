@@ -78,6 +78,7 @@ void test_max77958_gpio0_gpio1_adc_read(void);
 void test_max77958_snk_pdo_request(void);
 void test_max77958_get_customer_config();
 void test_max77958_interrupt();
+void max77958_debug_poll_status(uint32_t duration_ms, uint32_t interval_ms);
 void read_reg(uint8_t reg);
 
 #endif

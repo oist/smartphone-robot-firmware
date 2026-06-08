@@ -14,6 +14,11 @@
 static uint8_t send_buf[33] = {0};
 static uint8_t return_buf[33] = {0}; 
 static uint8_t op_code_return_buf[33] = {0}; // Will read full buffer from registers 0x52 to 0x71
+#define PDMSG_POWER_SUPPLY_VBUS_ENABLE 0x17
+#define PDMSG_POWER_SUPPLY_VBUS_DISABLE 0x18
+#ifdef LOGGER_UART
+#define MAX77958_FORCE_VBUS_DIAGNOSTIC 1
+#endif
 static queue_t* call_queue_ptr;
 static queue_t* return_queue_ptr;
 static bool opcode_cmd_finished = false;
@@ -31,6 +36,7 @@ static void on_interrupt();
 static void get_interrupt_vals();
 static void get_interrupt_masks();
 static void set_interrupt_masks();
+static uint8_t max77958_read_register(uint8_t reg);
 static void opcode_read();
 static int opcode_write(uint8_t *send_buf);
 static int32_t max77958_test_response();
@@ -42,6 +48,9 @@ static bool opcode_queue_pop();
 static void opcode_queue_add(int32_t (*opcode_func)(), int32_t opcode_data);
 static int32_t gpio_bool_to_int32(bool _GPIO4, bool _GPIO5);
 static int32_t gpio_set(int32_t gpio_val);
+#ifdef MAX77958_FORCE_VBUS_DIAGNOSTIC
+static int32_t force_vbus_on_for_diagnostic(void);
+#endif
 static int32_t set_src_pdos();
 static void on_ccstat_change();
 static void on_chgtype_change();
@@ -54,6 +63,7 @@ static int32_t bc_ctrl1_read();
 static int32_t bc_ctrl2_read();
 static int32_t control1_read();
 static int32_t cc_ctrl1_read();
+static int32_t cc_ctrl1_write_src_only(void);
 static int32_t cc_ctrl4_read(void);
 static int32_t gpio_control_read(void);
 static int32_t gpio0_gpio1_adc_read(void);
@@ -64,6 +74,20 @@ typedef struct {
     uint8_t reg;
     uint8_t expected;
 } max77958_status_reg_t;
+
+typedef struct {
+    uint8_t usbc_status1;
+    uint8_t usbc_status2;
+    uint8_t bc_status;
+    uint8_t cc_status0;
+    uint8_t cc_status1;
+    uint8_t pd_status0;
+    uint8_t pd_status1;
+    uint8_t gpio0_3;
+    uint8_t gpio4_7;
+    uint8_t gpio8;
+    bool gpio_valid;
+} max77958_debug_status_t;
 
 
 
@@ -151,7 +175,7 @@ static void on_ccstat_change(void) {
             break;
         case 0b010:
             rp2040_log("CCStat: ccstat changed to SOURCE\n");
-            //vbus_turn_on();
+            vbus_turn_on();
             break;
         default:
             rp2040_log("CCStat: ccstat changed to %d\n", CCStat);
@@ -319,6 +343,115 @@ void read_reg(uint8_t reg){
     rp2040_log("read_reg: 0x%02x: 0x%02x\n", reg, return_buf[0]);
 }
 
+static bool max77958_debug_read_gpio_control(max77958_debug_status_t *status)
+{
+    memset(op_code_return_buf, 0, sizeof op_code_return_buf);
+    opcodes_finished = false;
+
+    opcode_queue_add(gpio_control_read, 0);
+    if (!opcode_queue_pop()) {
+        rp2040_log("MAX77958_DIAG: GPIO read queue was empty\n");
+        return false;
+    }
+
+    uint32_t waited_ms = 0;
+    while (!opcodes_finished && waited_ms < 500) {
+        sleep_ms(10);
+        waited_ms += 10;
+    }
+
+    if (!opcodes_finished) {
+        rp2040_log("MAX77958_DIAG: GPIO read timed out\n");
+        return false;
+    }
+
+    if (op_code_return_buf[0] != OPCODE_READ_GPIO) {
+        rp2040_log("MAX77958_DIAG: GPIO read unexpected opcode 0x%02x\n", op_code_return_buf[0]);
+        return false;
+    }
+
+    status->gpio0_3 = op_code_return_buf[1];
+    status->gpio4_7 = op_code_return_buf[2];
+    status->gpio8 = op_code_return_buf[3];
+    status->gpio_valid = true;
+    return true;
+}
+
+static max77958_debug_status_t max77958_debug_read_status(void)
+{
+    max77958_debug_status_t status = {0};
+
+    status.usbc_status1 = max77958_read_register(0x08);
+    status.usbc_status2 = max77958_read_register(0x09);
+    status.bc_status = max77958_read_register(0x0A);
+    status.cc_status0 = max77958_read_register(0x0C);
+    status.cc_status1 = max77958_read_register(0x0D);
+    status.pd_status0 = max77958_read_register(0x0E);
+    status.pd_status1 = max77958_read_register(0x0F);
+    max77958_debug_read_gpio_control(&status);
+
+    return status;
+}
+
+static void max77958_debug_log_status(uint32_t elapsed_ms, const max77958_debug_status_t *status)
+{
+    uint8_t vbadc = (status->usbc_status1 >> 3) & 0x1F;
+    uint8_t cc_pin = (status->cc_status0 >> 6) & 0x03;
+    uint8_t cc_current = (status->cc_status0 >> 4) & 0x03;
+    uint8_t cc_state = status->cc_status0 & 0x07;
+    uint8_t power_role = (status->pd_status1 >> 6) & 0x01;
+    uint8_t data_role = (status->pd_status1 >> 7) & 0x01;
+    uint8_t psrdy = (status->pd_status1 >> 4) & 0x01;
+    uint8_t g4_dir = status->gpio4_7 & 0x01;
+    uint8_t g4_out = (status->gpio4_7 >> 1) & 0x01;
+    uint8_t g5_dir = (status->gpio4_7 >> 2) & 0x01;
+    uint8_t g5_out = (status->gpio4_7 >> 3) & 0x01;
+
+    rp2040_log("MAX77958_DIAG t=%" PRIu32 "ms USBC1=0x%02x VbADC=%u SYS=0x%02x BC=0x%02x\n",
+                elapsed_ms, status->usbc_status1, vbadc, status->usbc_status2, status->bc_status);
+    rp2040_log("MAX77958_DIAG t=%" PRIu32 "ms CC0=0x%02x pin=%u current=%u state=%u\n",
+                elapsed_ms, status->cc_status0, cc_pin, cc_current, cc_state);
+    rp2040_log("MAX77958_DIAG t=%" PRIu32 "ms CC1=0x%02x wtr=%u detabrt=%u vsafeov=%u\n",
+                elapsed_ms, status->cc_status1,
+                (status->cc_status1 >> 1) & 0x01,
+                (status->cc_status1 >> 2) & 0x01,
+                (status->cc_status1 >> 3) & 0x01);
+    rp2040_log("MAX77958_DIAG t=%" PRIu32 "ms PD0=0x%02x PD1=0x%02x power=%u data=%u psrdy=%u\n",
+                elapsed_ms, status->pd_status0, status->pd_status1, power_role, data_role, psrdy);
+    rp2040_log("MAX77958_DIAG t=%" PRIu32 "ms GPIO53=0x%02x valid=%u g4=%u/%u g5=%u/%u\n",
+                elapsed_ms, status->gpio4_7, status->gpio_valid ? 1 : 0,
+                g4_dir, g4_out, g5_dir, g5_out);
+}
+
+void max77958_debug_poll_status(uint32_t duration_ms, uint32_t interval_ms)
+{
+    if (interval_ms == 0) {
+        interval_ms = 1000;
+    }
+
+    rp2040_log("MAX77958_DIAG: begin status poll for %" PRIu32 "ms every %" PRIu32 "ms\n",
+                duration_ms, interval_ms);
+
+    uint32_t elapsed_ms = 0;
+    while (elapsed_ms <= duration_ms) {
+        max77958_debug_status_t status = max77958_debug_read_status();
+        max77958_debug_log_status(elapsed_ms, &status);
+
+        if (elapsed_ms == duration_ms) {
+            break;
+        }
+
+        uint32_t sleep_for_ms = interval_ms;
+        if (elapsed_ms + sleep_for_ms > duration_ms) {
+            sleep_for_ms = duration_ms - elapsed_ms;
+        }
+        sleep_ms(sleep_for_ms);
+        elapsed_ms += sleep_for_ms;
+    }
+
+    rp2040_log("MAX77958_DIAG: end status poll\n");
+}
+
 static int opcode_write(uint8_t *buf){
     // buf should always be 32 bytes long since the register values from 0x22 to 0x41 are never overwritten,
     // so you may send wrong data if you don't directly specify them for ALL registers. Note the defaults are NOT always 0x00,
@@ -345,6 +478,9 @@ static void opcode_read(){
     i2c_write_error_handling(i2c0, MAX77958_SLAVE_P1, send_buf, 1, true);
     i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, op_code_return_buf, 33, false);
     rp2040_log("opcode_read: 0x%02x 0x%02x 0x%02x 0x%02x\n", op_code_return_buf[0], op_code_return_buf[1], op_code_return_buf[2], op_code_return_buf[3]);
+    if (op_code_return_buf[0] == 0x0B) {
+        rp2040_log("CC_CTRL1 readback = 0x%02x\n", op_code_return_buf[1]);
+    }
     // Set breakpoint before clearing the registers via the following command. 
     // I'm commenting this out since I won't use the output in the code, but you can copy/paste this into gdb if you want to
     // inspect the results before clearing them
@@ -532,6 +668,17 @@ static int32_t cc_ctrl1_read(){
     return 0;
 }
 
+static int32_t cc_ctrl1_write_src_only(void)
+{
+    memset(send_buf, 0, sizeof send_buf);
+    send_buf[0] = OPCODE_WRITE;
+    send_buf[1] = 0x0C; // CC CTRL1 Config Write
+    send_buf[2] = 0x82; // VCONN auto, Try.SNK off, source-only CC detection
+    rp2040_log("cc_ctrl1_write_src_only: setting CC_CTRL1 to 0x82\n");
+    opcode_write(send_buf);
+    return 0;
+}
+
 void test_max77958_cc_ctrl1_read(){
     rp2040_log("test_max77958_cc_ctrl1_read started...\n");
     opcode_queue_add(cc_ctrl1_read, 0);
@@ -547,8 +694,8 @@ void test_max77958_cc_ctrl1_read(){
     if (op_code_return_buf[0] != 0x0B){
 	rp2040_log("test_max77958_cc_ctrl1_read ERROR: OPCODE should be 0x0B");
     }
-    if (op_code_return_buf[1] != 0b10000001){
-        rp2040_log("test_max77958_cc_ctrl1_read ERROR: CC_CTRL1_CONFIG should be 0b10000001 instead it is 0b"
+    if (op_code_return_buf[1] != 0b10000010){
+        rp2040_log("test_max77958_cc_ctrl1_read ERROR: CC_CTRL1_CONFIG should be 0b10000010 instead it is 0b"
            BYTE_TO_BINARY_PATTERN "\n",
            BYTE_TO_BINARY(op_code_return_buf[1]));
     }else{
@@ -889,10 +1036,27 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     // Set GPIO5 to HIGH and GPIO4 to LOW
     opcode_queue_add(gpio_set, gpio_bool_to_int32(false, true));
     opcode_queue_add(customer_config_write, 0);
+    opcode_queue_add(cc_ctrl1_write_src_only, 0);
+    opcode_queue_add(cc_ctrl1_read, 0);
+#ifdef MAX77958_FORCE_VBUS_DIAGNOSTIC
+    opcode_queue_add(force_vbus_on_for_diagnostic, 0);
+#endif
     //opcode_queue_add(set_snk_pdos, 0);
     //opcode_queue_add(set_src_pdos, 0);
 
     opcode_queue_pop();
+#ifdef MAX77958_FORCE_VBUS_DIAGNOSTIC
+    uint32_t waited_ms = 0;
+    while (!opcodes_finished && waited_ms < 3000) {
+        sleep_ms(10);
+        waited_ms += 10;
+    }
+    if (opcodes_finished) {
+        rp2040_log("MAX77958_DIAG: init opcode queue finished after %" PRIu32 "ms\n", waited_ms);
+    } else {
+        rp2040_log("MAX77958_DIAG: init opcode queue timed out after %" PRIu32 "ms\n", waited_ms);
+    }
+#endif
     rp2040_log("max77958 init finished\n");
     on_ccstat_change();
 
@@ -934,7 +1098,7 @@ static int32_t customer_config_write(){
         .dbg_snk_enable = false, 
         .audio_acc_enable = false,
         .trysnk_enable = false,
-	.typec_mode = TYPEC_MODE_DRP,
+	.typec_mode = TYPEC_MODE_SRC,
         .mem_update_customer = false,  // Update RAM only
         .moisture_enable = false
     };
@@ -952,8 +1116,12 @@ static int32_t customer_config_write(){
     send_buf[7] = 0x00; // RSVD
     send_buf[8] = 0x64; // default SRC_PDO_V
     send_buf[9] = 0x00; // default SRC_PDO_V of 5.0V (0x64= 100, and 50mA*100).
-    send_buf[10] = 0x32; // SRC_PDO_MaxI
-    send_buf[11] = 0x00; // SRC_PDO_MaxI = 1.0A (0x64=100, and 100*10mA)
+    send_buf[10] = 0x96; // SRC_PDO_MaxI
+    send_buf[11] = 0x00; // SRC_PDO_MaxI = 1.5A (0x96=150, and 150*10mA)
+    send_buf[21] = 0x69; // SID1 default
+    send_buf[22] = 0x69; // SID2 default
+    send_buf[23] = 0x35; // SID3 default
+    send_buf[24] = 0x28; // SID4 default
     opcode_write(send_buf);
     return 0;
 }
@@ -1101,9 +1269,21 @@ static int32_t set_snk_pdos(){
 }
 
 static void vbus_turn_off(){
+#ifdef MAX77958_FORCE_VBUS_DIAGNOSTIC
+    rp2040_log("MAX77958_DIAG: forced VBUS mode ignoring vbus_turn_off\n");
+    return;
+#endif
     opcode_queue_add(&gpio_set, gpio_bool_to_int32(false, true));
     opcode_queue_pop();
 }
+
+#ifdef MAX77958_FORCE_VBUS_DIAGNOSTIC
+static int32_t force_vbus_on_for_diagnostic(void)
+{
+    rp2040_log("MAX77958_DIAG: forcing GPIO4/GPIO5 high for VBUS diagnostic\n");
+    return gpio_set(gpio_bool_to_int32(true, true));
+}
+#endif
 
 static void vbus_turn_on(){
     opcode_queue_add(&gpio_set, gpio_bool_to_int32(true, true));
@@ -1132,6 +1312,14 @@ static int32_t pd_msg_response(){
 	case PDMSG_PRSWAP_SWAPTOSRC:
 	    rp2040_log("PD Message: PRSWAP_SWAPTOSRC\n");
 	    vbus_turn_on();
+	    break;
+	case PDMSG_POWER_SUPPLY_VBUS_ENABLE:
+	    rp2040_log("PD Message: PowerSupply VbusEnable\n");
+	    vbus_turn_on();
+	    break;
+	case PDMSG_POWER_SUPPLY_VBUS_DISABLE:
+	    rp2040_log("PD Message: PowerSupply VbusDisable\n");
+	    vbus_turn_off();
 	    break;
 	case PDMSG_VDM_NAK_RECEIVED:
 	    rp2040_log("PD Message: VDM_NAK Received\n");

@@ -214,6 +214,9 @@ void on_start(){
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO1);
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO2);
     max77958_init(MAX77958_INTB, &call_queue, &results_queue);
+    #ifdef LOGGER_UART
+    max77958_debug_poll_status(2000, 250);
+    #endif
     #endif
 
     sleep_ms(1000);
