@@ -59,6 +59,35 @@ Flash the firmware to the device:
 make flash
 ```
 
+## Logging and Diagnostics
+Firmware logging defaults to the USB CDC interface:
+```bash
+make firmware LOGGER=USB
+```
+
+To route firmware logs over the debug-probe UART instead, build with:
+```bash
+make firmware LOGGER=UART
+make flash
+```
+
+UART logs can be captured from the host with:
+```bash
+tools/capture_uart_log.py --flash --timeout 15
+```
+
+For isolated MAX77958 prototype testing, build the external I2C1 diagnostic firmware with:
+```bash
+make firmware LOGGER=UART EXTERNAL_MAX77958_TEST=1
+make flash
+tools/capture_uart_log.py --flash --timeout 15
+```
+
+`EXTERNAL_MAX77958_TEST=1` skips normal board bring-up and probes an external MAX77958 on I2C1. Leave it unset, or set it to `0`, for normal firmware:
+```bash
+make firmware LOGGER=UART
+```
+
 ## Debugging the Firmware
 Debugging is a two-step process:
 
