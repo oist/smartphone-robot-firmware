@@ -11,7 +11,10 @@ import time
 
 DEFAULT_DEVICE = "/dev/ttyACM0"
 DEFAULT_OUTPUT = "/tmp/max77958-diag.log"
-DIAG_END_MARKER = "MAX77958_DIAG: end status poll"
+DIAG_END_MARKERS = (
+    "MAX77958_DIAG: end status poll",
+    "EXT_MAX77958_I2C1_TEST: end",
+)
 
 BAUD_RATES = {
     9600: termios.B9600,
@@ -67,7 +70,7 @@ def start_flash(enabled):
     return subprocess.Popen(["make", "flash"])
 
 
-def capture_uart(fd, output_path, timeout, stop_marker, flash_process):
+def capture_uart(fd, output_path, timeout, stop_markers, flash_process):
     deadline = time.monotonic() + timeout
     chunks = []
     marker_seen = False
@@ -86,7 +89,7 @@ def capture_uart(fd, output_path, timeout, stop_marker, flash_process):
                     output.flush()
                     chunks.append(chunk)
                     text = b"".join(chunks).decode("utf-8", "replace")
-                    if stop_marker in text:
+                    if any(marker in text for marker in stop_markers):
                         marker_seen = True
                         break
 
@@ -117,6 +120,26 @@ def summarize(text, output_path, marker_seen, flash_process):
         print(f"make flash exit code: {status}")
 
     print(f"diagnostic end marker seen: {'yes' if marker_seen else 'no'}")
+
+    external_lines = [line for line in lines if "EXT_MAX77958_I2C1_TEST" in line]
+    if external_lines:
+        external_status_lines = [line for line in external_lines if " t=" in line and " CC0=" in line]
+        external_gpio_lines = [line for line in external_lines if " t=" in line and " GPIO " in line]
+        external_event_lines = [line for line in external_lines if " t=" not in line]
+        print("external MAX77958 I2C1 test:")
+        for line in external_event_lines:
+            print(f"  {line}")
+        print(f"  final status: {external_status_lines[-1] if external_status_lines else 'not found'}")
+        print(f"  final GPIO: {external_gpio_lines[-1] if external_gpio_lines else 'not found'}")
+
+        external_states = []
+        for line in external_status_lines:
+            match = re.search(r"state=(\d+)", line)
+            if match:
+                external_states.append(int(match.group(1)))
+        if external_states:
+            print(f"  CC states observed: {sorted(set(external_states))}")
+            print(f"  source attach observed: {'yes' if 2 in external_states else 'no'}")
 
     _, cc_ctrl = last_match(lines, r"CC_CTRL1 readback = (0x[0-9a-fA-F]+)")
     if cc_ctrl:
@@ -187,7 +210,7 @@ def main():
             fd,
             args.output,
             args.timeout,
-            DIAG_END_MARKER,
+            DIAG_END_MARKERS,
             flash_process,
         )
     finally:

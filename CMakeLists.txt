@@ -7,6 +7,7 @@ set(LOGGER "USB" CACHE STRING "Logging interface")
 if(NOT (LOGGER STREQUAL "USB" OR LOGGER STREQUAL "UART"))
   message(FATAL_ERROR "invalid logging interface: ${LOGGER}")
 endif()
+option(EXTERNAL_MAX77958_TEST "Probe an external MAX77958 on I2C1 and skip normal board bring-up" OFF)
 
 # Enable colored output
 set(CMAKE_COLOR_MAKEFILE ON)
@@ -84,6 +85,10 @@ pico_enable_stdio_usb(robot 1)
 
 if(LOGGER STREQUAL "UART")
     target_compile_definitions(robot PUBLIC LOGGER_UART=1)
+endif()
+
+if(EXTERNAL_MAX77958_TEST)
+    target_compile_definitions(robot PUBLIC EXTERNAL_MAX77958_TEST=1)
 endif()
 
 # Add the standard library to the build
