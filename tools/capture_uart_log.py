@@ -15,6 +15,16 @@ DIAG_END_MARKERS = (
     "MAX77958_DIAG: end status poll",
     "EXT_MAX77958_I2C1_TEST: end",
 )
+CC_STATE_NAMES = {
+    0: "NO_CONNECTION",
+    1: "SINK_ATTACHED",
+    2: "SOURCE_ATTACHED",
+    3: "AUDIO_ACCESSORY",
+    4: "DEBUG_SOURCE",
+    5: "ERROR",
+    6: "DISABLED",
+    7: "DEBUG_SINK",
+}
 
 BAUD_RATES = {
     9600: termios.B9600,
@@ -109,6 +119,11 @@ def last_match(lines, pattern):
     return None, None
 
 
+def parse_last_int(lines, pattern):
+    _, match = last_match(lines, pattern)
+    return int(match.group(1)) if match else None
+
+
 def summarize(text, output_path, marker_seen, flash_process):
     lines = text.splitlines()
     print(f"\nLog written to: {output_path}")
@@ -175,6 +190,34 @@ def summarize(text, output_path, marker_seen, flash_process):
             print(f"nonzero CC states observed: {nonzero_states}")
     else:
         print("CC states observed: none")
+
+    final_state = parse_last_int(cc0_lines, r"state=(\d+)")
+    final_data = parse_last_int(pd_lines, r"data=(\d+)")
+    final_psrdy = parse_last_int(pd_lines, r"psrdy=(\d+)")
+    final_gpio_match = last_match(gpio_lines, r"g4=(\d+)/(\d+) g5=(\d+)/(\d+)")[1]
+
+    if final_state is not None or final_data is not None or final_psrdy is not None or final_gpio_match:
+        source_attached = final_state == 2
+        robot_device = final_data == 0
+        android_host = final_data == 0
+        pd_ready = final_psrdy == 1
+        vbus_enabled = False
+        if final_gpio_match:
+            g4_dir, g4_out, g5_dir, g5_out = (int(group) for group in final_gpio_match.groups())
+            vbus_enabled = g4_dir == 1 and g4_out == 1 and g5_dir == 1 and g5_out == 1
+
+        print(
+            "final role: "
+            f"cc={CC_STATE_NAMES.get(final_state, 'UNKNOWN' if final_state is not None else 'not found')} "
+            f"pd_ready={'yes' if pd_ready else 'no' if final_psrdy is not None else 'not found'} "
+            f"robot_usb={'device/UFP' if robot_device else 'host/DFP' if final_data == 1 else 'not found'} "
+            f"android_usb={'host/DFP' if android_host else 'device/UFP' if final_data == 1 else 'not found'} "
+            f"vbus_enabled={'yes' if vbus_enabled else 'no' if final_gpio_match else 'not found'}"
+        )
+        print(
+            "desired phone-control state: "
+            f"{'yes' if source_attached and pd_ready and robot_device and vbus_enabled else 'no'}"
+        )
 
     return 0 if text else 1
 

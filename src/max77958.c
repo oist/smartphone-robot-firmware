@@ -16,11 +16,18 @@ static uint8_t return_buf[33] = {0};
 static uint8_t op_code_return_buf[33] = {0}; // Will read full buffer from registers 0x52 to 0x71
 #define PDMSG_POWER_SUPPLY_VBUS_ENABLE 0x17
 #define PDMSG_POWER_SUPPLY_VBUS_DISABLE 0x18
+#define MAX77958_SWAP_REQ_DR_SWAP 0x01
+#define MAX77958_SWAP_REQ_PR_SWAP 0x02
+#define MAX77958_SWAP_RESP_SOURCE_UFP 0x10
+#define CC_STATUS0_STATE_SOURCE 0x02
+#define PD_STATUS1_DATA_ROLE_DFP (1u << 7)
+#define PD_STATUS1_PSRDY (1u << 4)
 static queue_t* call_queue_ptr;
 static queue_t* return_queue_ptr;
 static bool opcode_cmd_finished = false;
 static bool power_swap_enabled = true;
 static bool opcodes_finished = false;
+static bool data_role_swap_requested = false;
 static queue_t opcode_queue;
 static uint8_t _gpio_interrupt;
 static uint8_t interrupt_mask = GPIO_IRQ_EDGE_FALL;
@@ -38,6 +45,9 @@ static void opcode_read();
 static int opcode_write(uint8_t *send_buf);
 static int32_t max77958_test_response();
 static void power_swap_request();
+static int32_t swap_response_write(void);
+static int32_t data_role_swap_request(void);
+static bool queue_data_role_swap_to_ufp_once(void);
 static int32_t set_snk_pdos();
 static int32_t pd_msg_response();
 static int32_t customer_config_write();
@@ -85,6 +95,31 @@ typedef struct {
     uint8_t gpio8;
     bool gpio_valid;
 } max77958_debug_status_t;
+
+static const char *cc_state_name(uint8_t state)
+{
+    switch (state) {
+        case 0: return "NO_CONNECTION";
+        case 1: return "SINK_ATTACHED";
+        case 2: return "SOURCE_ATTACHED";
+        case 3: return "AUDIO_ACCESSORY";
+        case 4: return "DEBUG_SOURCE";
+        case 5: return "ERROR";
+        case 6: return "DISABLED";
+        case 7: return "DEBUG_SINK";
+        default: return "UNKNOWN";
+    }
+}
+
+static const char *data_role_name(uint8_t data_role)
+{
+    return data_role ? "DFP_HOST" : "UFP_DEVICE";
+}
+
+static const char *ready_name(uint8_t psrdy)
+{
+    return psrdy ? "READY" : "NOT_READY";
+}
 
 
 
@@ -249,6 +284,9 @@ static int32_t parse_interrupt_vals(){
     if (*PD_INT & PSRDYI_mask){
 	rp2040_log("Power source ready\n");
 	//on_power_source_ready();
+        if (queue_data_role_swap_to_ufp_once()) {
+            opcode_queue_pop();
+        }
 	return_val |= 1 << 1;
     }
     if (*PD_INT & PDMsgI){
@@ -406,15 +444,17 @@ static void max77958_debug_log_status(uint32_t elapsed_ms, const max77958_debug_
 
     rp2040_log("MAX77958_DIAG t=%" PRIu32 "ms USBC1=0x%02x VbADC=%u SYS=0x%02x BC=0x%02x\n",
                 elapsed_ms, status->usbc_status1, vbadc, status->usbc_status2, status->bc_status);
-    rp2040_log("MAX77958_DIAG t=%" PRIu32 "ms CC0=0x%02x pin=%u current=%u state=%u\n",
-                elapsed_ms, status->cc_status0, cc_pin, cc_current, cc_state);
+    rp2040_log("MAX77958_DIAG t=%" PRIu32 "ms CC0=0x%02x pin=%u current=%u state=%u(%s)\n",
+                elapsed_ms, status->cc_status0, cc_pin, cc_current, cc_state,
+                cc_state_name(cc_state));
     rp2040_log("MAX77958_DIAG t=%" PRIu32 "ms CC1=0x%02x wtr=%u detabrt=%u vsafeov=%u\n",
                 elapsed_ms, status->cc_status1,
                 (status->cc_status1 >> 1) & 0x01,
                 (status->cc_status1 >> 2) & 0x01,
                 (status->cc_status1 >> 3) & 0x01);
-    rp2040_log("MAX77958_DIAG t=%" PRIu32 "ms PD0=0x%02x PD1=0x%02x power=%u data=%u psrdy=%u\n",
-                elapsed_ms, status->pd_status0, status->pd_status1, power_role, data_role, psrdy);
+    rp2040_log("MAX77958_DIAG t=%" PRIu32 "ms PD0=0x%02x PD1=0x%02x power_raw=%u data=%u(%s) psrdy=%u(%s)\n",
+                elapsed_ms, status->pd_status0, status->pd_status1, power_role,
+                data_role, data_role_name(data_role), psrdy, ready_name(psrdy));
     rp2040_log("MAX77958_DIAG t=%" PRIu32 "ms GPIO53=0x%02x valid=%u g4=%u/%u g5=%u/%u\n",
                 elapsed_ms, status->gpio4_7, status->gpio_valid ? 1 : 0,
                 g4_dir, g4_out, g5_dir, g5_out);
@@ -1035,6 +1075,7 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     opcode_queue_add(customer_config_write, 0);
     opcode_queue_add(cc_ctrl1_write_src_only, 0);
     opcode_queue_add(cc_ctrl1_read, 0);
+    opcode_queue_add(swap_response_write, 0);
 #ifdef MAX77958_FORCE_VBUS_DIAGNOSTIC
     opcode_queue_add(force_vbus_on_for_diagnostic, 0);
 #endif
@@ -1184,9 +1225,62 @@ static int32_t gpio_set(int32_t gpio_val){
 static void power_swap_request(){
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_WRITE;
-    send_buf[1] = 0x37; // Send Swap Request 
-    send_buf[2] = 0x02; // PR SWAP
+    send_buf[1] = OPCODE_SWAP_REQ;
+    send_buf[2] = MAX77958_SWAP_REQ_PR_SWAP;
     opcode_write(send_buf);
+}
+
+static int32_t swap_response_write(void)
+{
+    memset(send_buf, 0, sizeof send_buf);
+    send_buf[0] = OPCODE_WRITE;
+    send_buf[1] = OPCODE_SWAP_RESP;
+    send_buf[2] = MAX77958_SWAP_RESP_SOURCE_UFP;
+    rp2040_log("MAX77958_DIAG: setting swap response power=Source data=UFP config=0x%02x\n",
+                send_buf[2]);
+    opcode_write(send_buf);
+    return 0;
+}
+
+static int32_t data_role_swap_request(void)
+{
+    memset(send_buf, 0, sizeof send_buf);
+    send_buf[0] = OPCODE_WRITE;
+    send_buf[1] = OPCODE_SWAP_REQ;
+    send_buf[2] = MAX77958_SWAP_REQ_DR_SWAP;
+    rp2040_log("MAX77958_DIAG: requesting DR_SWAP to make robot UFP/device\n");
+    opcode_write(send_buf);
+    return 0;
+}
+
+static bool queue_data_role_swap_to_ufp_once(void)
+{
+    if (data_role_swap_requested) {
+        return false;
+    }
+
+    uint8_t cc_status0 = max77958_read_register(REG_CC_STATUS0);
+    uint8_t pd_status1 = max77958_read_register(REG_PD_STATUS1);
+    bool source_attached = (cc_status0 & 0x07) == CC_STATUS0_STATE_SOURCE;
+    bool dfp = (pd_status1 & PD_STATUS1_DATA_ROLE_DFP) != 0;
+    bool psrdy = (pd_status1 & PD_STATUS1_PSRDY) != 0;
+
+    rp2040_log("MAX77958_DIAG: DR_SWAP check CC0=0x%02x source=%u PD1=0x%02x data=%u psrdy=%u\n",
+                cc_status0, source_attached ? 1 : 0, pd_status1, dfp ? 1 : 0, psrdy ? 1 : 0);
+
+    if (!source_attached || !psrdy) {
+        return false;
+    }
+
+    if (!dfp) {
+        rp2040_log("MAX77958_DIAG: data role already UFP/device\n");
+        data_role_swap_requested = true;
+        return false;
+    }
+
+    data_role_swap_requested = true;
+    opcode_queue_add(data_role_swap_request, 0);
+    return true;
 }
 
 static int32_t set_src_pdos(){
@@ -1270,6 +1364,7 @@ static void vbus_turn_off(){
     rp2040_log("MAX77958_DIAG: forced VBUS mode ignoring vbus_turn_off\n");
     return;
 #endif
+    data_role_swap_requested = false;
     opcode_queue_add(&gpio_set, gpio_bool_to_int32(false, true));
     opcode_queue_pop();
 }
@@ -1284,6 +1379,7 @@ static int32_t force_vbus_on_for_diagnostic(void)
 
 static void vbus_turn_on(){
     opcode_queue_add(&gpio_set, gpio_bool_to_int32(true, true));
+    queue_data_role_swap_to_ufp_once();
     opcode_queue_pop();
 }
 
@@ -1296,6 +1392,12 @@ static int32_t pd_msg_response(){
     i2c_read_error_handling(i2c0, MAX77958_SLAVE_P1, return_buf, 1, false);
     rp2040_log("PD_STATUS0: 0x%02x\n", return_buf[0]);
     switch (return_buf[0]){
+        case PDMSG_DR_SWAP_REQ_RECEIVED:
+	    rp2040_log("PD Message: DR_SWAP_REQ_RECEIVED\n");
+	    break;
+        case PDMSG_REJECT_RECEIVED:
+	    rp2040_log("PD Message: REJECT_RECEIVED\n");
+	    break;
         case PDMSG_PRSWAP_SRCTOSWAP:
 	    rp2040_log("PD Message: PRSWAP_SRCTOSWAP\n");
 	    break;

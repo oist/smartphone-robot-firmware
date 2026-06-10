@@ -76,6 +76,14 @@ UART logs can be captured from the host with:
 tools/capture_uart_log.py --flash --timeout 15
 ```
 
+For phone charging plus Android-side motor control, the desired MAX77958 diagnostic state is:
+```text
+cc=SOURCE_ATTACHED pd_ready=yes robot_usb=device/UFP android_usb=host/DFP vbus_enabled=yes
+desired phone-control state: yes
+```
+
+In raw `PD1` logs, `data=0` means the robot/RP2040 is the USB device (`UFP`) and Android is the USB host (`DFP`), which is required for Android to discover the RP2040 USB serial interface. The raw `power_raw` bit is retained for debugging, but the CC source-attach state and GPIO4/GPIO5 VBUS enable are the clearer indicators that the robot is charging the phone.
+
 For isolated MAX77958 prototype testing, build the external I2C1 diagnostic firmware with:
 ```bash
 make firmware LOGGER=UART EXTERNAL_MAX77958_TEST=1
