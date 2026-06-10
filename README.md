@@ -88,6 +88,8 @@ tools/capture_uart_log.py --flash --timeout 15
 make firmware LOGGER=UART
 ```
 
+Forced VBUS diagnostics are disabled by default. To intentionally force MAX77958 GPIO4/GPIO5 high during bring-up, build with `MAX77958_FORCE_VBUS_DIAGNOSTIC=1`.
+
 ## Debugging the Firmware
 Debugging is a two-step process:
 

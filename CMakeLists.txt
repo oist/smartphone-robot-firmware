@@ -8,6 +8,7 @@ if(NOT (LOGGER STREQUAL "USB" OR LOGGER STREQUAL "UART"))
   message(FATAL_ERROR "invalid logging interface: ${LOGGER}")
 endif()
 option(EXTERNAL_MAX77958_TEST "Probe an external MAX77958 on I2C1 and skip normal board bring-up" OFF)
+option(MAX77958_FORCE_VBUS_DIAGNOSTIC "Force MAX77958 GPIO4/GPIO5 high for VBUS diagnostics" OFF)
 
 # Enable colored output
 set(CMAKE_COLOR_MAKEFILE ON)
@@ -89,6 +90,10 @@ endif()
 
 if(EXTERNAL_MAX77958_TEST)
     target_compile_definitions(robot PUBLIC EXTERNAL_MAX77958_TEST=1)
+endif()
+
+if(MAX77958_FORCE_VBUS_DIAGNOSTIC)
+    target_compile_definitions(robot PUBLIC MAX77958_FORCE_VBUS_DIAGNOSTIC=1)
 endif()
 
 # Add the standard library to the build

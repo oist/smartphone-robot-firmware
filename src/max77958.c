@@ -16,9 +16,6 @@ static uint8_t return_buf[33] = {0};
 static uint8_t op_code_return_buf[33] = {0}; // Will read full buffer from registers 0x52 to 0x71
 #define PDMSG_POWER_SUPPLY_VBUS_ENABLE 0x17
 #define PDMSG_POWER_SUPPLY_VBUS_DISABLE 0x18
-#ifdef LOGGER_UART
-#define MAX77958_FORCE_VBUS_DIAGNOSTIC 1
-#endif
 static queue_t* call_queue_ptr;
 static queue_t* return_queue_ptr;
 static bool opcode_cmd_finished = false;
