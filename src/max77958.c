@@ -72,7 +72,7 @@ static int32_t bc_ctrl1_read();
 static int32_t bc_ctrl2_read();
 static int32_t control1_read();
 static int32_t cc_ctrl1_read();
-static int32_t cc_ctrl1_write_src_only(void);
+static int32_t cc_ctrl1_write_snk_only(void);
 static int32_t cc_ctrl4_read(void);
 static int32_t gpio_control_read(void);
 static int32_t gpio0_gpio1_adc_read(void);
@@ -793,13 +793,13 @@ static int32_t cc_ctrl1_read(){
     return 0;
 }
 
-static int32_t cc_ctrl1_write_src_only(void)
+static int32_t cc_ctrl1_write_snk_only(void)
 {
     memset(send_buf, 0, sizeof send_buf);
     send_buf[0] = OPCODE_WRITE;
     send_buf[1] = 0x0C; // CC CTRL1 Config Write
-    send_buf[2] = 0x82; // VCONN auto, Try.SNK off, source-only CC detection
-    rp2040_log("cc_ctrl1_write_src_only: setting CC_CTRL1 to 0x82\n");
+    send_buf[2] = 0x81; // VCONN auto, Try.SNK off, sink-only CC detection
+    rp2040_log("cc_ctrl1_write_snk_only: setting CC_CTRL1 to 0x81\n");
     opcode_write(send_buf);
     return 0;
 }
@@ -819,8 +819,8 @@ void test_max77958_cc_ctrl1_read(){
     if (op_code_return_buf[0] != 0x0B){
 	rp2040_log("test_max77958_cc_ctrl1_read ERROR: OPCODE should be 0x0B");
     }
-    if (op_code_return_buf[1] != 0b10000010){
-        rp2040_log("test_max77958_cc_ctrl1_read ERROR: CC_CTRL1_CONFIG should be 0b10000010 instead it is 0b"
+    if (op_code_return_buf[1] != 0b10000001){
+        rp2040_log("test_max77958_cc_ctrl1_read ERROR: CC_CTRL1_CONFIG should be 0b10000001 instead it is 0b"
            BYTE_TO_BINARY_PATTERN "\n",
            BYTE_TO_BINARY(op_code_return_buf[1]));
     }else{
@@ -1156,12 +1156,10 @@ void max77958_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     get_interrupt_vals();
 
     // Add all opcode commands in order to a queue. These will be called sequentially from core1 via the call_queue
-    // Set GPIO5 and GPIO4 to LOW
+    // Keep the phone charging path off by default. Data connectivity is the fail-safe priority.
     opcode_queue_add(gpio_set, gpio_bool_to_int32(false, false));
-    // Set GPIO5 to HIGH and GPIO4 to LOW
-    opcode_queue_add(gpio_set, gpio_bool_to_int32(false, true));
     opcode_queue_add(customer_config_write, 0);
-    opcode_queue_add(cc_ctrl1_write_src_only, 0);
+    opcode_queue_add(cc_ctrl1_write_snk_only, 0);
     opcode_queue_add(cc_ctrl1_read, 0);
     opcode_queue_add(swap_response_write, 0);
 #ifdef MAX77958_FORCE_VBUS_DIAGNOSTIC
@@ -1224,7 +1222,7 @@ static int32_t customer_config_write(){
         .dbg_snk_enable = false, 
         .audio_acc_enable = false,
         .trysnk_enable = false,
-	.typec_mode = TYPEC_MODE_SRC,
+	.typec_mode = TYPEC_MODE_SNK,
         .mem_update_customer = false,  // Update RAM only
         .moisture_enable = false
     };
@@ -1453,7 +1451,7 @@ static void vbus_turn_off(){
     return;
 #endif
     data_role_swap_requested = false;
-    opcode_queue_add(&gpio_set, gpio_bool_to_int32(false, true));
+    opcode_queue_add(&gpio_set, gpio_bool_to_int32(false, false));
     opcode_queue_pop();
 }
 
