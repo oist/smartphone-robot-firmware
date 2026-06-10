@@ -22,6 +22,8 @@ static uint8_t op_code_return_buf[33] = {0}; // Will read full buffer from regis
 #define CC_STATUS0_STATE_SOURCE 0x02
 #define PD_STATUS1_DATA_ROLE_DFP (1u << 7)
 #define PD_STATUS1_PSRDY (1u << 4)
+#define MAX77958_DIAG_DR_SWAP_RETRY_INTERVAL_MS 1000
+#define MAX77958_DIAG_DR_SWAP_MAX_RETRIES 10
 static queue_t* call_queue_ptr;
 static queue_t* return_queue_ptr;
 static bool opcode_cmd_finished = false;
@@ -95,6 +97,9 @@ typedef struct {
     uint8_t gpio8;
     bool gpio_valid;
 } max77958_debug_status_t;
+
+static void max77958_debug_maybe_retry_data_role_swap(uint32_t elapsed_ms,
+                                                      const max77958_debug_status_t *status);
 
 static const char *cc_state_name(uint8_t state)
 {
@@ -460,6 +465,88 @@ static void max77958_debug_log_status(uint32_t elapsed_ms, const max77958_debug_
                 g4_dir, g4_out, g5_dir, g5_out);
 }
 
+static bool max77958_debug_queue_data_role_swap_request(uint32_t elapsed_ms)
+{
+    opcodes_finished = false;
+    opcode_queue_add(data_role_swap_request, 0);
+    if (!opcode_queue_pop()) {
+        rp2040_log("MAX77958_DIAG: DR_SWAP retry could not start; opcode queue was empty\n");
+        opcodes_finished = true;
+        return false;
+    }
+
+    uint32_t waited_ms = 0;
+    while (!opcodes_finished && waited_ms < 500) {
+        sleep_ms(10);
+        waited_ms += 10;
+    }
+
+    if (!opcodes_finished) {
+        rp2040_log("MAX77958_DIAG: DR_SWAP retry command timed out at %" PRIu32 "ms\n",
+                    elapsed_ms);
+        opcodes_finished = true;
+        return false;
+    }
+
+    rp2040_log("MAX77958_DIAG: DR_SWAP retry command completed in %" PRIu32 "ms\n",
+                waited_ms);
+    return true;
+}
+
+static void max77958_debug_maybe_retry_data_role_swap(uint32_t elapsed_ms,
+                                                      const max77958_debug_status_t *status)
+{
+    static uint8_t retry_count = 0;
+    static uint32_t last_retry_ms = 0;
+    static bool exhausted_logged = false;
+
+    if (elapsed_ms == 0) {
+        retry_count = 0;
+        last_retry_ms = 0;
+        exhausted_logged = false;
+    }
+
+    uint8_t cc_state = status->cc_status0 & 0x07;
+    bool source_attached = cc_state == CC_STATUS0_STATE_SOURCE;
+    bool dfp = (status->pd_status1 & PD_STATUS1_DATA_ROLE_DFP) != 0;
+    bool psrdy = (status->pd_status1 & PD_STATUS1_PSRDY) != 0;
+
+    if (!source_attached) {
+        return;
+    }
+
+    if (!dfp) {
+        if (retry_count > 0) {
+            rp2040_log("MAX77958_DIAG: DR_SWAP retry succeeded after %u request(s)\n",
+                        retry_count);
+        }
+        retry_count = 0;
+        exhausted_logged = false;
+        return;
+    }
+
+    if (retry_count >= MAX77958_DIAG_DR_SWAP_MAX_RETRIES) {
+        if (!exhausted_logged) {
+            rp2040_log("MAX77958_DIAG: DR_SWAP retry exhausted after %u request(s); still DFP/host\n",
+                        retry_count);
+            exhausted_logged = true;
+        }
+        return;
+    }
+
+    if (retry_count > 0 &&
+        elapsed_ms - last_retry_ms < MAX77958_DIAG_DR_SWAP_RETRY_INTERVAL_MS) {
+        return;
+    }
+
+    retry_count++;
+    last_retry_ms = elapsed_ms;
+    rp2040_log("MAX77958_DIAG: DR_SWAP retry %u/%u at %" PRIu32 "ms with psrdy=%u(%s)\n",
+                retry_count, MAX77958_DIAG_DR_SWAP_MAX_RETRIES, elapsed_ms,
+                psrdy ? 1 : 0, ready_name(psrdy));
+    max77958_debug_queue_data_role_swap_request(elapsed_ms);
+}
+
 void max77958_debug_poll_status(uint32_t duration_ms, uint32_t interval_ms)
 {
     if (interval_ms == 0) {
@@ -473,6 +560,7 @@ void max77958_debug_poll_status(uint32_t duration_ms, uint32_t interval_ms)
     while (elapsed_ms <= duration_ms) {
         max77958_debug_status_t status = max77958_debug_read_status();
         max77958_debug_log_status(elapsed_ms, &status);
+        max77958_debug_maybe_retry_data_role_swap(elapsed_ms, &status);
 
         if (elapsed_ms == duration_ms) {
             break;

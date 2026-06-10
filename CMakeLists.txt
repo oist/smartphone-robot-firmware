@@ -9,6 +9,7 @@ if(NOT (LOGGER STREQUAL "USB" OR LOGGER STREQUAL "UART"))
 endif()
 option(EXTERNAL_MAX77958_TEST "Probe an external MAX77958 on I2C1 and skip normal board bring-up" OFF)
 option(MAX77958_FORCE_VBUS_DIAGNOSTIC "Force MAX77958 GPIO4/GPIO5 high for VBUS diagnostics" OFF)
+set(MAX77958_DIAG_POLL_MS "2000" CACHE STRING "MAX77958 UART diagnostic poll duration in milliseconds")
 
 # Enable colored output
 set(CMAKE_COLOR_MAKEFILE ON)
@@ -95,6 +96,8 @@ endif()
 if(MAX77958_FORCE_VBUS_DIAGNOSTIC)
     target_compile_definitions(robot PUBLIC MAX77958_FORCE_VBUS_DIAGNOSTIC=1)
 endif()
+
+target_compile_definitions(robot PUBLIC MAX77958_DIAG_POLL_MS=${MAX77958_DIAG_POLL_MS})
 
 # Add the standard library to the build
 target_link_libraries(robot pico_stdlib pico_multicore hardware_pwm)

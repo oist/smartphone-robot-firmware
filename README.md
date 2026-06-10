@@ -76,6 +76,11 @@ UART logs can be captured from the host with:
 tools/capture_uart_log.py --flash --timeout 15
 ```
 
+Some phones take longer than the default 2 second MAX77958 diagnostic poll to finish PD negotiation. To poll for longer, rebuild with:
+```bash
+make firmware LOGGER=UART MAX77958_DIAG_POLL_MS=15000
+```
+
 For phone charging plus Android-side motor control, the desired MAX77958 diagnostic state is:
 ```text
 cc=SOURCE_ATTACHED pd_ready=yes robot_usb=device/UFP android_usb=host/DFP vbus_enabled=yes
