@@ -229,9 +229,6 @@ void on_start(){
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO1);
     sn74ahc125rgyr_init(SN74AHC125RGYR_GPIO2);
     max77958_init(MAX77958_INTB, &call_queue, &results_queue);
-    #ifdef LOGGER_UART
-    max77958_debug_poll_status(MAX77958_DIAG_POLL_MS, 250);
-    #endif
     #endif
 
     sleep_ms(1000);
@@ -283,6 +280,7 @@ void on_start(){
     #endif
 
     rp2040_log("on_start complete\n");
+    max77958_on_start_complete();
     //while(!stdio_usb_connected()){
     //    sleep_ms(100);
     //}

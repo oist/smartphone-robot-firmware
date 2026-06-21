@@ -12,7 +12,6 @@ import time
 DEFAULT_DEVICE = "/dev/ttyACM0"
 DEFAULT_OUTPUT = "/tmp/max77958-diag.log"
 DIAG_END_MARKERS = (
-    "MAX77958_DIAG: end status poll",
     "EXT_MAX77958_I2C1_TEST: end",
 )
 CC_STATE_NAMES = {
@@ -25,6 +24,15 @@ CC_STATE_NAMES = {
     6: "DISABLED",
     7: "DEBUG_SINK",
 }
+
+LIVE_FILTERS = (
+    "on_start complete",
+    "MAX77958_DIAG:",
+    "CCStat: ccstat changed",
+    "Power source ready",
+    "PD Message:",
+    "opcode_read:",
+)
 
 BAUD_RATES = {
     9600: termios.B9600,
@@ -110,6 +118,214 @@ def capture_uart(fd, output_path, timeout, stop_markers, flash_process):
     return b"".join(chunks).decode("utf-8", "replace"), marker_seen
 
 
+def line_is_relevant(line):
+    return any(token in line for token in LIVE_FILTERS)
+
+
+def parse_role_line(line):
+    state_match = re.search(r"state=(\d+)", line)
+    power_match = re.search(r"pcb_power=([A-Z_]+)", line)
+    data_match = re.search(r"pcb_data=([A-Z_]+)", line)
+    ready_match = re.search(r"pd_ready=(\d+)", line)
+
+    return {
+        "state": int(state_match.group(1)) if state_match else None,
+        "pcb_power": power_match.group(1) if power_match else None,
+        "pcb_data": data_match.group(1) if data_match else None,
+        "pd_ready": int(ready_match.group(1)) if ready_match else None,
+    }
+
+
+def consume_uart_lines(fd, output, deadline, line_callback):
+    chunks = []
+    pending = ""
+
+    while time.monotonic() < deadline:
+        readable, _, _ = select.select([fd], [], [], 0.1)
+        if not readable:
+            continue
+
+        try:
+            chunk = os.read(fd, 4096)
+        except BlockingIOError:
+            chunk = b""
+
+        if not chunk:
+            continue
+
+        output.write(chunk)
+        output.flush()
+        chunks.append(chunk)
+
+        pending += chunk.decode("utf-8", "replace")
+        lines = pending.splitlines(keepends=True)
+        pending = ""
+        if lines and not lines[-1].endswith(("\n", "\r")):
+            pending = lines.pop()
+
+        for raw_line in lines:
+            line = raw_line.strip()
+            if not line:
+                continue
+            if line_is_relevant(line):
+                print(line, flush=True)
+            if line_callback(line):
+                return b"".join(chunks).decode("utf-8", "replace"), True
+
+    return b"".join(chunks).decode("utf-8", "replace"), False
+
+
+def wait_for_startup(fd, output, timeout):
+    print("Waiting for on_start complete before interactive cycles...", flush=True)
+    deadline = time.monotonic() + timeout
+
+    def saw_startup(line):
+        return "on_start complete" in line
+
+    return consume_uart_lines(fd, output, deadline, saw_startup)
+
+
+def wait_for_detach(fd, output, step_timeout):
+    status = {
+        "vbus_off": False,
+        "detached": False,
+        "last_role": None,
+    }
+    deadline = time.monotonic() + step_timeout
+
+    def saw_detach(line):
+        if "MAX77958_DIAG: setting VBUS GPIO4/GPIO5 off" in line:
+            status["vbus_off"] = True
+
+        if " pcb_power=" in line or "state=" in line:
+            role = parse_role_line(line)
+            status["last_role"] = line
+            if role["state"] == 0 or role["pcb_power"] == "UNKNOWN":
+                status["detached"] = True
+
+        return status["detached"] and status["vbus_off"]
+
+    text, ok = consume_uart_lines(fd, output, deadline, saw_detach)
+    return text, ok, status
+
+
+def wait_for_reattach(fd, output, step_timeout):
+    status = {
+        "vbus_on": False,
+        "desired": False,
+        "last_role": None,
+    }
+    deadline = time.monotonic() + step_timeout
+
+    def saw_desired(line):
+        if "MAX77958_DIAG: setting VBUS GPIO4/GPIO5 on" in line:
+            status["vbus_on"] = True
+
+        if " pcb_power=" in line:
+            role = parse_role_line(line)
+            status["last_role"] = line
+            status["desired"] = (
+                role["state"] == 2
+                and role["pcb_power"] == "SOURCE"
+                and role["pcb_data"] == "UFP_DEVICE"
+                and role["pd_ready"] == 1
+            )
+
+        return status["desired"] and status["vbus_on"]
+
+    text, ok = consume_uart_lines(fd, output, deadline, saw_desired)
+    return text, ok, status
+
+
+def desired_baseline_from_text(text):
+    status = {
+        "vbus_on": False,
+        "desired": False,
+        "last_role": None,
+    }
+    lines = text.splitlines()
+    last_on_index = -1
+    last_off_index = -1
+
+    for index, line in enumerate(lines):
+        if "MAX77958_DIAG: setting VBUS GPIO4/GPIO5 on" in line:
+            last_on_index = index
+        if "MAX77958_DIAG: setting VBUS GPIO4/GPIO5 off" in line:
+            last_off_index = index
+        if " pcb_power=" in line:
+            status["last_role"] = line
+            role = parse_role_line(line)
+            status["desired"] = (
+                role["state"] == 2
+                and role["pcb_power"] == "SOURCE"
+                and role["pcb_data"] == "UFP_DEVICE"
+                and role["pd_ready"] == 1
+            )
+
+    status["vbus_on"] = last_on_index > last_off_index
+    return status["desired"] and status["vbus_on"], status
+
+
+def run_interactive_cycles(fd, output_path, timeout, flash_process, cycles, step_timeout):
+    chunks = []
+    marker_seen = False
+
+    with open(output_path, "wb") as output:
+        startup_text, startup_seen = wait_for_startup(fd, output, timeout)
+        chunks.append(startup_text.encode("utf-8", "replace"))
+
+        if not startup_seen:
+            print(f"ERROR: on_start complete was not seen within {timeout:.1f}s", flush=True)
+            text = b"".join(chunks).decode("utf-8", "replace")
+            return text, marker_seen, 1
+
+        baseline_ok, baseline_status = desired_baseline_from_text(startup_text)
+        if not baseline_ok:
+            print(f"Waiting {step_timeout:.1f}s for post-startup attached baseline...", flush=True)
+            baseline_text, baseline_ok, baseline_status = wait_for_reattach(fd, output, step_timeout)
+            chunks.append(baseline_text.encode("utf-8", "replace"))
+
+        if not baseline_ok:
+            print(f"ERROR: startup baseline did not reach SOURCE + UFP + READY + VBUS on within {step_timeout:.1f}s")
+            if baseline_status["last_role"]:
+                print(f"last role line: {baseline_status['last_role']}")
+            print(f"vbus_on_seen: {'yes' if baseline_status['vbus_on'] else 'no'}")
+            text = b"".join(chunks).decode("utf-8", "replace")
+            return text, marker_seen, 1
+
+        print("Startup baseline confirmed: SOURCE + UFP + READY + VBUS on.")
+
+        for cycle in range(1, cycles + 1):
+            input(f"\nCycle {cycle}/{cycles}: press Enter when ready to detach. ")
+            print("Detach the phone now.", flush=True)
+            detach_text, detach_ok, detach_status = wait_for_detach(fd, output, step_timeout)
+            chunks.append(detach_text.encode("utf-8", "replace"))
+            if not detach_ok:
+                print(f"ERROR: cycle {cycle} detach did not reach NO_CONNECTION + VBUS off within {step_timeout:.1f}s")
+                if detach_status["last_role"]:
+                    print(f"last role line: {detach_status['last_role']}")
+                print(f"vbus_off_seen: {'yes' if detach_status['vbus_off'] else 'no'}")
+                text = b"".join(chunks).decode("utf-8", "replace")
+                return text, marker_seen, 1
+            print(f"Cycle {cycle}/{cycles}: detach confirmed.")
+
+            input(f"Cycle {cycle}/{cycles}: press Enter when ready to reattach. ")
+            print("Reattach the phone now.", flush=True)
+            attach_text, attach_ok, attach_status = wait_for_reattach(fd, output, step_timeout)
+            chunks.append(attach_text.encode("utf-8", "replace"))
+            if not attach_ok:
+                print(f"ERROR: cycle {cycle} reattach did not reach SOURCE + UFP + READY + VBUS on within {step_timeout:.1f}s")
+                if attach_status["last_role"]:
+                    print(f"last role line: {attach_status['last_role']}")
+                print(f"vbus_on_seen: {'yes' if attach_status['vbus_on'] else 'no'}")
+                text = b"".join(chunks).decode("utf-8", "replace")
+                return text, marker_seen, 1
+            print(f"Cycle {cycle}/{cycles}: reattach confirmed.")
+
+    text = b"".join(chunks).decode("utf-8", "replace")
+    return text, marker_seen, 0
+
+
 def last_match(lines, pattern):
     regex = re.compile(pattern)
     for line in reversed(lines):
@@ -124,6 +340,11 @@ def parse_last_int(lines, pattern):
     return int(match.group(1)) if match else None
 
 
+def parse_last_str(lines, pattern):
+    _, match = last_match(lines, pattern)
+    return match.group(1) if match else None
+
+
 def summarize(text, output_path, marker_seen, flash_process):
     lines = text.splitlines()
     print(f"\nLog written to: {output_path}")
@@ -134,7 +355,8 @@ def summarize(text, output_path, marker_seen, flash_process):
             status = flash_process.wait()
         print(f"make flash exit code: {status}")
 
-    print(f"diagnostic end marker seen: {'yes' if marker_seen else 'no'}")
+    print(f"stop marker seen: {'yes' if marker_seen else 'no'}")
+    print(f"on_start complete seen: {'yes' if any('on_start complete' in line for line in lines) else 'no'}")
 
     external_lines = [line for line in lines if "EXT_MAX77958_I2C1_TEST" in line]
     if external_lines:
@@ -162,9 +384,21 @@ def summarize(text, output_path, marker_seen, flash_process):
     else:
         print("CC_CTRL1 readback: not found")
 
-    cc0_lines = [line for line in lines if "MAX77958_DIAG" in line and " CC0=" in line]
+    cc0_lines = [line for line in lines if re.search(r"MAX77958_DIAG t=\d+ms CC0=", line)]
     cc1_lines = [line for line in lines if "MAX77958_DIAG" in line and " CC1=" in line]
     pd_lines = [line for line in lines if "MAX77958_DIAG" in line and " PD0=" in line]
+    state_eval_lines = [line for line in lines if "MAX77958_DIAG: state eval" in line]
+    role_lines = [
+        line for line in lines
+        if "MAX77958_DIAG:" in line
+        and " pcb_power=" in line
+        and " pcb_data=" in line
+        and " pd_ready=" in line
+    ]
+    pr_swap_lines = [line for line in lines if "MAX77958_DIAG: requesting PR_SWAP" in line]
+    dr_swap_lines = [line for line in lines if "MAX77958_DIAG: requesting DR_SWAP" in line]
+    vbus_on_lines = [line for line in lines if "MAX77958_DIAG: setting VBUS GPIO4/GPIO5 on" in line]
+    vbus_off_lines = [line for line in lines if "MAX77958_DIAG: setting VBUS GPIO4/GPIO5 off" in line]
     gpio_lines = [line for line in lines if "MAX77958_DIAG" in line and " GPIO53=" in line]
 
     for label, selected in (
@@ -175,8 +409,15 @@ def summarize(text, output_path, marker_seen, flash_process):
     ):
         print(f"{label}: {selected[-1] if selected else 'not found'}")
 
+    print(f"final role line: {role_lines[-1] if role_lines else 'not found'}")
+    print(f"final state eval: {state_eval_lines[-1] if state_eval_lines else 'not found'}")
+    print(f"PR_SWAP requests observed: {len(pr_swap_lines)}")
+    print(f"DR_SWAP requests observed: {len(dr_swap_lines)}")
+    print(f"VBUS on commands observed: {len(vbus_on_lines)}")
+    print(f"VBUS off commands observed: {len(vbus_off_lines)}")
+
     states = []
-    for line in cc0_lines:
+    for line in cc0_lines + role_lines:
         match = re.search(r"state=(\d+)", line)
         if match:
             states.append(int(match.group(1)))
@@ -192,31 +433,44 @@ def summarize(text, output_path, marker_seen, flash_process):
         print("CC states observed: none")
 
     final_state = parse_last_int(cc0_lines, r"state=(\d+)")
+    if final_state is None:
+        final_state = parse_last_int(role_lines, r"state=(\d+)")
     final_data = parse_last_int(pd_lines, r"data=(\d+)")
     final_psrdy = parse_last_int(pd_lines, r"psrdy=(\d+)")
+    if final_data is None:
+        final_data = parse_last_int(state_eval_lines, r"data=(\d+)")
+    if final_psrdy is None:
+        final_psrdy = parse_last_int(state_eval_lines, r"psrdy=(\d+)")
+    final_pcb_power = parse_last_str(role_lines, r"pcb_power=([A-Z_]+)")
+    final_pcb_data = parse_last_str(role_lines, r"pcb_data=([A-Z_]+)")
+    final_pd_ready = parse_last_int(role_lines, r"pd_ready=(\d+)")
     final_gpio_match = last_match(gpio_lines, r"g4=(\d+)/(\d+) g5=(\d+)/(\d+)")[1]
 
-    if final_state is not None or final_data is not None or final_psrdy is not None or final_gpio_match:
+    if final_state is not None or final_data is not None or final_psrdy is not None or final_gpio_match or vbus_on_lines or vbus_off_lines or final_pcb_power:
         source_attached = final_state == 2
-        robot_device = final_data == 0
-        android_host = final_data == 0
-        pd_ready = final_psrdy == 1
-        vbus_enabled = False
+        pcb_source = final_pcb_power == "SOURCE" if final_pcb_power is not None else source_attached
+        pcb_ufp = final_pcb_data == "UFP_DEVICE" if final_pcb_data is not None else final_data == 0
+        pd_ready = final_pd_ready == 1 if final_pd_ready is not None else final_psrdy == 1
+        vbus_enabled = None
         if final_gpio_match:
             g4_dir, g4_out, g5_dir, g5_out = (int(group) for group in final_gpio_match.groups())
             vbus_enabled = g4_dir == 1 and g4_out == 1 and g5_dir == 1 and g5_out == 1
+        elif vbus_on_lines or vbus_off_lines:
+            last_on_index = max((index for index, line in enumerate(lines) if line in vbus_on_lines), default=-1)
+            last_off_index = max((index for index, line in enumerate(lines) if line in vbus_off_lines), default=-1)
+            vbus_enabled = last_on_index > last_off_index
 
         print(
             "final role: "
             f"cc={CC_STATE_NAMES.get(final_state, 'UNKNOWN' if final_state is not None else 'not found')} "
-            f"pd_ready={'yes' if pd_ready else 'no' if final_psrdy is not None else 'not found'} "
-            f"robot_usb={'device/UFP' if robot_device else 'host/DFP' if final_data == 1 else 'not found'} "
-            f"android_usb={'host/DFP' if android_host else 'device/UFP' if final_data == 1 else 'not found'} "
-            f"vbus_enabled={'yes' if vbus_enabled else 'no' if final_gpio_match else 'not found'}"
+            f"pcb_power={final_pcb_power or 'not found'} "
+            f"pcb_data={final_pcb_data or 'not found'} "
+            f"pd_ready={'yes' if pd_ready else 'no' if final_pd_ready is not None or final_psrdy is not None else 'not found'} "
+            f"vbus_enabled={'yes' if vbus_enabled else 'no' if vbus_enabled is not None else 'not found'}"
         )
         print(
             "desired phone-control state: "
-            f"{'yes' if source_attached and pd_ready and robot_device and vbus_enabled else 'no'}"
+            f"{'yes' if pcb_source and pd_ready and pcb_ufp and vbus_enabled else 'no'}"
         )
 
     return 0 if text else 1
@@ -232,6 +486,8 @@ def main():
     parser.add_argument("--output", default=DEFAULT_OUTPUT, help=f"log output path, default {DEFAULT_OUTPUT}")
     parser.add_argument("--flash", action="store_true", help="run make flash after opening UART")
     parser.add_argument("--no-drain", action="store_true", help="do not discard stale bytes before capture")
+    parser.add_argument("--interactive-cycles", type=int, default=0, help="run prompted detach/reattach cycles after on_start complete")
+    parser.add_argument("--step-timeout", type=float, default=5.0, help="seconds to wait for each interactive detach or reattach transition")
     args = parser.parse_args()
 
     try:
@@ -249,17 +505,29 @@ def main():
             drain_serial(fd, 0.25)
 
         flash_process = start_flash(args.flash)
-        text, marker_seen = capture_uart(
-            fd,
-            args.output,
-            args.timeout,
-            DIAG_END_MARKERS,
-            flash_process,
-        )
+        if args.interactive_cycles:
+            text, marker_seen, interactive_status = run_interactive_cycles(
+                fd,
+                args.output,
+                args.timeout,
+                flash_process,
+                args.interactive_cycles,
+                args.step_timeout,
+            )
+        else:
+            interactive_status = 0
+            text, marker_seen = capture_uart(
+                fd,
+                args.output,
+                args.timeout,
+                DIAG_END_MARKERS,
+                flash_process,
+            )
     finally:
         os.close(fd)
 
-    return summarize(text, args.output, marker_seen, flash_process)
+    summary_status = summarize(text, args.output, marker_seen, flash_process)
+    return interactive_status or summary_status
 
 
 if __name__ == "__main__":

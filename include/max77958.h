@@ -66,6 +66,7 @@ uint8_t max77958_build_customer_config_value(const max77958_customer_config_t* c
 void max77958_init(uint gpio_interrupt, queue_t* call_queue, queue_t* results_queue);
 void max77958_shutdown(uint gpio_interrupt);
 void max77958_on_interrupt(uint gpio, uint32_t event_mask);
+void max77958_on_start_complete(void);
 void test_max77958_status_block_read_all(void);
 void test_max77958_get_id();
 void test_max77958_bc_ctrl1_read();
@@ -78,7 +79,6 @@ void test_max77958_gpio0_gpio1_adc_read(void);
 void test_max77958_snk_pdo_request(void);
 void test_max77958_get_customer_config();
 void test_max77958_interrupt();
-void max77958_debug_poll_status(uint32_t duration_ms, uint32_t interval_ms);
 void read_reg(uint8_t reg);
 
 #endif
