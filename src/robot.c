@@ -134,6 +134,12 @@ void get_state(RP2040_STATE* state){
     #endif
 }
 
+void get_fast_motor_state(RP2040_STATE* state){
+    #ifndef BOARD_PICO
+    get_encoder_counts(state);
+    #endif
+}
+
 // Takes the response and add the quad encoder counts to it
 void get_encoder_counts(RP2040_STATE* state){
 
@@ -179,13 +185,18 @@ int main(){
     on_start();
     sleep_ms(1000);
     while (true){
-        get_block();
+        bool handled_packet = false;
+        for (uint8_t i = 0; i < 8 && get_block(); i++) {
+            handled_packet = true;
+        }
 	if (shutdown){
 	    on_shutdown();
 	    break;
 	}else{
 	    // This sleep or some other time consuming function must occur else can't reset from gdb as thread will be stuck in tight_loop_contents()
-            sleep_ms(10);
+            if (!handled_packet) {
+                sleep_ms(1);
+            }
 	    tight_loop_contents();
 	}
     }

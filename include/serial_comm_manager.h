@@ -90,7 +90,7 @@ typedef struct
 } OutgoingLogPacketToAndroid;
 #pragma pack() // Reset packing alignment to default
 
-void get_block();
+bool get_block(void);
 void serial_comm_manager_init(RP2040_STATE* state);
 
 #endif

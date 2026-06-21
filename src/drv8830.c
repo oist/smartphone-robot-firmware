@@ -237,4 +237,3 @@ static int32_t drv8830_test_response(){
     test_drv8830_completed = true;
     return 0;
 }
-
