@@ -25,4 +25,10 @@ void rp2040_orient_copy_buffer(char* output_array);
 void rp2040_log_acquire_lock();
 void rp2040_log_release_lock();
 
+#ifdef VERBOSE_TELEMETRY_LOGS
+#define rp2040_log_verbose(...) rp2040_log(__VA_ARGS__)
+#else
+#define rp2040_log_verbose(...) do {} while (0)
+#endif
+
 #endif

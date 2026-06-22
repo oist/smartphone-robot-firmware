@@ -61,8 +61,81 @@ void robot_unit_tests();
 void get_encoder_counts(RP2040_STATE* rp2040_state);
 void get_motor_faults(RP2040_STATE* state);
 void get_charger_state(RP2040_STATE* state);
+static void telemetry_cache_init(void);
+static void telemetry_cache_copy_to_state(RP2040_STATE *state);
+static void telemetry_cache_run_due_step(void);
 void turn_on_leds();
 uint8_t* i2c_scan(i2c_inst_t *i2c);
+
+#define TELEMETRY_FAST_SAMPLE_INTERVAL_MS 50
+#define TELEMETRY_SLOW_SAMPLE_INTERVAL_MS 150
+
+typedef enum {
+    TELEMETRY_FAST_SAMPLE_WIRELESS_ATTACHED = 0,
+    TELEMETRY_FAST_SAMPLE_USB_CHARGER_VOLTAGE,
+    TELEMETRY_FAST_SAMPLE_WIRELESS_VRECT,
+    TELEMETRY_FAST_SAMPLE_COUNT
+} telemetry_fast_sample_step_t;
+
+typedef enum {
+    TELEMETRY_SLOW_SAMPLE_BATTERY_VOLTAGE = 0,
+    TELEMETRY_SLOW_SAMPLE_BATTERY_SAFETY,
+    TELEMETRY_SLOW_SAMPLE_BATTERY_TEMP,
+    TELEMETRY_SLOW_SAMPLE_BATTERY_SOH,
+    TELEMETRY_SLOW_SAMPLE_BATTERY_FLAGS,
+    TELEMETRY_SLOW_SAMPLE_MAX77976,
+    TELEMETRY_SLOW_SAMPLE_MOTOR_FAULTS,
+    TELEMETRY_SLOW_SAMPLE_COUNT
+} telemetry_slow_sample_step_t;
+
+typedef struct {
+    RP2040_STATE state;
+    absolute_time_t next_fast_sample_at;
+    absolute_time_t next_slow_sample_at;
+    telemetry_fast_sample_step_t fast_step;
+    telemetry_slow_sample_step_t slow_step;
+} telemetry_cache_t;
+
+static telemetry_cache_t telemetry_cache;
+#ifdef TELEMETRY_TIMING_DIAG
+typedef struct {
+    uint32_t count;
+    int64_t total_us;
+} telemetry_timing_stat_t;
+
+typedef struct {
+    telemetry_timing_stat_t encoder;
+    telemetry_timing_stat_t motor_fault;
+    telemetry_timing_stat_t charger;
+    telemetry_timing_stat_t battery;
+    telemetry_timing_stat_t get_state;
+    telemetry_timing_stat_t charger_max77976;
+    telemetry_timing_stat_t charger_wireless_attached;
+    telemetry_timing_stat_t charger_ncp3901_adc;
+    telemetry_timing_stat_t charger_stwlc38_adc;
+    telemetry_timing_stat_t battery_voltage;
+    telemetry_timing_stat_t battery_safety;
+    telemetry_timing_stat_t battery_temp;
+    telemetry_timing_stat_t battery_soh;
+    telemetry_timing_stat_t battery_flags;
+    telemetry_timing_stat_t i2c_write;
+    telemetry_timing_stat_t i2c_read;
+    uint32_t i2c_write_retries;
+    uint32_t i2c_read_retries;
+    uint32_t i2c_write_failures;
+    uint32_t i2c_read_failures;
+} telemetry_timing_diag_stats_t;
+
+static telemetry_timing_diag_stats_t telemetry_timing_diag_stats;
+
+static void telemetry_timing_diag_run(void);
+static int64_t telemetry_timing_diag_measure_us(void (*func)(RP2040_STATE *), RP2040_STATE *state);
+static void telemetry_timing_diag_add(telemetry_timing_stat_t *stat, int64_t elapsed_us);
+static int64_t telemetry_timing_diag_average_us(const telemetry_timing_stat_t *stat);
+static void telemetry_timing_diag_run_charger_breakdown(RP2040_STATE *state);
+static void telemetry_timing_diag_run_battery_breakdown(RP2040_STATE *state);
+static void telemetry_timing_diag_log_summary(void);
+#endif
 #ifdef EXTERNAL_MAX77958_TEST
 static void external_max77958_i2c1_test(void);
 static bool external_max77958_i2c1_read_register(uint8_t reg, uint8_t *dst, size_t len);
@@ -117,26 +190,16 @@ void results_queue_pop(){
 }
 
 void get_state(RP2040_STATE* state){
-    // ChargeSideUSB: Mux MAX77976 and NCP3901 Data: Charger-side USB Voltage, and Wireless Coil State
-    //uint16_t acdcValue = ncp3901_adc0();
-    //memcpy(&response[2], &acdcValue, sizeof(uint16_t));
-    // BatteryDetails: BQ27742-G1 Data: Battery Voltage, Current, and State of Charge
-
-    // PhoneSideUSB: MAX77958 Phone-side USB Controller
-
-    // MotorDetails: DRV8830DRCR Data: Includes MOTOR_FAULT, ENCODER_COUNTS, MOTOR_LEVELS, MOTOR_BRAKE
-    //TODO this should not update response with static int values like this
     #ifndef BOARD_PICO
     get_encoder_counts(state);
-    get_motor_faults(state);
-    get_charger_state(state);
-    get_battery_state(state);
+    telemetry_cache_copy_to_state(state);
     #endif
 }
 
 void get_fast_motor_state(RP2040_STATE* state){
     #ifndef BOARD_PICO
     get_encoder_counts(state);
+    telemetry_cache_copy_to_state(state);
     #endif
 }
 
@@ -173,6 +236,101 @@ void get_charger_state(RP2040_STATE* state){
     state->ChargeSideUSB.wireless_charger_vrect = STWLC38JRM_adc1();
 }
 
+static void telemetry_cache_init(void)
+{
+    memset(&telemetry_cache, 0, sizeof(telemetry_cache));
+    absolute_time_t now = get_absolute_time();
+    telemetry_cache.next_fast_sample_at = now;
+    telemetry_cache.next_slow_sample_at = now;
+}
+
+static void telemetry_cache_copy_to_state(RP2040_STATE *state)
+{
+    state->MotorsState.Faults = telemetry_cache.state.MotorsState.Faults;
+    state->BatteryDetails = telemetry_cache.state.BatteryDetails;
+    state->ChargeSideUSB = telemetry_cache.state.ChargeSideUSB;
+}
+
+static void telemetry_cache_run_fast_step(void)
+{
+    switch (telemetry_cache.fast_step) {
+        case TELEMETRY_FAST_SAMPLE_WIRELESS_ATTACHED:
+            telemetry_cache.state.ChargeSideUSB.wireless_charger_attached = ncp3901_wireless_charger_attached();
+            break;
+        case TELEMETRY_FAST_SAMPLE_USB_CHARGER_VOLTAGE:
+            telemetry_cache.state.ChargeSideUSB.usb_charger_voltage = ncp3901_adc0();
+            break;
+        case TELEMETRY_FAST_SAMPLE_WIRELESS_VRECT:
+            telemetry_cache.state.ChargeSideUSB.wireless_charger_vrect = STWLC38JRM_adc1();
+            break;
+        default:
+            telemetry_cache.fast_step = TELEMETRY_FAST_SAMPLE_WIRELESS_ATTACHED;
+            break;
+    }
+
+    telemetry_cache.fast_step++;
+    if (telemetry_cache.fast_step >= TELEMETRY_FAST_SAMPLE_COUNT) {
+        telemetry_cache.fast_step = TELEMETRY_FAST_SAMPLE_WIRELESS_ATTACHED;
+    }
+
+    telemetry_cache.next_fast_sample_at = make_timeout_time_ms(TELEMETRY_FAST_SAMPLE_INTERVAL_MS);
+}
+
+static void telemetry_cache_run_slow_step(void)
+{
+    switch (telemetry_cache.slow_step) {
+        case TELEMETRY_SLOW_SAMPLE_BATTERY_VOLTAGE:
+            telemetry_cache.state.BatteryDetails.voltage = bq27742_g1_get_voltage();
+            break;
+        case TELEMETRY_SLOW_SAMPLE_BATTERY_SAFETY:
+            telemetry_cache.state.BatteryDetails.safety_status = bq27742_g1_get_safety_stats();
+            break;
+        case TELEMETRY_SLOW_SAMPLE_BATTERY_TEMP:
+            telemetry_cache.state.BatteryDetails.temperature = bq27742_g1_get_temp();
+            break;
+        case TELEMETRY_SLOW_SAMPLE_BATTERY_SOH:
+            telemetry_cache.state.BatteryDetails.state_of_health = bq27742_g1_get_soh();
+            break;
+        case TELEMETRY_SLOW_SAMPLE_BATTERY_FLAGS:
+            telemetry_cache.state.BatteryDetails.flags = bq27742_g1_get_flags();
+            break;
+        case TELEMETRY_SLOW_SAMPLE_MAX77976:
+            telemetry_cache.state.ChargeSideUSB.max77976_chg_details = max77976_get_chg_details();
+            break;
+        case TELEMETRY_SLOW_SAMPLE_MOTOR_FAULTS: {
+            uint8_t *motor_faults = drv8830_get_faults();
+            telemetry_cache.state.MotorsState.Faults.left = motor_faults[0];
+            telemetry_cache.state.MotorsState.Faults.right = motor_faults[1];
+            break;
+        }
+        default:
+            telemetry_cache.slow_step = TELEMETRY_SLOW_SAMPLE_BATTERY_VOLTAGE;
+            break;
+    }
+
+    telemetry_cache.slow_step++;
+    if (telemetry_cache.slow_step >= TELEMETRY_SLOW_SAMPLE_COUNT) {
+        telemetry_cache.slow_step = TELEMETRY_SLOW_SAMPLE_BATTERY_VOLTAGE;
+    }
+
+    telemetry_cache.next_slow_sample_at = make_timeout_time_ms(TELEMETRY_SLOW_SAMPLE_INTERVAL_MS);
+}
+
+static void telemetry_cache_run_due_step(void)
+{
+#ifndef BOARD_PICO
+    absolute_time_t now = get_absolute_time();
+    if (absolute_time_diff_us(now, telemetry_cache.next_fast_sample_at) <= 0) {
+        telemetry_cache_run_fast_step();
+        return;
+    }
+
+    if (absolute_time_diff_us(now, telemetry_cache.next_slow_sample_at) <= 0) {
+        telemetry_cache_run_slow_step();
+    }
+#endif
+}
+
 void set_motor_levels(RP2040_STATE* state){
     #ifndef BOARD_PICO
     set_motor_control(MOTOR_LEFT, state->MotorsState.ControlValues.left);
@@ -195,6 +353,7 @@ int main(){
 	}else{
 	    // This sleep or some other time consuming function must occur else can't reset from gdb as thread will be stuck in tight_loop_contents()
             if (!handled_packet) {
+                telemetry_cache_run_due_step();
                 sleep_ms(1);
             }
 	    tight_loop_contents();
@@ -280,6 +439,7 @@ void on_start(){
     #endif
 
     serial_comm_manager_init(&rp2040_state);
+    telemetry_cache_init();
 
     #ifndef BOARD_PICO
     i2c_scan(i2c0);
@@ -292,11 +452,157 @@ void on_start(){
 
     rp2040_log("on_start complete\n");
     max77958_on_start_complete();
+#ifdef TELEMETRY_TIMING_DIAG
+    telemetry_timing_diag_run();
+#endif
     //while(!stdio_usb_connected()){
     //    sleep_ms(100);
     //}
     //rp2040_log("USB connected\n");
 }
+
+#ifdef TELEMETRY_TIMING_DIAG
+static int64_t telemetry_timing_diag_measure_us(void (*func)(RP2040_STATE *), RP2040_STATE *state)
+{
+    absolute_time_t start = get_absolute_time();
+    func(state);
+    return absolute_time_diff_us(start, get_absolute_time());
+}
+
+static void telemetry_timing_diag_add(telemetry_timing_stat_t *stat, int64_t elapsed_us)
+{
+    stat->count++;
+    stat->total_us += elapsed_us;
+}
+
+static int64_t telemetry_timing_diag_average_us(const telemetry_timing_stat_t *stat)
+{
+    if (stat->count == 0) {
+        return 0;
+    }
+    return stat->total_us / stat->count;
+}
+
+static void telemetry_timing_diag_run(void)
+{
+#ifdef BOARD_PICO
+    rp2040_log("TELEMETRY_TIMING: skipped on BOARD_PICO\n");
+#else
+    const uint8_t iterations = 5;
+
+    memset(&telemetry_timing_diag_stats, 0, sizeof(telemetry_timing_diag_stats));
+    rp2040_log("TELEMETRY_TIMING: begin iterations=%u\n", iterations);
+    for (uint8_t i = 0; i < iterations; i++) {
+        RP2040_STATE state;
+        memset(&state, 0, sizeof(state));
+
+        int64_t encoder_us = telemetry_timing_diag_measure_us(get_encoder_counts, &state);
+        int64_t motor_fault_us = telemetry_timing_diag_measure_us(get_motor_faults, &state);
+        int64_t charger_us = telemetry_timing_diag_measure_us(get_charger_state, &state);
+        int64_t battery_us = telemetry_timing_diag_measure_us(get_battery_state, &state);
+
+        memset(&state, 0, sizeof(state));
+        int64_t total_us = telemetry_timing_diag_measure_us(get_state, &state);
+
+        telemetry_timing_diag_add(&telemetry_timing_diag_stats.encoder, encoder_us);
+        telemetry_timing_diag_add(&telemetry_timing_diag_stats.motor_fault, motor_fault_us);
+        telemetry_timing_diag_add(&telemetry_timing_diag_stats.charger, charger_us);
+        telemetry_timing_diag_add(&telemetry_timing_diag_stats.battery, battery_us);
+        telemetry_timing_diag_add(&telemetry_timing_diag_stats.get_state, total_us);
+
+        memset(&state, 0, sizeof(state));
+        telemetry_timing_diag_run_charger_breakdown(&state);
+        telemetry_timing_diag_run_battery_breakdown(&state);
+    }
+    telemetry_timing_diag_log_summary();
+    rp2040_log("TELEMETRY_TIMING: end\n");
+#endif
+}
+
+static void telemetry_timing_diag_run_charger_breakdown(RP2040_STATE *state)
+{
+    absolute_time_t start = get_absolute_time();
+    state->ChargeSideUSB.max77976_chg_details = max77976_get_chg_details();
+    int64_t max77976_us = absolute_time_diff_us(start, get_absolute_time());
+    telemetry_timing_diag_add(&telemetry_timing_diag_stats.charger_max77976, max77976_us);
+
+    start = get_absolute_time();
+    state->ChargeSideUSB.wireless_charger_attached = ncp3901_wireless_charger_attached();
+    int64_t wireless_attached_us = absolute_time_diff_us(start, get_absolute_time());
+    telemetry_timing_diag_add(&telemetry_timing_diag_stats.charger_wireless_attached, wireless_attached_us);
+
+    start = get_absolute_time();
+    state->ChargeSideUSB.usb_charger_voltage = ncp3901_adc0();
+    int64_t ncp3901_adc_us = absolute_time_diff_us(start, get_absolute_time());
+    telemetry_timing_diag_add(&telemetry_timing_diag_stats.charger_ncp3901_adc, ncp3901_adc_us);
+
+    start = get_absolute_time();
+    state->ChargeSideUSB.wireless_charger_vrect = STWLC38JRM_adc1();
+    int64_t stwlc38_adc_us = absolute_time_diff_us(start, get_absolute_time());
+    telemetry_timing_diag_add(&telemetry_timing_diag_stats.charger_stwlc38_adc, stwlc38_adc_us);
+}
+
+static void telemetry_timing_diag_run_battery_breakdown(RP2040_STATE *state)
+{
+    absolute_time_t start = get_absolute_time();
+    state->BatteryDetails.voltage = bq27742_g1_get_voltage();
+    int64_t voltage_us = absolute_time_diff_us(start, get_absolute_time());
+    telemetry_timing_diag_add(&telemetry_timing_diag_stats.battery_voltage, voltage_us);
+
+    start = get_absolute_time();
+    state->BatteryDetails.safety_status = bq27742_g1_get_safety_stats();
+    int64_t safety_us = absolute_time_diff_us(start, get_absolute_time());
+    telemetry_timing_diag_add(&telemetry_timing_diag_stats.battery_safety, safety_us);
+
+    start = get_absolute_time();
+    state->BatteryDetails.temperature = bq27742_g1_get_temp();
+    int64_t temp_us = absolute_time_diff_us(start, get_absolute_time());
+    telemetry_timing_diag_add(&telemetry_timing_diag_stats.battery_temp, temp_us);
+
+    start = get_absolute_time();
+    state->BatteryDetails.state_of_health = bq27742_g1_get_soh();
+    int64_t soh_us = absolute_time_diff_us(start, get_absolute_time());
+    telemetry_timing_diag_add(&telemetry_timing_diag_stats.battery_soh, soh_us);
+
+    start = get_absolute_time();
+    state->BatteryDetails.flags = bq27742_g1_get_flags();
+    int64_t flags_us = absolute_time_diff_us(start, get_absolute_time());
+    telemetry_timing_diag_add(&telemetry_timing_diag_stats.battery_flags, flags_us);
+}
+
+static void telemetry_timing_diag_log_summary(void)
+{
+    rp2040_log("TELEMETRY_TIMING_SUMMARY: count=%u encoder_avg_us=%lld motor_fault_avg_us=%lld charger_avg_us=%lld battery_avg_us=%lld get_state_avg_us=%lld\n",
+               telemetry_timing_diag_stats.get_state.count,
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.encoder),
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.motor_fault),
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.charger),
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.battery),
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.get_state));
+    rp2040_log("TELEMETRY_TIMING_SUMMARY_CHARGER: count=%u max77976_avg_us=%lld wireless_attached_avg_us=%lld ncp3901_adc_avg_us=%lld stwlc38_adc_avg_us=%lld\n",
+               telemetry_timing_diag_stats.charger_max77976.count,
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.charger_max77976),
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.charger_wireless_attached),
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.charger_ncp3901_adc),
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.charger_stwlc38_adc));
+    rp2040_log("TELEMETRY_TIMING_SUMMARY_BATTERY: count=%u voltage_avg_us=%lld safety_avg_us=%lld temp_avg_us=%lld soh_avg_us=%lld flags_avg_us=%lld\n",
+               telemetry_timing_diag_stats.battery_voltage.count,
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.battery_voltage),
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.battery_safety),
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.battery_temp),
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.battery_soh),
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.battery_flags));
+    rp2040_log("TELEMETRY_TIMING_SUMMARY_I2C: write_count=%u write_avg_us=%lld write_retries=%u write_failures=%u read_count=%u read_avg_us=%lld read_retries=%u read_failures=%u\n",
+               telemetry_timing_diag_stats.i2c_write.count,
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.i2c_write),
+               telemetry_timing_diag_stats.i2c_write_retries,
+               telemetry_timing_diag_stats.i2c_write_failures,
+               telemetry_timing_diag_stats.i2c_read.count,
+               (long long)telemetry_timing_diag_average_us(&telemetry_timing_diag_stats.i2c_read),
+               telemetry_timing_diag_stats.i2c_read_retries,
+               telemetry_timing_diag_stats.i2c_read_failures);
+}
+#endif
 
 void robot_unit_tests(){
     rp2040_log("----------Running robot unit tests-----------\n");
@@ -752,10 +1058,18 @@ void quad_encoders_callback(){
 void i2c_write_error_handling(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src, size_t len, bool nostop){
     int result;
     int retries = 0;
+#ifdef TELEMETRY_TIMING_DIAG
+    absolute_time_t start = get_absolute_time();
+#endif
     Try{
         do {
 	    result = i2c_write_timeout_us(i2c, addr, src, len, nostop, I2C_TIMEOUT);
             if (result >= 0) {
+#ifdef TELEMETRY_TIMING_DIAG
+                int64_t elapsed_us = absolute_time_diff_us(start, get_absolute_time());
+                telemetry_timing_diag_add(&telemetry_timing_diag_stats.i2c_write, elapsed_us);
+                telemetry_timing_diag_stats.i2c_write_retries += retries;
+#endif
                 return;
             }
             retries++;
@@ -766,6 +1080,12 @@ void i2c_write_error_handling(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src,
         Throw(result);
     }
     Catch(e){
+#ifdef TELEMETRY_TIMING_DIAG
+	int64_t elapsed_us = absolute_time_diff_us(start, get_absolute_time());
+        telemetry_timing_diag_add(&telemetry_timing_diag_stats.i2c_write, elapsed_us);
+        telemetry_timing_diag_stats.i2c_write_retries += retries;
+        telemetry_timing_diag_stats.i2c_write_failures++;
+#endif
 	rp2040_log("ERROR: During i2c_write. Returned value of %i %i \n", result, e);
 	assert(false);
     }
@@ -774,10 +1094,18 @@ void i2c_write_error_handling(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src,
 void i2c_read_error_handling(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t len, bool nostop){
     int result;
     int retries = 0;
+#ifdef TELEMETRY_TIMING_DIAG
+    absolute_time_t start = get_absolute_time();
+#endif
     Try{
        do {
            result = i2c_read_timeout_us(i2c, addr, dst, len, nostop, I2C_TIMEOUT);
            if (result >= 0) {
+#ifdef TELEMETRY_TIMING_DIAG
+               int64_t elapsed_us = absolute_time_diff_us(start, get_absolute_time());
+               telemetry_timing_diag_add(&telemetry_timing_diag_stats.i2c_read, elapsed_us);
+               telemetry_timing_diag_stats.i2c_read_retries += retries;
+#endif
                return;
            }
            retries++;
@@ -788,6 +1116,12 @@ void i2c_read_error_handling(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t
        Throw(result);
     }
     Catch(e){
+#ifdef TELEMETRY_TIMING_DIAG
+	int64_t elapsed_us = absolute_time_diff_us(start, get_absolute_time());
+        telemetry_timing_diag_add(&telemetry_timing_diag_stats.i2c_read, elapsed_us);
+        telemetry_timing_diag_stats.i2c_read_retries += retries;
+        telemetry_timing_diag_stats.i2c_read_failures++;
+#endif
 	rp2040_log("ERROR: During i2c_read. Returned value of %i %i \n", result, e);
 	assert(false);
     }

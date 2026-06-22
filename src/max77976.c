@@ -7,6 +7,7 @@
 #include "robot.h"
 #include <inttypes.h>
 #include "custom_printf.h"
+#include "rp2040_log.h"
 
 static void max77976_onEXTUSBCHG_connect();
 static void max77976_onEXTUSBCHG_disconnect();
@@ -251,22 +252,22 @@ uint32_t max77976_get_chg_details(){
     i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
     uint8_t CHG_DETAILS_00 = return_buf[0];
     uint8_t CHGIN_DTLS = (CHG_DETAILS_00 & 0x60) >> 5;
-    rp2040_log("CHG_DETAILS_00: 0x%02x\n CHGIN_DTLS: 0x%02x\n", CHG_DETAILS_00, CHGIN_DTLS);
-    rp2040_log("CHG_DETAILS_00_CHGIN_DTLS: ");
+    rp2040_log_verbose("CHG_DETAILS_00: 0x%02x\n CHGIN_DTLS: 0x%02x\n", CHG_DETAILS_00, CHGIN_DTLS);
+    rp2040_log_verbose("CHG_DETAILS_00_CHGIN_DTLS: ");
     switch (CHGIN_DTLS){
         case 0b00:
-	    rp2040_log("VBUS is invalid. VCHGIN rising: VCHGIN < VCHGIN_UVLO. VCHGIN falling: VCHGIN < VCHGIN_REG (AICL)");
+	    rp2040_log_verbose("VBUS is invalid. VCHGIN rising: VCHGIN < VCHGIN_UVLO. VCHGIN falling: VCHGIN < VCHGIN_REG (AICL)");
 	    break;
         case 0b01:
-	    rp2040_log("VBUS is invalid. VCHGIN < VBATT + VCHGIN2SYS and VCHGIN > VCHGIN_UVLO");
+	    rp2040_log_verbose("VBUS is invalid. VCHGIN < VBATT + VCHGIN2SYS and VCHGIN > VCHGIN_UVLO");
 	    break;
         case 0b10:
-	    rp2040_log("VBUS is invalid. VCHGIN > VCHGIN_OVLO");
+	    rp2040_log_verbose("VBUS is invalid. VCHGIN > VCHGIN_OVLO");
 	    break;
         case 0b11:
-	    rp2040_log("VBUS is valid. VCHGIN > VCHGIN_UVLO and VCHGIN > VBATT + VCHGIN2SYS and VCHGIN < VCHGIN_OVLO");
+	    rp2040_log_verbose("VBUS is valid. VCHGIN > VCHGIN_UVLO and VCHGIN > VBATT + VCHGIN2SYS and VCHGIN < VCHGIN_OVLO");
 	    break;
-    }rp2040_log("\n"); 
+    }rp2040_log_verbose("\n"); 
     
     i2c_write_error_handling(i2c1, MAX77976_ADDR, &send_buf[1], 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
@@ -274,127 +275,127 @@ uint32_t max77976_get_chg_details(){
     uint8_t TREG = (CHG_DETAILS_01 & (1 << 7) ) >> 7;
     uint8_t BAT_DTLS = (CHG_DETAILS_01 & 0x70) >> 4;
     uint8_t CHG_DTLS = (CHG_DETAILS_01 & 0xF);
-    rp2040_log("CHG_DETAILS_01: 0x%02x\n TREG: 0x%02x\n BAT_DTLS: 0x%02x\n CHG_DTLS: 0x%02x\n", CHG_DETAILS_01, TREG, BAT_DTLS, CHG_DTLS);
-    rp2040_log("CHG_DETAILS_01_TREG: ");
+    rp2040_log_verbose("CHG_DETAILS_01: 0x%02x\n TREG: 0x%02x\n BAT_DTLS: 0x%02x\n CHG_DTLS: 0x%02x\n", CHG_DETAILS_01, TREG, BAT_DTLS, CHG_DTLS);
+    rp2040_log_verbose("CHG_DETAILS_01_TREG: ");
     switch (TREG){
         case 0b0:
-	    rp2040_log("The junction temperature is less than the threshold set by REGTEMP and the full charge current limit is available");
+	    rp2040_log_verbose("The junction temperature is less than the threshold set by REGTEMP and the full charge current limit is available");
 	    break;
 	case 0b1:
-	    rp2040_log("The junction temperature is greater than the threshold set by REGTEMP and the charge current limit may be folding back to reduce power dissipation.");
+	    rp2040_log_verbose("The junction temperature is greater than the threshold set by REGTEMP and the charge current limit may be folding back to reduce power dissipation.");
 	    break;
     }
-    rp2040_log("\n"); 
+    rp2040_log_verbose("\n"); 
 
-    rp2040_log("CHG_DETAILS_01_BAT_DTLS: ");
+    rp2040_log_verbose("CHG_DETAILS_01_BAT_DTLS: ");
     switch (BAT_DTLS){
         case 0b000:
-	    rp2040_log("Battery Removal");
+	    rp2040_log_verbose("Battery Removal");
 	    break;
         case 0b001:
-	    rp2040_log("Battery Prequalification Voltage");
+	    rp2040_log_verbose("Battery Prequalification Voltage");
 	    break;
         case 0b010:
-	    rp2040_log("Battery Timer Fault");
+	    rp2040_log_verbose("Battery Timer Fault");
 	    break;
         case 0b011:
-	    rp2040_log("Battery Regular Voltage");
+	    rp2040_log_verbose("Battery Regular Voltage");
 	    break;
         case 0b100:
-	    rp2040_log("Battery Low Voltage");
+	    rp2040_log_verbose("Battery Low Voltage");
 	    break;
         case 0b101:
-	    rp2040_log("Battery Overvoltage");
+	    rp2040_log_verbose("Battery Overvoltage");
 	    break;
         case 0b110:
-	    rp2040_log("Reserved");
+	    rp2040_log_verbose("Reserved");
 	    break;
         case 0b111:
-	    rp2040_log("Battery Only");
+	    rp2040_log_verbose("Battery Only");
 	    break;
-    }rp2040_log("\n"); 
+    }rp2040_log_verbose("\n"); 
     
-    rp2040_log("CHG_DETAILS_01_CHG_DTLS: ");
+    rp2040_log_verbose("CHG_DETAILS_01_CHG_DTLS: ");
     switch (CHG_DTLS){
         case 0x00:
-	    rp2040_log("Charger is in dead-battery prequalification or low-battery prequalification mode.");
+	    rp2040_log_verbose("Charger is in dead-battery prequalification or low-battery prequalification mode.");
 	    break;
         case 0x01:
-	    rp2040_log("Charger is in fast-charge constant current mode.");
+	    rp2040_log_verbose("Charger is in fast-charge constant current mode.");
 	    break;
         case 0x02:
-	    rp2040_log("Charger is in fast-charge constant voltage mode.");
+	    rp2040_log_verbose("Charger is in fast-charge constant voltage mode.");
 	    break;
         case 0x03:
-	    rp2040_log("Charger is in top-off mode.");
+	    rp2040_log_verbose("Charger is in top-off mode.");
 	    break;
         case 0x04:
-	    rp2040_log("Charger is in done mode.");
+	    rp2040_log_verbose("Charger is in done mode.");
 	    break;
         case 0x05:
-	    rp2040_log("Reserved");
+	    rp2040_log_verbose("Reserved");
 	    break;
         case 0x06:
-	    rp2040_log("Charger is in timer-fault mode.");
+	    rp2040_log_verbose("Charger is in timer-fault mode.");
 	    break;
         case 0x07:
-	    rp2040_log("Charger is suspended because QBATT is disabled");
+	    rp2040_log_verbose("Charger is suspended because QBATT is disabled");
 	    break;
         case 0x08:
-	    rp2040_log("Charger is off, charger input invalid and/or charger is disabled.");
+	    rp2040_log_verbose("Charger is off, charger input invalid and/or charger is disabled.");
 	    break;
         case 0x09:
-	    rp2040_log("Reserved");
+	    rp2040_log_verbose("Reserved");
 	    break;
         case 0x0A:
-	    rp2040_log("Charger is off and the junction temperature is > TSHDN.");
+	    rp2040_log_verbose("Charger is off and the junction temperature is > TSHDN.");
 	    break;
         case 0x0B:
-	    rp2040_log("Charger is off because the watchdog timer expired");
+	    rp2040_log_verbose("Charger is off because the watchdog timer expired");
 	    break;
         case 0x0C:
-	    rp2040_log("Charger is suspended or charge current or voltage is reduced based on JEITA control.");
+	    rp2040_log_verbose("Charger is suspended or charge current or voltage is reduced based on JEITA control.");
 	    break;
         case 0x0D:
-	    rp2040_log("Charger is suspended because battery removal is detected on THM pin.");
+	    rp2040_log_verbose("Charger is suspended because battery removal is detected on THM pin.");
 	    break;
         case 0x0E:
-	    rp2040_log("Charger is suspended because SUSPEND pin is high.");
+	    rp2040_log_verbose("Charger is suspended because SUSPEND pin is high.");
 	    break;
         case 0x0F:
-	    rp2040_log("Reserved");
+	    rp2040_log_verbose("Reserved");
 	    break;
-    }rp2040_log("\n"); 
+    }rp2040_log_verbose("\n"); 
     
     i2c_write_error_handling(i2c1, MAX77976_ADDR, &send_buf[2], 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
     uint8_t CHG_DETAILS_02 = return_buf[0];
     uint8_t THM_DTLS = (CHG_DETAILS_02 & 0x70) >> 4;
     uint8_t BYP_DTLS = (CHG_DETAILS_02 & 0x0F);
-    rp2040_log("CHG_DETAILS_02_BYP_DTLS: ");
+    rp2040_log_verbose("CHG_DETAILS_02_BYP_DTLS: ");
     switch (BYP_DTLS){
         case 0x00:
-	    rp2040_log("The bypass node is okay.");
+	    rp2040_log_verbose("The bypass node is okay.");
 	    break;
         case 0x01:
-	    rp2040_log("OTG_ILIM when CHG_CNFG_00.MODE=0xA or 0xE or 0xF");
+	    rp2040_log_verbose("OTG_ILIM when CHG_CNFG_00.MODE=0xA or 0xE or 0xF");
 	    break;
         case 0x02:
-	    rp2040_log("BSTILIM");
+	    rp2040_log_verbose("BSTILIM");
 	    break;
         case 0x04:
-	    rp2040_log("BCKNegILIM");
+	    rp2040_log_verbose("BCKNegILIM");
 	    break;
         case 0x08:
-	    rp2040_log("BST_SWON_DONE");
+	    rp2040_log_verbose("BST_SWON_DONE");
 	    break;
-    }rp2040_log("\n"); 
+    }rp2040_log_verbose("\n"); 
 
     i2c_write_error_handling(i2c1, MAX77976_ADDR, &send_buf[3], 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
     uint8_t CHG_CNFG_00 = return_buf[0];
     uint8_t _MODE = (CHG_CNFG_00 & 0x0F);
-    rp2040_log("CHG_CNFG_00: 0x%x\n", _MODE);
+    rp2040_log_verbose("CHG_CNFG_00: 0x%x\n", _MODE);
 
     // convert and store the 4 bytes from the send_buf into a new uint32_t var
     uint32_t CHG_CNFG = (send_buf[4] << 24) | (send_buf[5] << 16) | (send_buf[6] << 8) | (send_buf[7]);

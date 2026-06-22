@@ -6,6 +6,7 @@
 #include <string.h>
 #include "robot.h"
 #include "custom_printf.h"
+#include "rp2040_log.h"
 
 static uint8_t send_buf[4];
 static uint8_t return_buf[4];
@@ -26,7 +27,7 @@ uint16_t bq27742_g1_get_voltage(){
     i2c_read_error_handling(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
 
     voltage = (return_buf[1] << 8) | return_buf[0];
-    rp2040_log("Voltage: %d\n", (int) voltage);
+    rp2040_log_verbose("Voltage: %d\n", (int) voltage);
     return voltage;
 }
 
@@ -40,33 +41,33 @@ uint8_t bq27742_g1_get_safety_stats(){
     
     uint8_t low_byte = return_buf[0];
     bool error = false;
-    rp2040_log("SafetyStats: ");
+    rp2040_log_verbose("SafetyStats: ");
     if (low_byte & ISD_MASK){
-        rp2040_log("Internal Short condition detected, ");
+        rp2040_log_verbose("Internal Short condition detected, ");
         error = true;
     }
     if (low_byte & TDD_MASK){
-        rp2040_log("Tab Disconnect condition detected, ");
+        rp2040_log_verbose("Tab Disconnect condition detected, ");
         error = true;
     }
     if (low_byte & OTC_MASK){
-        rp2040_log("Overtemperature in charge condition detected, ");
+        rp2040_log_verbose("Overtemperature in charge condition detected, ");
         error = true;
     }
     if (low_byte & OTD_MASK){
-        rp2040_log("Overtemperature in discharge condition detected, ");
+        rp2040_log_verbose("Overtemperature in discharge condition detected, ");
         error = true;
     }
     if (low_byte & OVP_MASK){
-        rp2040_log("Overvoltage condition detected, ");
+        rp2040_log_verbose("Overvoltage condition detected, ");
         error = true;
     }
     if (low_byte & UVP_MASK){
-        rp2040_log("Undervoltage condition detected, ");
+        rp2040_log_verbose("Undervoltage condition detected, ");
         error = true;
     }
     if (!error){
-        rp2040_log("No error detected in battery protection\n");
+        rp2040_log_verbose("No error detected in battery protection\n");
     }
   return low_byte;  
 }
@@ -87,7 +88,7 @@ uint16_t bq27742_g1_get_temp(){
     temperature_ = (temperature_ - 2731.5);
     temperature_ = temperature_ / 10.0;
     temperature = (uint16_t)temperature;
-    rp2040_log("Temperature: %d\n", (int)temperature);
+    rp2040_log_verbose("Temperature: %d\n", (int)temperature);
     return temperature; 
 }
 
@@ -100,9 +101,9 @@ uint8_t bq27742_g1_get_soh(){
     i2c_write_error_handling(i2c0, BQ27742_G1_ADDR, send_buf, 1, true);
     i2c_read_error_handling(i2c0, BQ27742_G1_ADDR, return_buf, 2, false);
 
-    rp2040_log("SOH: 0x2e=%02x, 0x2f=%02x\n", return_buf[0], return_buf[1]);
+    rp2040_log_verbose("SOH: 0x2e=%02x, 0x2f=%02x\n", return_buf[0], return_buf[1]);
     //float soh = (float)return_buf[0] / 100;
-    rp2040_log("SOH: %02f\n", soh);
+    rp2040_log_verbose("SOH: %02f\n", soh);
     // Note in the user guide Section 4.1.24 the range of values is only from 0x00 to 0x64
     return return_buf[0];
 }
@@ -118,51 +119,51 @@ uint16_t bq27742_g1_get_flags(){
     uint8_t flags = (return_buf[1] << 8) | return_buf[0];
     bool error = false;
 
-    rp2040_log("Tags: ");
+    rp2040_log_verbose("Tags: ");
     if (flags & BATHI_MASK){
-        rp2040_log("High battery voltage condition BATHI detected, ");
+        rp2040_log_verbose("High battery voltage condition BATHI detected, ");
         error = true;
     }
     if (flags & BATLOW_MASK){
-        rp2040_log("Low battery voltage condition BATLOW detected, ");
+        rp2040_log_verbose("Low battery voltage condition BATLOW detected, ");
         error = true;
     }
     if (flags & CHG_INH_MASK){
-        rp2040_log("Temperature is < T1 Temp or > T4 Temp while charging is not active. CHG_INH detected, ");
+        rp2040_log_verbose("Temperature is < T1 Temp or > T4 Temp while charging is not active. CHG_INH detected, ");
         error = true;
     }
     if (flags & FC_MASK){
-        rp2040_log("Charge termination reached and FC Set Percent = -1. Or SOC > FC Percent is not -1. FC detected, ");
+        rp2040_log_verbose("Charge termination reached and FC Set Percent = -1. Or SOC > FC Percent is not -1. FC detected, ");
         error = true;
     }
     if (flags & CHG_SUS_MASK){
-        rp2040_log("Temp < T1 Temp or > T5 Temp while charging active. CHG_SUS detected, ");
+        rp2040_log_verbose("Temp < T1 Temp or > T5 Temp while charging active. CHG_SUS detected, ");
         error = true;
     }
     if (flags & IMAX_MASK){
-        rp2040_log("Imax value has changed enough to interrupt. IMAX detected, ");
+        rp2040_log_verbose("Imax value has changed enough to interrupt. IMAX detected, ");
         error = true;
     }
     if (flags & CHG_MASK){
-        rp2040_log("Fast charging allowed. CHG detected, ");
+        rp2040_log_verbose("Fast charging allowed. CHG detected, ");
         error = true;
     }
     if (flags & SOC1_MASK){
-        rp2040_log("SOC1 reached.");
+        rp2040_log_verbose("SOC1 reached.");
         error = true;
     }
     if (flags & SOCF_MASK){  
-        rp2040_log("SOCF Set Percent reached. SOCF detected, ");
+        rp2040_log_verbose("SOCF Set Percent reached. SOCF detected, ");
         error = true;
     }
     if (flags & DSG_MASK){
-        rp2040_log("Discharging detected. DSG detected, ");
+        rp2040_log_verbose("Discharging detected. DSG detected, ");
         error = true;
     }
     if (!error){
-        rp2040_log("No SystemStat errors detected");
+        rp2040_log_verbose("No SystemStat errors detected");
     }
-    rp2040_log("\n");
+    rp2040_log_verbose("\n");
     return flags;
 }
 

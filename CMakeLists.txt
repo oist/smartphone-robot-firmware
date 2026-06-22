@@ -9,6 +9,8 @@ if(NOT (LOGGER STREQUAL "USB" OR LOGGER STREQUAL "UART"))
 endif()
 option(EXTERNAL_MAX77958_TEST "Probe an external MAX77958 on I2C1 and skip normal board bring-up" OFF)
 option(MAX77958_FORCE_VBUS_DIAGNOSTIC "Force MAX77958 GPIO4/GPIO5 high for VBUS diagnostics" OFF)
+option(TELEMETRY_TIMING_DIAG "Time get_state telemetry polling after startup" OFF)
+option(VERBOSE_TELEMETRY_LOGS "Enable decoded battery/charger telemetry logs" OFF)
 
 # Enable colored output
 set(CMAKE_COLOR_MAKEFILE ON)
@@ -94,6 +96,14 @@ endif()
 
 if(MAX77958_FORCE_VBUS_DIAGNOSTIC)
     target_compile_definitions(robot PUBLIC MAX77958_FORCE_VBUS_DIAGNOSTIC=1)
+endif()
+
+if(TELEMETRY_TIMING_DIAG)
+    target_compile_definitions(robot PUBLIC TELEMETRY_TIMING_DIAG=1)
+endif()
+
+if(VERBOSE_TELEMETRY_LOGS)
+    target_compile_definitions(robot PUBLIC VERBOSE_TELEMETRY_LOGS=1)
 endif()
 
 # Add the standard library to the build

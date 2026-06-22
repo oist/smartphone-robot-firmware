@@ -7,6 +7,8 @@ ARCH ?= amd64
 LOGGER ?= USB
 EXTERNAL_MAX77958_TEST ?= 0
 MAX77958_FORCE_VBUS_DIAGNOSTIC ?= 0
+TELEMETRY_TIMING_DIAG ?= 0
+VERBOSE_TELEMETRY_LOGS ?= 0
 
 #  MILESTONE 1: BOARD SELECTION & VALIDATION 
 BOARD ?= customPCB
@@ -78,13 +80,15 @@ help:
 	@echo "  LOGGER=USB|UART         - Specify logger interface (default: USB)"
 	@echo "  EXTERNAL_MAX77958_TEST=0|1 - Probe external MAX77958 on I2C1 and skip normal board bring-up"
 	@echo "  MAX77958_FORCE_VBUS_DIAGNOSTIC=0|1 - Force MAX77958 GPIO4/GPIO5 high for VBUS diagnostics"
+	@echo "  TELEMETRY_TIMING_DIAG=0|1 - Time get_state telemetry polling after startup"
+	@echo "  VERBOSE_TELEMETRY_LOGS=0|1 - Enable decoded battery/charger telemetry logs"
 	@echo "  Example: make flash DOCKER_USB_DEVICE=/dev/ttyACM0"
 
 # Build firmware
 .PHONY: firmware
 firmware:
 	@echo "Building firmware in Docker with $(JOBS) jobs..."
-	$(DOCKER_RUN) bash -c "rm -rf build && mkdir build && cd build && cmake .. -DLOGGER=$(LOGGER) -DEXTERNAL_MAX77958_TEST=$(EXTERNAL_MAX77958_TEST) -DMAX77958_FORCE_VBUS_DIAGNOSTIC=$(MAX77958_FORCE_VBUS_DIAGNOSTIC) $(BOARD_FLAGS) && make -j$(JOBS)"
+	$(DOCKER_RUN) bash -c "rm -rf build && mkdir build && cd build && cmake .. -DLOGGER=$(LOGGER) -DEXTERNAL_MAX77958_TEST=$(EXTERNAL_MAX77958_TEST) -DMAX77958_FORCE_VBUS_DIAGNOSTIC=$(MAX77958_FORCE_VBUS_DIAGNOSTIC) -DTELEMETRY_TIMING_DIAG=$(TELEMETRY_TIMING_DIAG) -DVERBOSE_TELEMETRY_LOGS=$(VERBOSE_TELEMETRY_LOGS) $(BOARD_FLAGS) && make -j$(JOBS)"
 
 # Name for the persistent debug container
 DEBUG_CONTAINER := smartphone-robot-debug
