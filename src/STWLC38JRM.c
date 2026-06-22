@@ -9,6 +9,15 @@
 static uint8_t send_buf[3] = {0};
 static uint8_t return_buf[3] = {0}; // Will read full buffer from registers 0x52 to 0x71
 
+static uint16_t adc_counts_to_pin_mv(uint16_t adc_counts)
+{
+    const uint32_t adc_vref_mv = 3300;
+    const uint32_t adc_full_scale_counts = 4096;
+
+    uint32_t numerator = (uint32_t)adc_counts * adc_vref_mv;
+    return (uint16_t)((numerator + adc_full_scale_counts / 2) / adc_full_scale_counts);
+}
+
 // Enables the external wireless charging module
 void STWLC38JRM_init(uint enable_pin, uint vrect_pin){
     gpio_init(enable_pin);
@@ -33,11 +42,9 @@ uint16_t STWLC38JRM_adc1()
     // Select ADC input 1 (GPIO27)
     adc_select_input(1);
 
-    // 12-bit conversion, assume max value == ADC_VREF == 3.3 V
+    // The serial state packet carries millivolts, not raw ADC counts.
     uint16_t result = adc_read();
-    return result;
-    // Save this value, add to a buffer, or merge with some moving avg.
-    // rp2040_log("Raw value: 0x%03x, voltage: %f V\n", result, result * conversion_factor);
+    return adc_counts_to_pin_mv(result);
 }
 
 void STWLC38_get_ept_reasons(){

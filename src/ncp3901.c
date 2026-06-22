@@ -16,6 +16,20 @@ static bool test_ncp3901_started = false;
 static bool test_ncp3901_completed = false;
 static bool wireless_charger_attached = false;
 
+static uint16_t adc0_counts_to_vina_mv(uint16_t adc_counts)
+{
+    const uint32_t adc_vref_mv = 3300;
+    const uint32_t adc_full_scale_counts = 4096;
+    const uint32_t divider_top_kohm = 510;
+    const uint32_t divider_bottom_kohm = 100;
+    const uint32_t divider_total_kohm = divider_top_kohm + divider_bottom_kohm;
+
+    uint64_t numerator = (uint64_t)adc_counts * adc_vref_mv * divider_total_kohm;
+    uint32_t denominator = adc_full_scale_counts * divider_bottom_kohm;
+
+    return (uint16_t)((numerator + denominator / 2) / denominator);
+}
+
 // on wireless power available
 void ncp3901_on_wireless_charger_interrupt(uint gpio, uint32_t event_mask)
 {
@@ -83,11 +97,10 @@ uint16_t ncp3901_adc0()
     // Select ADC input 0 (GPIO26)
     adc_select_input(0);
 
-    // 12-bit conversion, assume max value == ADC_VREF == 3.3 V
+    // ADC0 senses VINA_S through a 510k/100k divider. The serial state packet
+    // carries millivolts, not raw ADC counts.
     uint16_t result = adc_read();
-    return result;
-    // Save this value, add to a buffer, or merge with some moving avg.
-    // rp2040_log("Raw value: 0x%03x, voltage: %f V\n", result, result * conversion_factor);
+    return adc0_counts_to_vina_mv(result);
 }
 
 void ncp3901_shutdown(){
@@ -145,4 +158,3 @@ static int32_t ncp3901_test_response(){
     test_ncp3901_completed = true;
     return 0;
 }
-
