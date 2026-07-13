@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   codex-reply:
-    uses: tekkura/github-workflows/.github/workflows/codex-reply.yml@codex/shared-review-workflows
+    uses: tekkura/github-workflows/.github/workflows/codex-reply.yml@main
     with:
       codex_model: ${{ vars.CODEX_MODEL || 'gpt-5.5' }}
     secrets:

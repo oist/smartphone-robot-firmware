@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   codex-review:
-    uses: tekkura/github-workflows/.github/workflows/codex-review.yml@codex/shared-review-workflows
+    uses: tekkura/github-workflows/.github/workflows/codex-review.yml@main
     with:
       codex_model: ${{ vars.CODEX_MODEL || 'gpt-5.5' }}
       review_prompt_path: .github/codex/prompts/review.md
