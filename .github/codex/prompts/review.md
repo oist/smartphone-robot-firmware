@@ -2,7 +2,7 @@ You are Codex performing a GitHub PR review.
 
 Review focus:
 - Follow `docs/codex-review-policy.md` when present. Otherwise fall back to any PR review guidance included from `AGENTS.md`.
-- Use the matching milestone guide included in the prompt when the PR branch or base branch maps to one.
+- Use the matching milestone guide included in the prompt when one is provided.
 - Only require the build check to pass (no other tests are required).
 - Review the PR description and the code diff directly.
 
