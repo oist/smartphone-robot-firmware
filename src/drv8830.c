@@ -23,6 +23,31 @@ static bool test_drv8830_completed = false;
 const uint32_t drv8830_irq_mask = GPIO_IRQ_EDGE_FALL;
 static void drv8830_clear_faults();
 
+#define DRV8830_FAULT_BIT_FAULT 0
+#define DRV8830_FAULT_BIT_OCP 1
+#define DRV8830_FAULT_BIT_UVLO 2
+#define DRV8830_FAULT_BIT_OTS 3
+#define DRV8830_FAULT_BIT_ILIMIT 4
+
+#ifdef DRV8830_SCOPE_TEST
+#ifndef DRV8830_SCOPE_TEST_CONTROL
+#define DRV8830_SCOPE_TEST_CONTROL 0x7A
+#endif
+#ifndef DRV8830_SCOPE_TEST_DWELL_MS
+#define DRV8830_SCOPE_TEST_DWELL_MS 750
+#endif
+#ifndef DRV8830_SCOPE_TEST_OFF_MS
+#define DRV8830_SCOPE_TEST_OFF_MS 250
+#endif
+#ifndef DRV8830_SCOPE_TEST_REPEAT
+#define DRV8830_SCOPE_TEST_REPEAT 10
+#endif
+
+static int32_t drv8830_scope_set_controls(int32_t packed_controls);
+static void drv8830_log_fault_bits(const char *prefix, const char *motor, uint8_t faults);
+static void drv8830_scope_queue_controls(uint8_t left_control, uint8_t right_control);
+#endif
+
 void drv8830_on_interrupt(uint gpio, uint32_t event_mask){
     //rp2040_log("DRV8830 interrupt\n");
     if (event_mask & drv8830_irq_mask){
@@ -36,16 +61,16 @@ void drv8830_on_interrupt(uint gpio, uint32_t event_mask){
 }
 
 int32_t drv8830_fault_handler(int32_t gpio){
-    uint8_t fault_values = 0; 
+    uint8_t fault_values = 0;
+    uint8_t fault_values_after_clear = 0;
     uint8_t addr = 0;
     uint8_t reg = DRV8830_REG_FAULT;
+    uint8_t clear_buf[2] = {DRV8830_REG_FAULT, (1 << 7)};
     char *motor;
     if (gpio == _gpio_fault1){
-	rp2040_log("Left motor fault\n");
 	addr = MOTOR_LEFT_ADDRESS;
 	motor = "Left";
     }else if (gpio == _gpio_fault2){
-	rp2040_log("Right motor fault\n");
 	addr = MOTOR_RIGHT_ADDRESS;
 	motor = "Right";
     }
@@ -56,7 +81,36 @@ int32_t drv8830_fault_handler(int32_t gpio){
     }else{
         i2c_write_error_handling(i2c, addr, &reg, 1, true);
         i2c_read_error_handling(i2c, addr, &fault_values, 1, false);
+        bool active_fault = (fault_values & (1 << DRV8830_FAULT_BIT_FAULT)) != 0;
+        bool nonfault_status_irq = !active_fault;
+#ifdef DRV8830_SCOPE_TEST
+        uint32_t now_ms = to_ms_since_boot(get_absolute_time());
+        rp2040_log(
+            "DRV8830_SCOPE_TEST fault context t_ms=%" PRIu32 " motor=%s active_fault=%d nonfault_status_irq=%d\n",
+            now_ms,
+            motor,
+            active_fault,
+            nonfault_status_irq);
+        drv8830_log_fault_bits("pre_clear", motor, fault_values);
+#endif
+        if (nonfault_status_irq){
+            i2c_write_error_handling(i2c, addr, clear_buf, 2, false);
+#ifdef DRV8830_SCOPE_TEST
+            i2c_write_error_handling(i2c, addr, &reg, 1, true);
+            i2c_read_error_handling(i2c, addr, &fault_values_after_clear, 1, false);
+            drv8830_log_fault_bits("post_clear", motor, fault_values_after_clear);
+#endif
+            return 0;
+        }
+        rp2040_log("%s motor fault\n", motor);
+#ifdef DRV8830_SCOPE_TEST
+        i2c_write_error_handling(i2c, addr, clear_buf, 2, false);
+        i2c_write_error_handling(i2c, addr, &reg, 1, true);
+        i2c_read_error_handling(i2c, addr, &fault_values_after_clear, 1, false);
+        drv8830_log_fault_bits("post_clear", motor, fault_values_after_clear);
+#else
         rp2040_log("Fault values for Motor %s: 0x%x\n", motor, fault_values);
+#endif
 	return 0;
     }
 }
@@ -89,7 +143,6 @@ void drv8830_init(uint gpio_fault1, uint gpio_fault2) {
  * @param voltage The voltage to set the motor to. This should be between -5.06V and 5.06V.
  */
 void set_motor_control(Motor motor, uint8_t control_value) {
-
     // Determine the appropriate I2C address based on the motor
     uint8_t i2c_address;
     if (motor == MOTOR_LEFT) {
@@ -135,16 +188,7 @@ void set_voltage(Motor motor, float voltage) {
         control_value = 0;
     }
 
-    // Determine the appropriate I2C address based on the motor
-    uint8_t i2c_address;
-    if (motor == MOTOR_LEFT) {
-        i2c_address = MOTOR_LEFT_ADDRESS;
-    } else {
-        i2c_address = MOTOR_RIGHT_ADDRESS;
-    }
-
-    uint8_t buffer[] = { DRV8830_REG_CONTROL, (uint8_t)control_value };
-    i2c_write_blocking(i2c, i2c_address, buffer, sizeof(buffer), false);
+    set_motor_control(motor, (uint8_t)control_value);
 }
 
 uint8_t* drv8830_get_faults(){
@@ -238,3 +282,74 @@ static int32_t drv8830_test_response(){
     return 0;
 }
 
+void drv8830_scope_test_run(){
+#ifdef DRV8830_SCOPE_TEST
+    const uint8_t forward_control = ((uint8_t)DRV8830_SCOPE_TEST_CONTROL & 0xFC) | (1 << DRV8830_IN2_BIT);
+    const uint8_t reverse_control = ((uint8_t)DRV8830_SCOPE_TEST_CONTROL & 0xFC) | (1 << DRV8830_IN1_BIT);
+    const uint8_t off_control = 0;
+
+    rp2040_log("DRV8830_SCOPE_TEST START repeat=%d control=0x%02x forward=0x%02x reverse=0x%02x dwell_ms=%d off_ms=%d\n",
+        DRV8830_SCOPE_TEST_REPEAT,
+        (uint8_t)DRV8830_SCOPE_TEST_CONTROL,
+        forward_control,
+        reverse_control,
+        DRV8830_SCOPE_TEST_DWELL_MS,
+        DRV8830_SCOPE_TEST_OFF_MS);
+
+    drv8830_clear_faults();
+    drv8830_scope_queue_controls(off_control, off_control);
+    sleep_ms(DRV8830_SCOPE_TEST_OFF_MS);
+
+    for (uint32_t i = 0; i < DRV8830_SCOPE_TEST_REPEAT; i++){
+        rp2040_log("DRV8830_SCOPE_TEST phase=%" PRIu32 " direction=forward t_ms=%" PRIu32 "\n", i + 1, to_ms_since_boot(get_absolute_time()));
+        drv8830_scope_queue_controls(forward_control, forward_control);
+        sleep_ms(DRV8830_SCOPE_TEST_DWELL_MS);
+
+        rp2040_log("DRV8830_SCOPE_TEST phase=%" PRIu32 " direction=off_after_forward t_ms=%" PRIu32 "\n", i + 1, to_ms_since_boot(get_absolute_time()));
+        drv8830_scope_queue_controls(off_control, off_control);
+        sleep_ms(DRV8830_SCOPE_TEST_OFF_MS);
+
+        rp2040_log("DRV8830_SCOPE_TEST phase=%" PRIu32 " direction=reverse t_ms=%" PRIu32 "\n", i + 1, to_ms_since_boot(get_absolute_time()));
+        drv8830_scope_queue_controls(reverse_control, reverse_control);
+        sleep_ms(DRV8830_SCOPE_TEST_DWELL_MS);
+
+        rp2040_log("DRV8830_SCOPE_TEST phase=%" PRIu32 " direction=off_after_reverse t_ms=%" PRIu32 "\n", i + 1, to_ms_since_boot(get_absolute_time()));
+        drv8830_scope_queue_controls(off_control, off_control);
+        sleep_ms(DRV8830_SCOPE_TEST_OFF_MS);
+    }
+
+    drv8830_scope_queue_controls(off_control, off_control);
+    sleep_ms(50);
+    rp2040_log("DRV8830_SCOPE_TEST END motors=off t_ms=%" PRIu32 "\n", to_ms_since_boot(get_absolute_time()));
+#endif
+}
+
+#ifdef DRV8830_SCOPE_TEST
+static void drv8830_scope_queue_controls(uint8_t left_control, uint8_t right_control){
+    int32_t packed_controls = ((int32_t)left_control << 8) | right_control;
+    call_queue_try_add(&drv8830_scope_set_controls, packed_controls);
+}
+
+static int32_t drv8830_scope_set_controls(int32_t packed_controls){
+    uint8_t left_control = (uint8_t)((packed_controls >> 8) & 0xFF);
+    uint8_t right_control = (uint8_t)(packed_controls & 0xFF);
+
+    set_motor_control(MOTOR_LEFT, left_control);
+    set_motor_control(MOTOR_RIGHT, right_control);
+    return 0;
+}
+
+static void drv8830_log_fault_bits(const char *prefix, const char *motor, uint8_t faults){
+    rp2040_log(
+        "DRV8830_SCOPE_TEST fault_%s t_ms=%" PRIu32 " motor=%s raw=0x%02x ILIMIT=%d OTS=%d UVLO=%d OCP=%d FAULT=%d\n",
+        prefix,
+        to_ms_since_boot(get_absolute_time()),
+        motor,
+        faults,
+        (faults >> DRV8830_FAULT_BIT_ILIMIT) & 1,
+        (faults >> DRV8830_FAULT_BIT_OTS) & 1,
+        (faults >> DRV8830_FAULT_BIT_UVLO) & 1,
+        (faults >> DRV8830_FAULT_BIT_OCP) & 1,
+        (faults >> DRV8830_FAULT_BIT_FAULT) & 1);
+}
+#endif

@@ -265,6 +265,11 @@ void on_start(){
     #endif
 
     rp2040_log("on_start complete\n");
+#ifndef BOARD_PICO
+#ifdef DRV8830_SCOPE_TEST
+    drv8830_scope_test_run();
+#endif
+#endif
     //while(!stdio_usb_connected()){
     //    sleep_ms(100);
     //}

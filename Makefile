@@ -5,6 +5,11 @@ JOBS ?= $(shell nproc)
 DOCKER_DEBUG_CONTAINER := smartphone-robot-debug
 ARCH ?= amd64
 LOGGER ?= USB
+DRV8830_SCOPE_TEST ?= 0
+DRV8830_SCOPE_TEST_CONTROL ?= 0x7A
+DRV8830_SCOPE_TEST_DWELL_MS ?= 750
+DRV8830_SCOPE_TEST_OFF_MS ?= 250
+DRV8830_SCOPE_TEST_REPEAT ?= 10
 
 #  MILESTONE 1: BOARD SELECTION & VALIDATION 
 BOARD ?= customPCB
@@ -20,6 +25,13 @@ ifeq ($(BOARD),pico)
 else
     BOARD_FLAGS = 
 endif
+
+DRV8830_SCOPE_FLAGS = \
+	-DDRV8830_SCOPE_TEST=$(DRV8830_SCOPE_TEST) \
+	-DDRV8830_SCOPE_TEST_CONTROL=$(DRV8830_SCOPE_TEST_CONTROL) \
+	-DDRV8830_SCOPE_TEST_DWELL_MS=$(DRV8830_SCOPE_TEST_DWELL_MS) \
+	-DDRV8830_SCOPE_TEST_OFF_MS=$(DRV8830_SCOPE_TEST_OFF_MS) \
+	-DDRV8830_SCOPE_TEST_REPEAT=$(DRV8830_SCOPE_TEST_REPEAT)
 
 # Variable for the RTT Test to access the serial port
 DOCKER_USB_DEVICE ?= /dev/ttyACM0
@@ -74,13 +86,14 @@ help:
 	@echo "  JOBS=N                - Number of parallel build jobs (default: The number of processor cores)"
 	@echo "  ARCH=amd64|arm64        - Specify architecture for all make targets (default: amd64)"
 	@echo "  LOGGER=USB|UART         - Specify logger interface (default: USB)"
+	@echo "  DRV8830_SCOPE_TEST=0|1 - Enable DRV8830 back/forth scope test (default: 0)"
 	@echo "  Example: make flash DOCKER_USB_DEVICE=/dev/ttyACM0"
 
 # Build firmware
 .PHONY: firmware
 firmware:
 	@echo "Building firmware in Docker with $(JOBS) jobs..."
-	$(DOCKER_RUN) bash -c "rm -rf build && mkdir build && cd build && cmake .. -DLOGGER=$(LOGGER) $(BOARD_FLAGS) && make -j$(JOBS)"
+	$(DOCKER_RUN) bash -c "rm -rf build && mkdir build && cd build && cmake .. -DLOGGER=$(LOGGER) $(BOARD_FLAGS) $(DRV8830_SCOPE_FLAGS) && make -j$(JOBS)"
 
 # Name for the persistent debug container
 DEBUG_CONTAINER := smartphone-robot-debug

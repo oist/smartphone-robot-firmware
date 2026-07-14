@@ -33,5 +33,6 @@ void set_voltage(Motor motor, float voltage);
 void test_drv8830_get_faults();
 void test_drv8830_interrupt();
 uint8_t* drv8830_get_faults();
+void drv8830_scope_test_run();
 
 #endif
