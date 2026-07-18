@@ -95,6 +95,7 @@ def start_flash(enabled):
 def capture_uart(fd, output_path, timeout, stop_markers, flash_process):
     deadline = time.monotonic() + timeout
     chunks = []
+    pending = ""
     marker_seen = False
 
     with open(output_path, "wb") as output:
@@ -110,6 +111,17 @@ def capture_uart(fd, output_path, timeout, stop_markers, flash_process):
                     output.write(chunk)
                     output.flush()
                     chunks.append(chunk)
+                    pending += chunk.decode("utf-8", "replace")
+                    lines = pending.splitlines(keepends=True)
+                    pending = ""
+                    if lines and not lines[-1].endswith(("\n", "\r")):
+                        pending = lines.pop()
+
+                    for raw_line in lines:
+                        line = raw_line.strip()
+                        if line and line_is_relevant(line):
+                            print(line, flush=True)
+
                     text = b"".join(chunks).decode("utf-8", "replace")
                     if any(marker in text for marker in stop_markers):
                         marker_seen = True
