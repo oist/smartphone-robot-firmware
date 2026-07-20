@@ -14,6 +14,11 @@ set(CMAKE_COLOR_MAKEFILE ON)
 # Build options
 option(USE_DOCKER "Build using Docker container" ON)
 option(USE_LOCAL "Build locally instead of Docker" OFF)
+set(DRV8830_SCOPE_TEST "0" CACHE STRING "Enable DRV8830 back/forth scope test")
+set(DRV8830_SCOPE_TEST_CONTROL "0x7A" CACHE STRING "DRV8830 scope test forward control byte")
+set(DRV8830_SCOPE_TEST_DWELL_MS "750" CACHE STRING "DRV8830 scope test motor-on dwell in ms")
+set(DRV8830_SCOPE_TEST_OFF_MS "250" CACHE STRING "DRV8830 scope test motor-off dwell in ms")
+set(DRV8830_SCOPE_TEST_REPEAT "10" CACHE STRING "DRV8830 scope test repeat count")
 
 # Set build type if not specified
 if(NOT CMAKE_BUILD_TYPE)
@@ -84,6 +89,16 @@ pico_enable_stdio_usb(robot 1)
 
 if(LOGGER STREQUAL "UART")
     target_compile_definitions(robot PUBLIC LOGGER_UART=1)
+endif()
+
+if(DRV8830_SCOPE_TEST)
+    target_compile_definitions(robot PUBLIC
+        DRV8830_SCOPE_TEST=1
+        DRV8830_SCOPE_TEST_CONTROL=${DRV8830_SCOPE_TEST_CONTROL}
+        DRV8830_SCOPE_TEST_DWELL_MS=${DRV8830_SCOPE_TEST_DWELL_MS}
+        DRV8830_SCOPE_TEST_OFF_MS=${DRV8830_SCOPE_TEST_OFF_MS}
+        DRV8830_SCOPE_TEST_REPEAT=${DRV8830_SCOPE_TEST_REPEAT}
+    )
 endif()
 
 # Add the standard library to the build
