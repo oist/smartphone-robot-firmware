@@ -11,6 +11,7 @@
 #define SN74AHC125RGYR_GPIO1 _u(8) // GPIO8 The buffer in the DRV8830 sheet
 #define SN74AHC125RGYR_GPIO2 _u(22) // GPIO22 The buffer in the rp2040 sheet
 #define MAX77958_INTB _u(7) // GPIO7
+#define BQ27742_G1_INTERRUPT_PIN _u(20) // GPIO20, RC2_3V3 from BQ27742 RC2 level shifter
 
 #define DRV8830_FAULT1 _u(10) // GPIO10
 #define DRV8830_FAULT2 _u(11) // GPIO11
@@ -52,7 +53,7 @@ typedef struct
 
 void on_start();
 void i2c_start();
-void bq27742_g1_init();
+void bq27742_g1_init(uint gpio_interrupt);
 void max77642_init();
 void max77857_init();
 void sn74ahc125rgyr_init();
