@@ -7,11 +7,11 @@ Build and dependencies
 - Local CMake builds require `PICO_SDK_PATH` to be set.
 - Third-party dependencies under `include/` are git submodules. Keep them initialized with `git submodule update --init --recursive`.
 
-Change scope and safety
-- Keep changes focused on the task at hand. Do not widen scope with unrelated refactors or workflow churn.
-- Treat dependency wiring, Docker setup, and debug/flash flows as shared repo infrastructure. Do not change them unless the task requires it.
+Repository infrastructure
+- Treat dependency wiring, Docker setup, and debug/flash flows as shared firmware infrastructure. Do not change them unless the task requires it.
 - Keep third-party dependency management consistent with the repository’s submodule-based model under `include/`.
 
 PR review workflows
-- `codex-review` and `codex-reply` policy lives in `docs/codex-review-policy.md`.
-- Milestone-specific review guidance lives under `docs/milestones/`.
+- Firmware-specific `codex-review` guidance lives in `docs/codex-review-policy.md`.
+- Shared review and PR workflow policy lives in `tekkura/.github`:
+  https://github.com/tekkura/.github/blob/main/docs/pr-workflow.md

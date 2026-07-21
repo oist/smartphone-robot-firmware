@@ -8,14 +8,11 @@ on:
 
 permissions:
   contents: read
+  issues: read
   pull-requests: write
 
 jobs:
   codex-review:
-    uses: tekkura/github-workflows/.github/workflows/codex-review.yml@main
-    with:
-      codex_model: ${{ vars.CODEX_MODEL || 'gpt-5.5' }}
-      review_prompt_path: .github/codex/prompts/review.md
-      migration_guides_dir: docs/milestones
+    uses: tekkura/.github/.github/workflows/codex-review.yml@main
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
