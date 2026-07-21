@@ -13,11 +13,15 @@ static uint16_t voltage = 0;
 static uint16_t temperature = 0;
 static uint32_t soh = 0;
 static uint8_t _gpio_interrupt;
-static const uint32_t bq27742_g1_irq_mask = GPIO_IRQ_EDGE_RISE;
+static volatile bool bq27742_g1_interrupt_pending = false;
+static const uint32_t bq27742_g1_irq_mask = GPIO_IRQ_EDGE_FALL;
+static const uint32_t bq27742_g1_deassert_irq_mask = GPIO_IRQ_EDGE_RISE;
 static void bq27742_g1_clear_shutdown();
 static void bq27742_g1_control(uint16_t subcommand_code);
 static uint16_t bq27742_g1_get_pack_configuration();
 static int32_t bq27742_g1_parse_interrupt_vals(int32_t unused);
+static void bq27742_g1_queue_parse_interrupt();
+static void bq27742_g1_rearm_assert_irq();
 static void bq27742_g1_configure_host_interrupts();
 static bool bq27742_g1_read_data_flash_block(uint8_t subclass, uint8_t block, uint8_t *block_data);
 static void bq27742_g1_write_data_flash_block(uint8_t subclass, uint8_t block, const uint8_t *block_data);
@@ -195,9 +199,9 @@ void bq27742_g1_init(uint gpio_interrupt) {
     gpio_set_dir(_gpio_interrupt, GPIO_IN);
     gpio_disable_pulls(_gpio_interrupt);
     gpio_set_irq_enabled(_gpio_interrupt, bq27742_g1_irq_mask, true);
-    if (gpio_get(_gpio_interrupt)){
+    if (!gpio_get(_gpio_interrupt)){
         rp2040_log("BQ27742-G1 RC2_3V3 already asserted on GPIO%d\n", _gpio_interrupt);
-        call_queue_try_add(&bq27742_g1_parse_interrupt_vals, 0);
+        bq27742_g1_queue_parse_interrupt();
     }
     rp2040_log("bq27742_g1 init finished\n");
     // uint8_t buf[2];
@@ -213,10 +217,31 @@ void bq27742_g1_init(uint gpio_interrupt) {
 }
 
 void bq27742_g1_on_interrupt(uint gpio, uint32_t event_mask){
-    if (gpio == _gpio_interrupt && (event_mask & bq27742_g1_irq_mask)){
-        gpio_acknowledge_irq(_gpio_interrupt, bq27742_g1_irq_mask);
-        call_queue_try_add(&bq27742_g1_parse_interrupt_vals, 0);
+    if (gpio != _gpio_interrupt){
+        return;
     }
+
+    if (event_mask & bq27742_g1_irq_mask){
+        gpio_acknowledge_irq(_gpio_interrupt, bq27742_g1_irq_mask);
+        bq27742_g1_queue_parse_interrupt();
+    }
+    if (event_mask & bq27742_g1_deassert_irq_mask){
+        gpio_acknowledge_irq(_gpio_interrupt, bq27742_g1_deassert_irq_mask);
+        if (gpio_get(_gpio_interrupt)){
+            bq27742_g1_rearm_assert_irq();
+        }
+    }
+}
+
+static void bq27742_g1_queue_parse_interrupt(){
+    if (bq27742_g1_interrupt_pending){
+        return;
+    }
+
+    bq27742_g1_interrupt_pending = true;
+    gpio_set_irq_enabled(_gpio_interrupt, bq27742_g1_irq_mask, false);
+    gpio_set_irq_enabled(_gpio_interrupt, bq27742_g1_deassert_irq_mask, true);
+    call_queue_try_add_nonblocking(&bq27742_g1_parse_interrupt_vals, 0);
 }
 
 static int32_t bq27742_g1_parse_interrupt_vals(int32_t unused){
@@ -271,7 +296,16 @@ static int32_t bq27742_g1_parse_interrupt_vals(int32_t unused){
         rp2040_log("BQ27742-G1 interrupt: no enabled status bits currently set\n");
     }
 
+    if (gpio_get(_gpio_interrupt)){
+        bq27742_g1_rearm_assert_irq();
+    }
     return flags;
+}
+
+static void bq27742_g1_rearm_assert_irq(){
+    bq27742_g1_interrupt_pending = false;
+    gpio_set_irq_enabled(_gpio_interrupt, bq27742_g1_deassert_irq_mask, false);
+    gpio_set_irq_enabled(_gpio_interrupt, bq27742_g1_irq_mask, true);
 }
 
 static void bq27742_g1_configure_host_interrupts(){

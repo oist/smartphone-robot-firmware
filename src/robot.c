@@ -466,6 +466,11 @@ void call_queue_try_add(entry_func func, int32_t arg){
     }
 }
 
+bool call_queue_try_add_nonblocking(entry_func func, int32_t arg){
+    queue_entry_t entry = {func, arg};
+    return queue_try_add(&call_queue, &entry);
+}
+
 void quad_encoders_callback(){
     // GPIO12-15 monitor past and current states to determine counts
 }
