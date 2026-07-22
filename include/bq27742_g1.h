@@ -37,12 +37,13 @@
 #define DSG_MASK 1
 
 
-void bq27742_g1_init();
+void bq27742_g1_init(uint gpio_interrupt);
 uint16_t bq27742_g1_get_voltage();
 uint8_t bq27742_g1_get_safety_stats();
 uint16_t bq27742_g1_get_temp();
 uint8_t bq27742_g1_get_soh();
 uint16_t bq27742_g1_get_flags();
+void bq27742_g1_on_interrupt(uint gpio, uint32_t event_mask);
 void bq27742_g1_shutdown();
 void bq27742_g1_fw_version_check();
 

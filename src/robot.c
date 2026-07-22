@@ -220,7 +220,7 @@ void on_start(){
     rp2040_log("done waiting 2\n");
 
     #ifndef BOARD_PICO
-    bq27742_g1_init();
+    bq27742_g1_init(BQ27742_G1_INTERRUPT_PIN);
     bq27742_g1_fw_version_check();
     // Be sure to do this last
     sn74ahc125rgyr_on_end_of_start(SN74AHC125RGYR_GPIO1);
@@ -436,6 +436,9 @@ static void robot_interrupt_handler(uint gpio, uint32_t event_mask){
 	case MAX77958_INTB:
 	    max77958_on_interrupt(gpio, event_mask);
 	    break;
+	case BQ27742_G1_INTERRUPT_PIN:
+	    bq27742_g1_on_interrupt(gpio, event_mask);
+	    break;
 	case DRV8830_FAULT1:
 	    drv8830_on_interrupt(gpio, event_mask);
 	    break;
@@ -461,6 +464,11 @@ void call_queue_try_add(entry_func func, int32_t arg){
         rp2040_log("ERROR: call_queue is full");
 	assert(false);
     }
+}
+
+bool call_queue_try_add_nonblocking(entry_func func, int32_t arg){
+    queue_entry_t entry = {func, arg};
+    return queue_try_add(&call_queue, &entry);
 }
 
 void quad_encoders_callback(){
