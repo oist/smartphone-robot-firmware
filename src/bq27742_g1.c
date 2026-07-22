@@ -241,7 +241,9 @@ static void bq27742_g1_queue_parse_interrupt(){
     bq27742_g1_interrupt_pending = true;
     gpio_set_irq_enabled(_gpio_interrupt, bq27742_g1_irq_mask, false);
     gpio_set_irq_enabled(_gpio_interrupt, bq27742_g1_deassert_irq_mask, true);
-    call_queue_try_add_nonblocking(&bq27742_g1_parse_interrupt_vals, 0);
+    if (!call_queue_try_add_nonblocking(&bq27742_g1_parse_interrupt_vals, 0)){
+        bq27742_g1_rearm_assert_irq();
+    }
 }
 
 static int32_t bq27742_g1_parse_interrupt_vals(int32_t unused){
