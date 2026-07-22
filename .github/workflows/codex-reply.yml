@@ -10,8 +10,6 @@ permissions:
 
 jobs:
   codex-reply:
-    uses: tekkura/github-workflows/.github/workflows/codex-reply.yml@main
-    with:
-      codex_model: ${{ vars.CODEX_MODEL || 'gpt-5.5' }}
+    uses: tekkura/.github/.github/workflows/codex-reply.yml@main
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
