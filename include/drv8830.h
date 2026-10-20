@@ -26,9 +26,11 @@ typedef enum {
     MOTOR_RIGHT
 } Motor;
 
+void drv8830_stop_early(void);
 void drv8830_init(uint gpio_fault1, uint gpio_fault2) ;
 void drv8830_on_interrupt(uint gpio, uint32_t event_mask);
-void set_motor_control(Motor motor, uint8_t control_value);
+bool set_motor_control(Motor motor, uint8_t control_value);
+void drv8830_clear_faults_now(void);
 void set_voltage(Motor motor, float voltage);
 void test_drv8830_get_faults();
 void test_drv8830_interrupt();

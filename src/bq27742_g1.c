@@ -59,7 +59,7 @@ uint16_t bq27742_g1_get_voltage(){
     bq27742_g1_read_bytes(0x08, return_buf, 2);
 
     voltage = (return_buf[1] << 8) | return_buf[0];
-    rp2040_log("Voltage: %d\n", (int) voltage);
+    rp2040_log_d("Voltage: %d\n", (int) voltage);
     return voltage;
 }
 
@@ -70,33 +70,32 @@ uint8_t bq27742_g1_get_safety_stats(){
     
     uint8_t low_byte = return_buf[0];
     bool error = false;
-    rp2040_log("SafetyStats: ");
     if (low_byte & ISD_MASK){
-        rp2040_log("Internal Short condition detected, ");
+        rp2040_log_w("Internal Short condition detected, ");
         error = true;
     }
     if (low_byte & TDD_MASK){
-        rp2040_log("Tab Disconnect condition detected, ");
+        rp2040_log_w("Tab Disconnect condition detected, ");
         error = true;
     }
     if (low_byte & OTC_MASK){
-        rp2040_log("Overtemperature in charge condition detected, ");
+        rp2040_log_w("Overtemperature in charge condition detected, ");
         error = true;
     }
     if (low_byte & OTD_MASK){
-        rp2040_log("Overtemperature in discharge condition detected, ");
+        rp2040_log_w("Overtemperature in discharge condition detected, ");
         error = true;
     }
     if (low_byte & OVP_MASK){
-        rp2040_log("Overvoltage condition detected, ");
+        rp2040_log_w("Overvoltage condition detected, ");
         error = true;
     }
     if (low_byte & UVP_MASK){
-        rp2040_log("Undervoltage condition detected, ");
+        rp2040_log_w("Undervoltage condition detected, ");
         error = true;
     }
     if (!error){
-        rp2040_log("No error detected in battery protection\n");
+        rp2040_log_d("No error detected in battery protection\n");
     }
   return low_byte;  
 }
@@ -114,7 +113,7 @@ uint16_t bq27742_g1_get_temp(){
     temperature_ = (temperature_ - 2731.5);
     temperature_ = temperature_ / 10.0;
     temperature = (uint16_t)temperature;
-    rp2040_log("Temperature: %d\n", (int)temperature);
+    rp2040_log_d("Temperature: %d\n", (int)temperature);
     return temperature; 
 }
 
@@ -124,9 +123,9 @@ uint8_t bq27742_g1_get_soh(){
     memset(send_buf, 0, sizeof send_buf);
     bq27742_g1_read_bytes(0x2e, return_buf, 2);
 
-    rp2040_log("SOH: 0x2e=%02x, 0x2f=%02x\n", return_buf[0], return_buf[1]);
+    rp2040_log_d("SOH: 0x2e=%02x, 0x2f=%02x\n", return_buf[0], return_buf[1]);
     //float soh = (float)return_buf[0] / 100;
-    rp2040_log("SOH: %02f\n", soh);
+    rp2040_log_d("SOH: %02f\n", soh);
     // Note in the user guide Section 4.1.24 the range of values is only from 0x00 to 0x64
     return return_buf[0];
 }
@@ -139,58 +138,56 @@ uint16_t bq27742_g1_get_flags(){
     uint16_t flags = (return_buf[1] << 8) | return_buf[0];
     bool error = false;
 
-    rp2040_log("Tags: ");
     if (flags & BATHI_MASK){
-        rp2040_log("High battery voltage condition BATHI detected, ");
+        rp2040_log_w("High battery voltage condition BATHI detected, ");
         error = true;
     }
     if (flags & BATLOW_MASK){
-        rp2040_log("Low battery voltage condition BATLOW detected, ");
+        rp2040_log_w("Low battery voltage condition BATLOW detected, ");
         error = true;
     }
     if (flags & CHG_INH_MASK){
-        rp2040_log("Temperature is < T1 Temp or > T4 Temp while charging is not active. CHG_INH detected, ");
+        rp2040_log_w("Temperature is < T1 Temp or > T4 Temp while charging is not active. CHG_INH detected, ");
         error = true;
     }
     if (flags & FC_MASK){
-        rp2040_log("Charge termination reached and FC Set Percent = -1. Or SOC > FC Percent is not -1. FC detected, ");
+        rp2040_log_w("Charge termination reached and FC Set Percent = -1. Or SOC > FC Percent is not -1. FC detected, ");
         error = true;
     }
     if (flags & CHG_SUS_MASK){
-        rp2040_log("Temp < T1 Temp or > T5 Temp while charging active. CHG_SUS detected, ");
+        rp2040_log_w("Temp < T1 Temp or > T5 Temp while charging active. CHG_SUS detected, ");
         error = true;
     }
     if (flags & IMAX_MASK){
-        rp2040_log("Imax value has changed enough to interrupt. IMAX detected, ");
+        rp2040_log_w("Imax value has changed enough to interrupt. IMAX detected, ");
         error = true;
     }
     if (flags & CHG_MASK){
-        rp2040_log("Fast charging allowed. CHG detected, ");
+        rp2040_log_w("Fast charging allowed. CHG detected, ");
         error = true;
     }
     if (flags & SOC1_MASK){
-        rp2040_log("SOC1 reached.");
+        rp2040_log_w("SOC1 reached.");
         error = true;
     }
     if (flags & SOCF_MASK){  
-        rp2040_log("SOCF Set Percent reached. SOCF detected, ");
+        rp2040_log_w("SOCF Set Percent reached. SOCF detected, ");
         error = true;
     }
     if (flags & DSG_MASK){
-        rp2040_log("Discharging detected. DSG detected, ");
+        rp2040_log_w("Discharging detected. DSG detected, ");
         error = true;
     }
     if (!error){
-        rp2040_log("No SystemStat errors detected");
+        rp2040_log_d("No SystemStat errors detected");
     }
-    rp2040_log("\n");
     return flags;
 }
 
 void bq27742_g1_init(uint gpio_interrupt) {
     _gpio_interrupt = gpio_interrupt;
 
-    rp2040_log("bq27742_g1 init started\n");
+    rp2040_log_d("bq27742_g1 init started\n");
     bq27742_g1_clear_shutdown();
     bq27742_g1_configure_host_interrupts();
 
@@ -200,10 +197,10 @@ void bq27742_g1_init(uint gpio_interrupt) {
     gpio_disable_pulls(_gpio_interrupt);
     gpio_set_irq_enabled(_gpio_interrupt, bq27742_g1_irq_mask, true);
     if (!gpio_get(_gpio_interrupt)){
-        rp2040_log("BQ27742-G1 RC2_3V3 already asserted on GPIO%d\n", _gpio_interrupt);
+        rp2040_log_w("BQ27742-G1 RC2_3V3 already asserted on GPIO%d\n", _gpio_interrupt);
         bq27742_g1_queue_parse_interrupt();
     }
-    rp2040_log("bq27742_g1 init finished\n");
+    rp2040_log_d("bq27742_g1 init finished\n");
     // uint8_t buf[2];
 
     // ToDo Implement Key Daya Flash Parameters somehow.
@@ -258,46 +255,46 @@ static int32_t bq27742_g1_parse_interrupt_vals(int32_t unused){
 
     uint16_t flags = (flags_buf[1] << 8) | flags_buf[0];
     uint16_t safety = (safety_buf[1] << 8) | safety_buf[0];
-    rp2040_log("BQ27742-G1 interrupt: GPIO%d=%d Flags=0x%04x SafetyStatus=0x%04x\n",
+    rp2040_log_i("BQ27742-G1 interrupt: GPIO%d=%d Flags=0x%04x SafetyStatus=0x%04x\n",
                _gpio_interrupt,
                gpio_get(_gpio_interrupt),
                flags,
                safety);
 
     if (flags & SOC1_MASK){
-        rp2040_log("BQ27742-G1 interrupt: SOC1 set\n");
+        rp2040_log_w("BQ27742-G1 interrupt: SOC1 set\n");
     }
     if (flags & BATHI_MASK){
-        rp2040_log("BQ27742-G1 interrupt: BATHI set\n");
+        rp2040_log_w("BQ27742-G1 interrupt: BATHI set\n");
     }
     if (flags & BATLOW_MASK){
-        rp2040_log("BQ27742-G1 interrupt: BATLOW set\n");
+        rp2040_log_w("BQ27742-G1 interrupt: BATLOW set\n");
     }
     if (flags & IMAX_MASK){
-        rp2040_log("BQ27742-G1 interrupt: IMAX set, clearing latched interrupt\n");
+        rp2040_log_w("BQ27742-G1 interrupt: IMAX set, clearing latched interrupt\n");
         bq27742_g1_control(BQ27742_G1_CONTROL_IMAX_INT_CLEAR);
     }
     if (safety & ISD_MASK){
-        rp2040_log("BQ27742-G1 interrupt: ISD set\n");
+        rp2040_log_w("BQ27742-G1 interrupt: ISD set\n");
     }
     if (safety & TDD_MASK){
-        rp2040_log("BQ27742-G1 interrupt: TDD set\n");
+        rp2040_log_w("BQ27742-G1 interrupt: TDD set\n");
     }
     if (safety & OTC_MASK){
-        rp2040_log("BQ27742-G1 interrupt: OTC set\n");
+        rp2040_log_w("BQ27742-G1 interrupt: OTC set\n");
     }
     if (safety & OTD_MASK){
-        rp2040_log("BQ27742-G1 interrupt: OTD set\n");
+        rp2040_log_w("BQ27742-G1 interrupt: OTD set\n");
     }
     if (safety & OVP_MASK){
-        rp2040_log("BQ27742-G1 interrupt: OVP set\n");
+        rp2040_log_w("BQ27742-G1 interrupt: OVP set\n");
     }
     if (safety & UVP_MASK){
-        rp2040_log("BQ27742-G1 interrupt: UVP set\n");
+        rp2040_log_w("BQ27742-G1 interrupt: UVP set\n");
     }
     if ((flags & (SOC1_MASK | BATHI_MASK | BATLOW_MASK | IMAX_MASK)) == 0 &&
         (safety & (ISD_MASK | TDD_MASK | OTC_MASK | OTD_MASK | OVP_MASK | UVP_MASK)) == 0){
-        rp2040_log("BQ27742-G1 interrupt: no enabled status bits currently set\n");
+        rp2040_log_d("BQ27742-G1 interrupt: no enabled status bits currently set\n");
     }
 
     if (gpio_get(_gpio_interrupt)){
@@ -314,13 +311,13 @@ static void bq27742_g1_rearm_assert_irq(){
 
 static void bq27742_g1_configure_host_interrupts(){
     uint16_t pack_config = bq27742_g1_get_pack_configuration();
-    rp2040_log("BQ27742-G1 PackConfiguration before RC2 init: 0x%04x\n", pack_config);
+    rp2040_log_i("BQ27742-G1 PackConfiguration before RC2 init: 0x%04x\n", pack_config);
 
     uint8_t block_data[BQ27742_G1_DF_BLOCK_LEN];
     if (!bq27742_g1_read_data_flash_block(BQ27742_G1_DF_SUBCLASS_REGISTERS,
                                           BQ27742_G1_DF_BLOCK_REGISTERS,
                                           block_data)){
-        rp2040_log("ERROR: BQ27742-G1 could not read data flash for RC2 init\n");
+        rp2040_log_e("ERROR: BQ27742-G1 could not read data flash for RC2 init\n");
         return;
     }
 
@@ -336,7 +333,7 @@ static void bq27742_g1_configure_host_interrupts(){
         pack_config_low_index = BQ27742_G1_DF_PACK_CONFIG_OFFSET;
         pack_config_high_index = BQ27742_G1_DF_PACK_CONFIG_OFFSET + 1;
     } else if (data_flash_pack_config_be != pack_config){
-        rp2040_log("BQ27742-G1 PackConfiguration byte order not verified by command read; using TRM order\n");
+        rp2040_log_w("BQ27742-G1 PackConfiguration byte order not verified by command read; using TRM order\n");
     }
 
     uint16_t old_pack_config =
@@ -351,7 +348,7 @@ static void bq27742_g1_configure_host_interrupts(){
         old_pack_config_c & ~BQ27742_G1_PACK_CONFIG_C_BTP_EN_MASK;
 
     if (old_pack_config == new_pack_config && old_pack_config_c == new_pack_config_c){
-        rp2040_log("BQ27742-G1 RC2 host interrupts already configured\n");
+        rp2040_log_i("BQ27742-G1 RC2 host interrupts already configured\n");
         return;
     }
 
@@ -368,7 +365,7 @@ static void bq27742_g1_configure_host_interrupts(){
     if (!bq27742_g1_read_data_flash_block(BQ27742_G1_DF_SUBCLASS_REGISTERS,
                                           BQ27742_G1_DF_BLOCK_REGISTERS,
                                           verify_block)){
-        rp2040_log("ERROR: BQ27742-G1 could not verify RC2 data flash write\n");
+        rp2040_log_e("ERROR: BQ27742-G1 could not verify RC2 data flash write\n");
         return;
     }
 
@@ -376,7 +373,7 @@ static void bq27742_g1_configure_host_interrupts(){
         (verify_block[pack_config_high_index] << 8) | verify_block[pack_config_low_index];
     uint8_t verify_pack_config_c = verify_block[BQ27742_G1_DF_PACK_CONFIG_C_OFFSET];
     if (verify_pack_config != new_pack_config || verify_pack_config_c != new_pack_config_c){
-        rp2040_log("ERROR: BQ27742-G1 RC2 data flash write did not verify. PackConfig=0x%04x expected=0x%04x PackConfigC=0x%02x expected=0x%02x\n",
+        rp2040_log_e("ERROR: BQ27742-G1 RC2 data flash write did not verify. PackConfig=0x%04x expected=0x%04x PackConfigC=0x%02x expected=0x%02x\n",
                    verify_pack_config,
                    new_pack_config,
                    verify_pack_config_c,
@@ -384,7 +381,7 @@ static void bq27742_g1_configure_host_interrupts(){
         return;
     }
 
-    rp2040_log("BQ27742-G1 RC2 host interrupts configured. PackConfiguration 0x%04x -> 0x%04x, PackConfigC 0x%02x -> 0x%02x\n",
+    rp2040_log_i("BQ27742-G1 RC2 host interrupts configured. PackConfiguration 0x%04x -> 0x%04x, PackConfigC 0x%02x -> 0x%02x\n",
                old_pack_config,
                new_pack_config,
                old_pack_config_c,
@@ -408,7 +405,7 @@ static bool bq27742_g1_read_data_flash_block(uint8_t subclass, uint8_t block, ui
     bq27742_g1_read_bytes(BQ27742_G1_REG_BLOCK_DATA_CHECKSUM, &checksum, 1);
     uint8_t calculated_checksum = bq27742_g1_data_flash_checksum(block_data);
     if (checksum != calculated_checksum){
-        rp2040_log("ERROR: BQ27742-G1 data flash checksum mismatch read=0x%02x calculated=0x%02x\n",
+        rp2040_log_e("ERROR: BQ27742-G1 data flash checksum mismatch read=0x%02x calculated=0x%02x\n",
                    checksum,
                    calculated_checksum);
         return false;
@@ -476,17 +473,17 @@ static void bq27742_g1_control(uint16_t subcommand_code){
 
 static void bq27742_g1_set_shutdown(){
     bq27742_g1_control(0x0013); 
-    rp2040_log("Shutting Down bq27742_g1\n");
+    rp2040_log_d("Shutting Down bq27742_g1\n");
 }
 
 static void bq27742_g1_clear_shutdown(){
     bq27742_g1_control(0x0014); 
-    rp2040_log("Clearing Shutdown on bq27742_g1\n");
+    rp2040_log_d("Clearing Shutdown on bq27742_g1\n");
 }
 
 void bq27742_g1_fw_version_check(){
     bq27742_g1_control(0x0002); // Read FW Version
-    rp2040_log("FW Version: 0x%02x%02x\n", return_buf[1], return_buf[0]);
+    rp2040_log_i("FW Version: 0x%02x%02x\n", return_buf[1], return_buf[0]);
 }
 
 void bq27742_g1_shutdown(){

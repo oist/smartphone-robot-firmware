@@ -7,6 +7,26 @@ set(LOGGER "USB" CACHE STRING "Logging interface")
 if(NOT (LOGGER STREQUAL "USB" OR LOGGER STREQUAL "UART"))
   message(FATAL_ERROR "invalid logging interface: ${LOGGER}")
 endif()
+option(TELEMETRY_TIMING_DIAG "Time get_state telemetry polling after startup" OFF)
+option(BOOT_TESTS "Spin the motors and run the unit tests at boot" ON)
+
+# Logging level
+set(LOG_LEVEL "WARNING" CACHE STRING "Logging level")
+if(NOT (LOG_LEVEL STREQUAL "DEBUG" OR LOG_LEVEL STREQUAL "INFO" OR LOG_LEVEL STREQUAL "WARNING" OR LOG_LEVEL STREQUAL "ERROR" OR LOG_LEVEL STREQUAL "NONE"))
+  message(FATAL_ERROR "invalid logging level: ${LOG_LEVEL}")
+endif()
+
+if(LOG_LEVEL STREQUAL "DEBUG")
+  set(LOG_LEVEL_NUM 1)
+elseif(LOG_LEVEL STREQUAL "INFO")
+  set(LOG_LEVEL_NUM 2)
+elseif(LOG_LEVEL STREQUAL "WARNING")
+  set(LOG_LEVEL_NUM 3)
+elseif(LOG_LEVEL STREQUAL "ERROR")
+  set(LOG_LEVEL_NUM 4)
+elseif(LOG_LEVEL STREQUAL "NONE")
+    set(LOG_LEVEL_NUM 5)
+endif()
 
 # Enable colored output
 set(CMAKE_COLOR_MAKEFILE ON)
@@ -87,8 +107,18 @@ endif()
 pico_enable_stdio_uart(robot 0)
 pico_enable_stdio_usb(robot 1)
 
+if(NOT BOOT_TESTS)
+    target_compile_definitions(robot PUBLIC SKIP_BOOT_TESTS=1)
+endif()
+
 if(LOGGER STREQUAL "UART")
     target_compile_definitions(robot PUBLIC LOGGER_UART=1)
+endif()
+
+target_compile_definitions(robot PUBLIC LOG_LEVEL=${LOG_LEVEL_NUM})
+
+if(TELEMETRY_TIMING_DIAG)
+    target_compile_definitions(robot PUBLIC TELEMETRY_TIMING_DIAG=1)
 endif()
 
 if(DRV8830_SCOPE_TEST)
@@ -102,7 +132,7 @@ if(DRV8830_SCOPE_TEST)
 endif()
 
 # Add the standard library to the build
-target_link_libraries(robot pico_stdlib pico_multicore hardware_pwm)
+target_link_libraries(robot pico_stdlib pico_multicore hardware_pwm hardware_watchdog)
 
 # Add include directories
 target_include_directories(robot PRIVATE

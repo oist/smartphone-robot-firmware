@@ -22,7 +22,15 @@
 #define I2C_SCL0 _u(1)
 #define I2C_SDA1 _u(2)
 #define I2C_SCL1 _u(3)
-#define I2C_TIMEOUT _u(1000000) // 1 second timeout
+// 20 ms, not 1 s. A transaction on this bus is a few bytes at 400 kHz, well
+// under a millisecond. Under motor load a NAK is common, and with 1 s per
+// try, three tries and then assert(), one burst of noise halted the board
+// for good with the wheels still driving (seen three times on 2026-10-06).
+#define I2C_TIMEOUT _u(20000)
+
+// Hardware watchdog on the main command loop. A normal pass takes ~1 ms; a
+// telemetry step with every I2C retry exhausted is still well under this.
+#define WATCHDOG_TIMEOUT_MS 1000
 
 #define ADC0 _u(26)
 
@@ -68,6 +76,7 @@ bool call_queue_try_add_nonblocking(entry_func func, int32_t arg);
 void results_queue_try_add(void *func, int32_t arg);
 void set_motor_levels(RP2040_STATE *state);
 void get_state(RP2040_STATE* state);
+void get_fast_motor_state(RP2040_STATE* state);
 void get_battery_state(RP2040_STATE* state);
 
 #endif

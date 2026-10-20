@@ -60,23 +60,23 @@ static int32_t max77976_parse_interrupt_vals(){
     uint8_t BYP_I = 1 << 0;
 
     if (buf[0] & AICL_I){
-	rp2040_log("MAX77976: AICL_I interrupt detected.\n");
+	rp2040_log_d("MAX77976: AICL_I interrupt detected.\n");
         if (buf[2] & AICL_I){
-	    rp2040_log("MAX77976: AICL mode.\n");
+	    rp2040_log_d("MAX77976: AICL mode.\n");
 	}else {
-	    rp2040_log("MAX77976: AICL mode not detected.\n");
+	    rp2040_log_d("MAX77976: AICL mode not detected.\n");
         }
     }
     if (buf[0] & CHGIN_I){
-	rp2040_log("MAX77976: CHGIN_I interrupt detected.\n");
+	rp2040_log_d("MAX77976: CHGIN_I interrupt detected.\n");
         if (buf[2] & CHGIN_I){
-	    rp2040_log("MAX77976: CHGIN input is valid.\n");
+	    rp2040_log_d("MAX77976: CHGIN input is valid.\n");
             // Set Charge mode to default mode to Charge Buck while charging
             //buf[0] = MAX77976_REG_CHG_CNFG_00_ADDR;
             //buf[1] = MAX77976_REG_CHG_CNFG_00_MODE_CHARGE_BUCK;
             //i2c_write_error_handling(i2c1, MAX77976_ADDR, buf, 2, false);
 	}else {
-	    rp2040_log("MAX77976: CHGIN input is not valid.\n");
+	    rp2040_log_d("MAX77976: CHGIN input is not valid.\n");
             // Set mode to Battery-boot (flash) while no charger present
             //buf[0] = MAX77976_REG_CHG_CNFG_00_ADDR;
             //buf[1] = MAX77976_REG_CHG_CNFG_00_MODE_BATTERY_BOOST_FLASH;
@@ -84,43 +84,43 @@ static int32_t max77976_parse_interrupt_vals(){
         }
     }
     if (buf[0] & INLIM_I){
-	rp2040_log("MAX77976: INLIM_I interrupt detected.\n");
+	rp2040_log_d("MAX77976: INLIM_I interrupt detected.\n");
         if (buf[2] & INLIM_I){
-	    rp2040_log("MAX77976: The CHGIN input current has been reaching the current limit for at least 30ms.\n");
+	    rp2040_log_w("MAX77976: The CHGIN input current has been reaching the current limit for at least 30ms.\n");
         }else {
-	    rp2040_log("MAX77976: The CHGIN input current has not reached the current limit.\n");
+	    rp2040_log_d("MAX77976: The CHGIN input current has not reached the current limit.\n");
 	}
     }
     if (buf[0] & CHG_I){
-	rp2040_log("MAX77976: CHG_I interrupt detected.\n");
+	rp2040_log_d("MAX77976: CHG_I interrupt detected.\n");
         if (buf[2] & CHG_I){
-	    rp2040_log("MAX77976: The charger has suspended charging or TREG = 1.\n");
+	    rp2040_log_w("MAX77976: The charger has suspended charging or TREG = 1.\n");
         }else {
-	    rp2040_log("MAX77976: The charger is okay or the charger is off.\n");
+	    rp2040_log_d("MAX77976: The charger is okay or the charger is off.\n");
 	}
     }
     if (buf[0] & BAT_I){
-	rp2040_log("MAX77976: BAT_I interrupt detected.\n");
+	rp2040_log_d("MAX77976: BAT_I interrupt detected.\n");
         if (buf[2] & BAT_I){
-	    rp2040_log("MAX77976: The battery has an issue or the charger has been suspended.\n");
+	    rp2040_log_w("MAX77976: The battery has an issue or the charger has been suspended.\n");
         }else {
-	    rp2040_log("MAX77976: The battery is okay.\n");
+	    rp2040_log_d("MAX77976: The battery is okay.\n");
 	}
     }
     if (buf[0] & DISQBAT_I){
-	rp2040_log("MAX77976: DISQBAT_I interrupt detected.\n");
+	rp2040_log_d("MAX77976: DISQBAT_I interrupt detected.\n");
         if (buf[2] & DISQBAT_I){
-	    rp2040_log("MAX77976: DISQBAT is high and QBATT is disabled.\n");
+	    rp2040_log_w("MAX77976: DISQBAT is high and QBATT is disabled.\n");
         }else {
-	    rp2040_log("MAX77976: DISQBAT is low and QBATT is not disabled.\n");
+	    rp2040_log_d("MAX77976: DISQBAT is low and QBATT is not disabled.\n");
 	}
     }
     if (buf[0] & BYP_I){
-	rp2040_log("MAX77976: BYP_I interrupt detected.\n");
+	rp2040_log_d("MAX77976: BYP_I interrupt detected.\n");
         if (buf[2] & BYP_I){
-	    rp2040_log("MAX77976: Something powered by the bypass node has hit current limit.\n");
+	    rp2040_log_w("MAX77976: Something powered by the bypass node has hit current limit.\n");
         }else {
-	    rp2040_log("MAX77976: The bypass node is okay.\n");
+	    rp2040_log_d("MAX77976: The bypass node is okay.\n");
 	}
     }
     if (buf[0] == 0){
@@ -134,14 +134,14 @@ static void max77976_get_interrupt_vals(uint8_t* buf_ptr) {
     uint8_t addr = MAX77976_REG_CHG_INT; // 0x04 Register
     i2c_write_error_handling(i2c1, MAX77976_ADDR, &addr, 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, buf_ptr, 3, false);
-    rp2040_log("MAX77976 interrupts vals: 0x10: 0x%02x, 0x11: 0x%02x, 0x12: 0x%02x\n", buf_ptr[0], buf_ptr[1], buf_ptr[2]);
+    rp2040_log_d("MAX77976 interrupts vals: 0x10: 0x%02x, 0x11: 0x%02x, 0x12: 0x%02x\n", buf_ptr[0], buf_ptr[1], buf_ptr[2]);
 }
 
 
 int max77976_init(uint gpio_interrupt, queue_t* cq, queue_t* rq){
     _gpio_interrupt = gpio_interrupt;
 
-    rp2040_log("max77976 init started\n");
+    rp2040_log_i("max77976 init started\n");
     call_queue_ptr = cq;
     return_queue_ptr = rq;
 
@@ -217,8 +217,8 @@ void max77976_log_current_limit(){
 
     uint8_t CHG_CC = return_buf[0] & 0x7F;
 
-    rp2040_log("CHGIN_ILIM: 0x%02x\n", CHGIN_ILIM);
-    rp2040_log("CHG_CC: 0x%02x\n", CHG_CC);
+    rp2040_log_d("CHGIN_ILIM: 0x%02x\n", CHGIN_ILIM);
+    rp2040_log_d("CHG_CC: 0x%02x\n", CHG_CC);
 }
 
 void max77976_toggle_led(){
@@ -251,22 +251,21 @@ uint32_t max77976_get_chg_details(){
     i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
     uint8_t CHG_DETAILS_00 = return_buf[0];
     uint8_t CHGIN_DTLS = (CHG_DETAILS_00 & 0x60) >> 5;
-    rp2040_log("CHG_DETAILS_00: 0x%02x\n CHGIN_DTLS: 0x%02x\n", CHG_DETAILS_00, CHGIN_DTLS);
-    rp2040_log("CHG_DETAILS_00_CHGIN_DTLS: ");
+    rp2040_log_d("CHG_DETAILS_00: 0x%02x\n CHGIN_DTLS: 0x%02x\n", CHG_DETAILS_00, CHGIN_DTLS);
     switch (CHGIN_DTLS){
         case 0b00:
-	    rp2040_log("VBUS is invalid. VCHGIN rising: VCHGIN < VCHGIN_UVLO. VCHGIN falling: VCHGIN < VCHGIN_REG (AICL)");
+	    rp2040_log_w("VBUS is invalid. VCHGIN rising: VCHGIN < VCHGIN_UVLO. VCHGIN falling: VCHGIN < VCHGIN_REG (AICL)");
 	    break;
         case 0b01:
-	    rp2040_log("VBUS is invalid. VCHGIN < VBATT + VCHGIN2SYS and VCHGIN > VCHGIN_UVLO");
+	    rp2040_log_w("VBUS is invalid. VCHGIN < VBATT + VCHGIN2SYS and VCHGIN > VCHGIN_UVLO");
 	    break;
         case 0b10:
-	    rp2040_log("VBUS is invalid. VCHGIN > VCHGIN_OVLO");
+	    rp2040_log_w("VBUS is invalid. VCHGIN > VCHGIN_OVLO");
 	    break;
         case 0b11:
-	    rp2040_log("VBUS is valid. VCHGIN > VCHGIN_UVLO and VCHGIN > VBATT + VCHGIN2SYS and VCHGIN < VCHGIN_OVLO");
+	    rp2040_log_d("VBUS is valid. VCHGIN > VCHGIN_UVLO and VCHGIN > VBATT + VCHGIN2SYS and VCHGIN < VCHGIN_OVLO");
 	    break;
-    }rp2040_log("\n"); 
+    }
     
     i2c_write_error_handling(i2c1, MAX77976_ADDR, &send_buf[1], 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
@@ -274,127 +273,122 @@ uint32_t max77976_get_chg_details(){
     uint8_t TREG = (CHG_DETAILS_01 & (1 << 7) ) >> 7;
     uint8_t BAT_DTLS = (CHG_DETAILS_01 & 0x70) >> 4;
     uint8_t CHG_DTLS = (CHG_DETAILS_01 & 0xF);
-    rp2040_log("CHG_DETAILS_01: 0x%02x\n TREG: 0x%02x\n BAT_DTLS: 0x%02x\n CHG_DTLS: 0x%02x\n", CHG_DETAILS_01, TREG, BAT_DTLS, CHG_DTLS);
-    rp2040_log("CHG_DETAILS_01_TREG: ");
+    rp2040_log_d("CHG_DETAILS_01: 0x%02x\n TREG: 0x%02x\n BAT_DTLS: 0x%02x\n CHG_DTLS: 0x%02x\n", CHG_DETAILS_01, TREG, BAT_DTLS, CHG_DTLS);
     switch (TREG){
         case 0b0:
-	    rp2040_log("The junction temperature is less than the threshold set by REGTEMP and the full charge current limit is available");
+	    rp2040_log_d("The junction temperature is less than the threshold set by REGTEMP and the full charge current limit is available");
 	    break;
 	case 0b1:
-	    rp2040_log("The junction temperature is greater than the threshold set by REGTEMP and the charge current limit may be folding back to reduce power dissipation.");
+	    rp2040_log_w("The junction temperature is greater than the threshold set by REGTEMP and the charge current limit may be folding back to reduce power dissipation.");
 	    break;
     }
-    rp2040_log("\n"); 
 
-    rp2040_log("CHG_DETAILS_01_BAT_DTLS: ");
     switch (BAT_DTLS){
         case 0b000:
-	    rp2040_log("Battery Removal");
+	    rp2040_log_w("Battery Removal");
 	    break;
         case 0b001:
-	    rp2040_log("Battery Prequalification Voltage");
+	    rp2040_log_d("Battery Prequalification Voltage");
 	    break;
         case 0b010:
-	    rp2040_log("Battery Timer Fault");
+	    rp2040_log_w("Battery Timer Fault");
 	    break;
         case 0b011:
-	    rp2040_log("Battery Regular Voltage");
+	    rp2040_log_d("Battery Regular Voltage");
 	    break;
         case 0b100:
-	    rp2040_log("Battery Low Voltage");
+	    rp2040_log_w("Battery Low Voltage");
 	    break;
         case 0b101:
-	    rp2040_log("Battery Overvoltage");
+	    rp2040_log_w("Battery Overvoltage");
 	    break;
         case 0b110:
-	    rp2040_log("Reserved");
+	    rp2040_log_d("Reserved");
 	    break;
         case 0b111:
-	    rp2040_log("Battery Only");
+	    rp2040_log_d("Battery Only");
 	    break;
-    }rp2040_log("\n"); 
+    }
     
-    rp2040_log("CHG_DETAILS_01_CHG_DTLS: ");
     switch (CHG_DTLS){
         case 0x00:
-	    rp2040_log("Charger is in dead-battery prequalification or low-battery prequalification mode.");
+	    rp2040_log_d("Charger is in dead-battery prequalification or low-battery prequalification mode.");
 	    break;
         case 0x01:
-	    rp2040_log("Charger is in fast-charge constant current mode.");
+	    rp2040_log_d("Charger is in fast-charge constant current mode.");
 	    break;
         case 0x02:
-	    rp2040_log("Charger is in fast-charge constant voltage mode.");
+	    rp2040_log_d("Charger is in fast-charge constant voltage mode.");
 	    break;
         case 0x03:
-	    rp2040_log("Charger is in top-off mode.");
+	    rp2040_log_d("Charger is in top-off mode.");
 	    break;
         case 0x04:
-	    rp2040_log("Charger is in done mode.");
+	    rp2040_log_d("Charger is in done mode.");
 	    break;
         case 0x05:
-	    rp2040_log("Reserved");
+	    rp2040_log_d("Reserved");
 	    break;
         case 0x06:
-	    rp2040_log("Charger is in timer-fault mode.");
+	    rp2040_log_w("Charger is in timer-fault mode.");
 	    break;
         case 0x07:
-	    rp2040_log("Charger is suspended because QBATT is disabled");
+	    rp2040_log_w("Charger is suspended because QBATT is disabled");
 	    break;
         case 0x08:
-	    rp2040_log("Charger is off, charger input invalid and/or charger is disabled.");
+	    rp2040_log_w("Charger is off, charger input invalid and/or charger is disabled.");
 	    break;
         case 0x09:
-	    rp2040_log("Reserved");
+	    rp2040_log_d("Reserved");
 	    break;
         case 0x0A:
-	    rp2040_log("Charger is off and the junction temperature is > TSHDN.");
+	    rp2040_log_w("Charger is off and the junction temperature is > TSHDN.");
 	    break;
         case 0x0B:
-	    rp2040_log("Charger is off because the watchdog timer expired");
+	    rp2040_log_w("Charger is off because the watchdog timer expired");
 	    break;
         case 0x0C:
-	    rp2040_log("Charger is suspended or charge current or voltage is reduced based on JEITA control.");
+	    rp2040_log_w("Charger is suspended or charge current or voltage is reduced based on JEITA control.");
 	    break;
         case 0x0D:
-	    rp2040_log("Charger is suspended because battery removal is detected on THM pin.");
+	    rp2040_log_w("Charger is suspended because battery removal is detected on THM pin.");
 	    break;
         case 0x0E:
-	    rp2040_log("Charger is suspended because SUSPEND pin is high.");
+	    rp2040_log_w("Charger is suspended because SUSPEND pin is high.");
 	    break;
         case 0x0F:
-	    rp2040_log("Reserved");
+	    rp2040_log_d("Reserved");
 	    break;
-    }rp2040_log("\n"); 
+    }
     
     i2c_write_error_handling(i2c1, MAX77976_ADDR, &send_buf[2], 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
     uint8_t CHG_DETAILS_02 = return_buf[0];
     uint8_t THM_DTLS = (CHG_DETAILS_02 & 0x70) >> 4;
     uint8_t BYP_DTLS = (CHG_DETAILS_02 & 0x0F);
-    rp2040_log("CHG_DETAILS_02_BYP_DTLS: ");
     switch (BYP_DTLS){
         case 0x00:
-	    rp2040_log("The bypass node is okay.");
+	    rp2040_log_d("The bypass node is okay.");
 	    break;
         case 0x01:
-	    rp2040_log("OTG_ILIM when CHG_CNFG_00.MODE=0xA or 0xE or 0xF");
+	    rp2040_log_d("OTG_ILIM when CHG_CNFG_00.MODE=0xA or 0xE or 0xF");
 	    break;
         case 0x02:
-	    rp2040_log("BSTILIM");
+	    rp2040_log_d("BSTILIM");
 	    break;
         case 0x04:
-	    rp2040_log("BCKNegILIM");
+	    rp2040_log_d("BCKNegILIM");
 	    break;
         case 0x08:
-	    rp2040_log("BST_SWON_DONE");
+	    rp2040_log_d("BST_SWON_DONE");
 	    break;
-    }rp2040_log("\n"); 
+    }
 
     i2c_write_error_handling(i2c1, MAX77976_ADDR, &send_buf[3], 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, return_buf, 1, false);
     uint8_t CHG_CNFG_00 = return_buf[0];
     uint8_t _MODE = (CHG_CNFG_00 & 0x0F);
-    rp2040_log("CHG_CNFG_00: 0x%x\n", _MODE);
+    rp2040_log_d("CHG_CNFG_00: 0x%x\n", _MODE);
 
     // convert and store the 4 bytes from the send_buf into a new uint32_t var
     uint32_t CHG_CNFG = (send_buf[4] << 24) | (send_buf[5] << 16) | (send_buf[6] << 8) | (send_buf[7]);
@@ -433,7 +427,7 @@ static void max77976_set_interrupt_masks(){
 }
 
 void test_max77976_get_id(){
-    rp2040_log("test_max77976_get_id started...\n"); 
+    rp2040_log_i("test_max77976_get_id started...\n");
     max77976_set_interrupt_masks_all_masked();
     // Check if responding as i2c slave before trying to write to it
     uint8_t rxdata;
@@ -441,15 +435,15 @@ void test_max77976_get_id(){
     i2c_write_error_handling(i2c1, MAX77976_ADDR, 0x0, 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, &rxdata, 1, false);
     if (rxdata != 0x76){
-	rp2040_log("MAX77976 not responding. Exiting.\n");
+	rp2040_log_e("MAX77976 not responding. Exiting.\n");
 	assert(false);
     }
     max77976_set_interrupt_masks();
-    rp2040_log("test_max77976_get_id PASSED. Read CHIP_ID %x.\n", rxdata);
+    rp2040_log_i("test_max77976_get_id PASSED. Read CHIP_ID %x.\n", rxdata);
 }
 
 void test_max77976_get_FSW(){
-    rp2040_log("test_max77976_get_FSW started...\n"); 
+    rp2040_log_i("test_max77976_get_FSW started...\n");
     max77976_set_interrupt_masks_all_masked();
     uint8_t rxdata;
 
@@ -457,11 +451,11 @@ void test_max77976_get_FSW(){
     i2c_write_error_handling(i2c1, MAX77976_ADDR, &reg, 1, true);
     i2c_read_error_handling(i2c1, MAX77976_ADDR, &rxdata, 1, false);
     if (rxdata != 0x0){
-	rp2040_log("MAX77976 FSW Not 0x0. Exiting.\n");
+	rp2040_log_e("MAX77976 FSW Not 0x0. Exiting.\n");
 	assert(false);
     }
     max77976_set_interrupt_masks();
-    rp2040_log("test_max77976_get_FSW PASSED. Read register 0x1E to be %x.\n", rxdata);
+    rp2040_log_i("test_max77976_get_FSW PASSED. Read register 0x1E to be %x.\n", rxdata);
 }
 
 static int32_t max77976_test_response(){
@@ -470,23 +464,23 @@ static int32_t max77976_test_response(){
 }
 
 void test_max77976_interrupt(){
-    rp2040_log("test_max77976_interrupt starting...\n");
+    rp2040_log_i("test_max77976_interrupt starting...\n");
     max77976_set_interrupt_masks_all_masked();
     test_max77976_started = true;
-    rp2040_log("test_max77976_interrupt: prior to driving low GPIO%d. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
+    rp2040_log_i("test_max77976_interrupt: prior to driving low GPIO%d. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
     gpio_set_dir(_gpio_interrupt, GPIO_OUT);
     if (gpio_get(_gpio_interrupt) != 0){
-	rp2040_log("test_max77976_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
+	rp2040_log_e("test_max77976_interrupt: GPIO%d was not driven low. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
 	assert(false);
     }
-    rp2040_log("test_max77976_interrupt: after driving low GPIO%d. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
+    rp2040_log_i("test_max77976_interrupt: after driving low GPIO%d. Current Value:%d\n", _gpio_interrupt, gpio_get(_gpio_interrupt));
     uint32_t i = 0;
     while (!test_max77976_completed){
         sleep_ms(10);
 	tight_loop_contents();
 	i++;
 	if (i > 1000){
-	    rp2040_log("test_max77976_interrupt timed out\n");
+	    rp2040_log_e("test_max77976_interrupt timed out\n");
 	    assert(false);
 	}
     }
@@ -496,5 +490,5 @@ void test_max77976_interrupt(){
     test_max77976_completed = false;
     max77976_set_interrupt_masks();
 
-    rp2040_log("test_max77976_interrupt: Passed after %" PRIu32 " milliseconds.\n", i*10);
+    rp2040_log_i("test_max77976_interrupt: Passed after %" PRIu32 " milliseconds.\n", i*10);
 }
